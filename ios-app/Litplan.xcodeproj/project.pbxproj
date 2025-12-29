@@ -33,6 +33,13 @@
 		025 /* Products.plist in Resources */ = {isa = PBXBuildFile; fileRef = 125 /* Products.plist */; };
 		026 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126 /* ToastView.swift */; };
 		027 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127 /* NetworkMonitor.swift */; };
+		028 /* IndividualPlanCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128 /* IndividualPlanCard.swift */; };
+		029 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129 /* Config.swift */; };
+		030 /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130 /* SupabaseManager.swift */; };
+		031 /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 131 /* AuthenticationManager.swift */; };
+		032 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 132 /* APIService.swift */; };
+		033 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133 /* LoginView.swift */; };
+		034 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134 /* LaunchScreenView.swift */; };
 		2E44806F926C4DB197321DEA /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A79DBEF7822148A4A78F0907 /* HapticManager.swift */; };
 		55FA7A24C5F9440FB527E3C3 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA6A160B87640F8AF932512 /* AsyncImageView.swift */; };
 		A1A4FAC30BF3E48C2743C6D8 /* PaywallTrigger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88BF7F37FA4D5EC2FEA959DC /* PaywallTrigger.swift */; };
@@ -42,7 +49,6 @@
 		E9A9E6C58B38DF7A69D0F579 /* DetailedGroupFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */; };
 		F7EB5BA37FED0DC4739E5379 /* GroupFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C94516B2740331C2C25E62F /* GroupFlow.swift */; };
 		F856FD405E7DF693348E896A /* LoadingStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */; };
-		028 /* IndividualPlanCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128 /* IndividualPlanCard.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +80,13 @@
 		125 /* Products.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Products.plist; sourceTree = "<group>"; };
 		126 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
 		127 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		128 /* IndividualPlanCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndividualPlanCard.swift; sourceTree = "<group>"; };
+		129 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		130 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
+		131 /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
+		132 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		133 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		134 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
 		39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DetailedGroupFlowView.swift; sourceTree = "<group>"; };
 		4C94516B2740331C2C25E62F /* GroupFlow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupFlow.swift; sourceTree = "<group>"; };
 		5309BDE2320E0532A23CED3C /* EmptyStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
@@ -82,7 +95,6 @@
 		D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
 		E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingStateView.swift; sourceTree = "<group>"; };
 		FDA6A160B87640F8AF932512 /* AsyncImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
-		128 /* IndividualPlanCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndividualPlanCard.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +150,8 @@
 				119 /* CityDetailsView.swift */,
 				39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */,
 				123 /* PaywallView.swift */,
+				133 /* LoginView.swift */,
+				134 /* LaunchScreenView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -181,6 +195,10 @@
 				117 /* MockDataService.swift */,
 				124 /* SubscriptionManager.swift */,
 				127 /* NetworkMonitor.swift */,
+				129 /* Config.swift */,
+				130 /* SupabaseManager.swift */,
+				131 /* AuthenticationManager.swift */,
+				132 /* APIService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -255,6 +273,9 @@
 				Base,
 			);
 			mainGroup = 300;
+			packageReferences = (
+				211DED502F02E98C00532BB0 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			productRefGroup = 302 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -315,6 +336,12 @@
 				026 /* ToastView.swift in Sources */,
 				027 /* NetworkMonitor.swift in Sources */,
 				028 /* IndividualPlanCard.swift in Sources */,
+				029 /* Config.swift in Sources */,
+				030 /* SupabaseManager.swift in Sources */,
+				031 /* AuthenticationManager.swift in Sources */,
+				032 /* APIService.swift in Sources */,
+				033 /* LoginView.swift in Sources */,
+				034 /* LaunchScreenView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -524,6 +551,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		211DED502F02E98C00532BB0 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 700 /* Project object */;
 }
