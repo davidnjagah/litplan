@@ -1,5 +1,5 @@
-# Compiled output
-lib/
+# Compiled output (top-level lib directory only, not src/lib)
+/lib/
 *.js
 *.js.map
 
@@ -40,3 +40,8 @@ coverage/
 
 # Misc
 .runtimeconfig.json
+
+# Prisma
+/generated/prisma
+prisma/*.db
+prisma/*.db-journal
