@@ -28,6 +28,10 @@ import plansRoutes from './api/plans';
 import savedCitiesRoutes from './api/savedCities';
 import healthRoutes from './api/health';
 
+// Import Clerk authentication routes and webhooks (Sprint 5 Phase 3)
+import clerkAuthRoutes from './api/routes/auth';
+import clerkWebhookRoutes from './api/webhooks/clerk';
+
 // Create Express app
 const app = express();
 
@@ -45,7 +49,11 @@ app.use(performanceLogger(1000)); // Log requests slower than 1000ms
 // Health check endpoints (Sprint 4, Day 19)
 app.use('/health', healthRoutes);
 
-// API Routes
+// Clerk Webhooks (Sprint 5 Phase 3) - must be before body parsing for raw body access
+// Note: Clerk webhook verification requires raw body, so this route should be mounted early
+app.use('/webhooks/clerk', clerkWebhookRoutes);
+
+// API Routes - Legacy (Firebase Auth based)
 app.use('/auth', authRoutes);
 app.use('/user', authRoutes); // /user/me routes are in auth.ts
 app.use('/user', userRoutes); // /user/viewedCities, /user/savedCities routes
@@ -55,6 +63,10 @@ app.use('/plans', plansRoutes); // Sprint 3, Day 13: Plan limits and weekend enf
 app.use('/config', configRoutes);
 app.use('/subscription', subscriptionRoutes); // Sprint 2, Day 8: Subscription endpoints
 
+// Clerk Authentication Routes (Sprint 5 Phase 3)
+// New auth endpoints using Clerk: /api/v2/auth/*
+app.use('/api/v2/auth', clerkAuthRoutes);
+
 // Root route - API documentation
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -62,8 +74,20 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
+      // Legacy auth (Firebase/Apple Sign-In) - deprecated
       auth: {
         login: 'POST /auth/login',
+      },
+      // Clerk Authentication (Sprint 5 Phase 3) - recommended
+      'api/v2/auth': {
+        sync: 'POST /api/v2/auth/sync (sync Clerk user to database)',
+        me: 'GET /api/v2/auth/me (get current user with subscription)',
+        updateProfile: 'PATCH /api/v2/auth/me (update display name)',
+        deleteAccount: 'DELETE /api/v2/auth/account (delete user account)',
+        status: 'GET /api/v2/auth/status (check auth status)',
+      },
+      webhooks: {
+        clerk: 'POST /webhooks/clerk (Clerk webhook events)',
       },
       user: {
         me: 'GET /user/me',
