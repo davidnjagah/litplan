@@ -1,0 +1,71 @@
+//
+//  PaywallTrigger.swift
+//  Litplan
+//
+//  Created by UI Designer Agent on 12/28/25.
+//  Sprint 3, Day 13 - Paywall trigger types with user-facing messaging
+//
+
+import Foundation
+
+enum PaywallTrigger: Equatable {
+    case planLimit(cityName: String)      // 11th plan in a city
+    case weekendPlan(cityName: String)    // Trying to view weekend plan
+    case cityLimit                        // 2nd city in the week
+    case saveCity(cityName: String)       // Trying to save a city
+
+    var title: String {
+        switch self {
+        case .planLimit:
+            return "Unlock More Plans"
+        case .weekendPlan:
+            return "Weekend Plans Are Pro-Only"
+        case .cityLimit:
+            return "Explore More Cities"
+        case .saveCity:
+            return "Save Your Favorite Cities"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .planLimit(let city):
+            return "You've viewed 10 plans in \(city). Upgrade to Pro to see up to 50 plans per city."
+        case .weekendPlan(let city):
+            return "Weekend plans in \(city) are exclusive to Pro members. Upgrade to access premium weekend experiences."
+        case .cityLimit:
+            return "Free users can explore 1 city per week. Upgrade to Pro for unlimited cities."
+        case .saveCity(let city):
+            return "Save \(city) to your favorites for quick access. This feature is available with Litplan Pro."
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .planLimit:
+            return "calendar.badge.exclamationmark"
+        case .weekendPlan:
+            return "star.fill"
+        case .cityLimit:
+            return "globe.americas.fill"
+        case .saveCity:
+            return "heart.fill"
+        }
+    }
+}
+
+// MARK: - Identifiable conformance for .sheet(item:) binding
+extension PaywallTrigger: Identifiable {
+    var id: String {
+        switch self {
+        case .planLimit(let city):
+            return "planLimit_\(city)"
+        case .weekendPlan(let city):
+            return "weekendPlan_\(city)"
+        case .cityLimit:
+            return "cityLimit"
+        case .saveCity(let city):
+            return "saveCity_\(city)"
+        }
+    }
+}

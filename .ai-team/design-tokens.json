@@ -1,0 +1,134 @@
+{
+  "colors": {
+    "primary": {
+      "background": "#000000",
+      "surfacePrimary": "#1C1C1E",
+      "surfaceSecondary": "#2C2C2E"
+    },
+    "accent": {
+      "primary": "#00D9FF",
+      "secondary": "#AF52DE"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#AEAEB2",
+      "tertiary": "#636366"
+    },
+    "semantic": {
+      "success": "#30D158",
+      "warning": "#FFD60A",
+      "error": "#FF453A"
+    }
+  },
+  "spacing": {
+    "xxs": 4,
+    "xs": 8,
+    "sm": 12,
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "xxl": 48
+  },
+  "typography": {
+    "displayLarge": {
+      "size": 34,
+      "weight": "bold",
+      "usage": "Screen titles"
+    },
+    "displayMedium": {
+      "size": 28,
+      "weight": "bold",
+      "usage": "Section headers"
+    },
+    "headline": {
+      "size": 22,
+      "weight": "semibold",
+      "usage": "Card titles"
+    },
+    "bodyLarge": {
+      "size": 18,
+      "weight": "regular",
+      "usage": "Primary content"
+    },
+    "body": {
+      "size": 16,
+      "weight": "regular",
+      "usage": "Standard text"
+    },
+    "callout": {
+      "size": 14,
+      "weight": "regular",
+      "usage": "Secondary text"
+    },
+    "caption": {
+      "size": 12,
+      "weight": "regular",
+      "usage": "Metadata"
+    }
+  },
+  "cornerRadius": {
+    "small": 8,
+    "medium": 12,
+    "large": 16,
+    "xlarge": 20
+  },
+  "elevation": {
+    "low": {
+      "shadowOpacity": 0.1,
+      "shadowRadius": 4,
+      "shadowOffset": {
+        "width": 0,
+        "height": 2
+      }
+    },
+    "medium": {
+      "shadowOpacity": 0.15,
+      "shadowRadius": 8,
+      "shadowOffset": {
+        "width": 0,
+        "height": 4
+      }
+    },
+    "high": {
+      "shadowOpacity": 0.2,
+      "shadowRadius": 16,
+      "shadowOffset": {
+        "width": 0,
+        "height": 8
+      }
+    }
+  },
+  "components": {
+    "button": {
+      "primary": {
+        "height": 50,
+        "cornerRadius": 12,
+        "backgroundColor": "#00D9FF",
+        "textColor": "#FFFFFF"
+      },
+      "secondary": {
+        "height": 50,
+        "cornerRadius": 12,
+        "borderWidth": 2,
+        "borderColor": "#00D9FF",
+        "textColor": "#00D9FF"
+      }
+    },
+    "card": {
+      "standard": {
+        "backgroundColor": "#1C1C1E",
+        "cornerRadius": 12
+      },
+      "elevated": {
+        "backgroundColor": "#2C2C2E",
+        "cornerRadius": 16
+      }
+    },
+    "tabBar": {
+      "height": 83,
+      "backgroundColor": "#1C1C1E",
+      "activeColor": "#00D9FF",
+      "inactiveColor": "#636366"
+    }
+  }
+}

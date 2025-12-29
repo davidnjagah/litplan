@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isProUser(userId) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/users/$(userId)).data.subscription.tier == 'pro';
+    }
+
+    // Users collection
+    // Users can only read/write their own data
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+
+      // User activity subcollection
+      // Users can only read/write their own activity
+      match /activity/{activityId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+
+      // Saved cities subcollection (Pro only)
+      // Users can read their own saved cities
+      // Users can write only if they have Pro subscription
+      match /savedCities/{cityId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isProUser(userId);
+      }
+    }
+
+    // Cities collection
+    // Read-only for authenticated clients
+    // Only backend (admin) can write
+    match /cities/{cityId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only backend can write
+
+      // Nightlife plans subcollection (legacy path)
+      // Read-only for authenticated clients
+      match /nightlifePlans/{planId} {
+        allow read: if isAuthenticated();
+        allow write: if false; // Only backend can write
+      }
+
+      // Plans subcollection (new path)
+      // Read-only for authenticated clients
+      match /plans/{planId} {
+        allow read: if isAuthenticated();
+        allow write: if false; // Only backend can write
+      }
+
+      // Group flows subcollection
+      // Read-only for authenticated clients
+      match /groupFlows/{flowId} {
+        allow read: if isAuthenticated();
+        allow write: if false; // Only backend can write
+      }
+    }
+
+    // App configuration
+    // Read-only for authenticated clients
+    // Only backend can write
+    match /config/{doc} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only backend can write
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

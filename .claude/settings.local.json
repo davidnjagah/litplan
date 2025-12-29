@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(tree:*)",
+      "Bash(FIRESTORE_EMULATOR_HOST=\"localhost:8080\" npm run seed:cities:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(/usr/bin/ruby:*)",
+      "Bash(find:*)",
+      "Bash(echo:*)",
+      "Bash(ruby -e:*)",
+      "Bash(tee:*)",
+      "Bash(npm install:*)",
+      "Bash(test:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)",
+      "Bash(npm run lint)",
+      "Bash(npx eslint:*)",
+      "Bash(git config:*)",
+      "Bash(gh auth:*)",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

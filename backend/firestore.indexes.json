@@ -1,0 +1,99 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "cities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "metadata.isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "rank",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "metadata.featured",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "rank",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "flags.isWeekend",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "nightlifePlans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "rank",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "flags.isWeekendPlan",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "groupFlows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "rank",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "difficulty",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "activity",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "savedCities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "savedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

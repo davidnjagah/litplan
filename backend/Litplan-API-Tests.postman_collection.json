@@ -1,0 +1,793 @@
+{
+  "info": {
+    "name": "Litplan API Tests",
+    "description": "Comprehensive API test collection for Litplan backend endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "litplan-api-v1",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://litplan-dev.firebaseapp.com/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "REPLACE_WITH_FIREBASE_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "test-user-001",
+      "type": "string"
+    },
+    {
+      "key": "cityId",
+      "value": "nyc-001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identityToken\": \"mock_identity_token_12345\",\n  \"authorizationCode\": \"mock_auth_code_67890\",\n  \"user\": {\n    \"email\": \"test@example.com\",\n    \"name\": {\n      \"firstName\": \"John\",\n      \"lastName\": \"Doe\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user with Sign in with Apple mock credentials"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success field', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Response contains user object', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.user).to.exist;",
+                  "  pm.expect(jsonData.user.userId).to.exist;",
+                  "  pm.expect(jsonData.user.subscription).to.exist;",
+                  "});",
+                  "",
+                  "pm.test('Response contains token', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.token).to.exist;",
+                  "  pm.collectionVariables.set('authToken', jsonData.token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "me"]
+            },
+            "description": "Get current user profile and subscription status"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('User object contains required fields', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.user.userId).to.exist;",
+                  "  pm.expect(jsonData.user.subscription).to.exist;",
+                  "  pm.expect(jsonData.user.entitlements).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/me (Unauthorized)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "me"]
+            },
+            "description": "Test unauthorized access - should return 401"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', function() {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Cities",
+      "item": [
+        {
+          "name": "GET /cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities"]
+            },
+            "description": "Get list of all available cities"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains cities array', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.cities).to.be.an('array');",
+                  "  pm.expect(jsonData.total).to.be.a('number');",
+                  "});",
+                  "",
+                  "pm.test('Cities have required fields', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  if (jsonData.cities.length > 0) {",
+                  "    var city = jsonData.cities[0];",
+                  "    pm.expect(city.cityId).to.exist;",
+                  "    pm.expect(city.name).to.exist;",
+                  "    pm.expect(city.country).to.exist;",
+                  "    pm.expect(city.displayAssets).to.exist;",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /cities (with search)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities?search=New York",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "New York"
+                }
+              ]
+            },
+            "description": "Search cities by name"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Filtered results match search query', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  if (jsonData.cities.length > 0) {",
+                  "    var city = jsonData.cities[0];",
+                  "    pm.expect(city.name.toLowerCase()).to.include('new');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /cities/:cityId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities/{{cityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities", "{{cityId}}"]
+            },
+            "description": "Get detailed city information"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('City object is complete', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.city.cityId).to.exist;",
+                  "  pm.expect(jsonData.city.name).to.exist;",
+                  "  pm.expect(jsonData.city.coordinates).to.exist;",
+                  "  pm.expect(jsonData.city.metadata).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /cities/:cityId (Not Found)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities/invalid-city-id",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities", "invalid-city-id"]
+            },
+            "description": "Test 404 for invalid city ID"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function() {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Plans",
+      "item": [
+        {
+          "name": "GET /cities/:cityId/plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities/{{cityId}}/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities", "{{cityId}}", "plans"]
+            },
+            "description": "Get all plans for a city (respects user tier limits)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Plans array exists', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.plans).to.be.an('array');",
+                  "  pm.expect(jsonData.userLimit).to.exist;",
+                  "  pm.expect(jsonData.hasMore).to.exist;",
+                  "});",
+                  "",
+                  "pm.test('Free user sees max 10 plans', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  if (jsonData.userLimit === 10) {",
+                  "    pm.expect(jsonData.plans.length).to.be.at.most(10);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /cities/:cityId/plans (Weekend Filter)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities/{{cityId}}/plans?weekend=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities", "{{cityId}}", "plans"],
+              "query": [
+                {
+                  "key": "weekend",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Get weekend plans (should trigger paywall for free users)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Free user gets 403 for weekend plans', function() {",
+                  "  // Assuming test user is free tier",
+                  "  var statusCode = pm.response.code;",
+                  "  pm.expect([200, 403]).to.include(statusCode);",
+                  "  ",
+                  "  if (statusCode === 403) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error.code).to.eql('PAYWALL_LIMIT_REACHED');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Group Flows",
+      "item": [
+        {
+          "name": "GET /cities/:cityId/groupFlows (Pro)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cities/{{cityId}}/groupFlows",
+              "host": ["{{baseUrl}}"],
+              "path": ["cities", "{{cityId}}", "groupFlows"]
+            },
+            "description": "Get group flow experiences (Pro only)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Response is 200 for Pro or 403 for Free', function() {",
+                  "  var statusCode = pm.response.code;",
+                  "  pm.expect([200, 403]).to.include(statusCode);",
+                  "});",
+                  "",
+                  "pm.test('Free user gets paywall error', function() {",
+                  "  if (pm.response.code === 403) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error.code).to.eql('PRO_FEATURE_REQUIRED');",
+                  "    pm.expect(jsonData.error.paywallType).to.eql('group_flows');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. User Activity",
+      "item": [
+        {
+          "name": "POST /user/viewedCities",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cityId\": \"{{cityId}}\",\n  \"source\": \"explore_tab\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/viewedCities",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "viewedCities"]
+            },
+            "description": "Record that user viewed a city"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Success message returned', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/viewedCities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/viewedCities",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "viewedCities"]
+            },
+            "description": "Get user's recently viewed cities"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Viewed cities array exists', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.viewedCities).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /user/savedCities (Pro)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/savedCities",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "savedCities"]
+            },
+            "description": "Get saved cities (Pro only feature)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Response is 200 for Pro or 403 for Free', function() {",
+                  "  var statusCode = pm.response.code;",
+                  "  pm.expect([200, 403]).to.include(statusCode);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /user/savedCities/:cityId (Pro)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/savedCities/{{cityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "savedCities", "{{cityId}}"]
+            },
+            "description": "Save a city to favorites (Pro only)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Response is 200 for Pro or 403 for Free', function() {",
+                  "  var statusCode = pm.response.code;",
+                  "  pm.expect([200, 403]).to.include(statusCode);",
+                  "});",
+                  "",
+                  "pm.test('Free user gets paywall error', function() {",
+                  "  if (pm.response.code === 403) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error.paywallType).to.eql('saved_cities');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Subscription",
+      "item": [
+        {
+          "name": "POST /subscription/validate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"mock_transaction_12345\",\n  \"productId\": \"litplan_pro_monthly\",\n  \"receiptData\": \"base64_encoded_receipt_data\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscription/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "validate"]
+            },
+            "description": "Validate StoreKit transaction and update subscription"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 400', function() {",
+                  "  var statusCode = pm.response.code;",
+                  "  pm.expect([200, 400]).to.include(statusCode);",
+                  "});",
+                  "",
+                  "pm.test('Success response has subscription object', function() {",
+                  "  if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.subscription).to.exist;",
+                  "    pm.expect(jsonData.entitlements).to.exist;",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /subscription/status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "status"]
+            },
+            "description": "Check current subscription status"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Subscription status is valid', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.subscription.status).to.be.oneOf(['active', 'expired', 'cancelled', 'trial', 'free']);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /subscription/restore",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/restore",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscription", "restore"]
+            },
+            "description": "Restore previous purchases"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has restored field', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.restored).to.be.a('boolean');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Configuration",
+      "item": [
+        {
+          "name": "GET /config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["config"]
+            },
+            "description": "Get app configuration (current week, tier limits, products)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Config has required fields', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.config.currentWeek).to.exist;",
+                  "  pm.expect(jsonData.config.tiers).to.exist;",
+                  "  pm.expect(jsonData.config.tiers.free).to.exist;",
+                  "  pm.expect(jsonData.config.tiers.pro).to.exist;",
+                  "});",
+                  "",
+                  "pm.test('Tier limits are correct', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.config.tiers.free.maxCities).to.eql(1);",
+                  "  pm.expect(jsonData.config.tiers.free.maxPlans).to.eql(10);",
+                  "  pm.expect(jsonData.config.tiers.pro.maxCities).to.eql(100);",
+                  "  pm.expect(jsonData.config.tiers.pro.maxPlans).to.eql(50);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Health & Monitoring",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Health check endpoint (no auth required)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Health status is healthy', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.status).to.eql('healthy');",
+                  "  pm.expect(jsonData.version).to.exist;",
+                  "});",
+                  "",
+                  "pm.test('Response time is acceptable', function() {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
