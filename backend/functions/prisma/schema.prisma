@@ -1,15 +1,341 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Litplan Backend - Prisma Schema
+// Sprint 5: Prisma + Clerk Migration
+// Database: PostgreSQL (local) / PlanetScale (production)
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma" // Required for PlanetScale compatibility
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id            String    @id @default(cuid())
+  clerkUserId   String    @unique // Clerk's user ID
+  email         String?   @unique
+  displayName   String?
+  imageUrl      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  subscription  Subscription?
+  activities    UserActivity[]
+  savedCities   SavedCity[]
+  viewedCities  ViewedCity[]
+
+  @@index([clerkUserId])
+  @@index([email])
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  userId                String             @unique
+  clerkUserId           String             @unique // Clerk ID for easy lookup
+
+  status                SubscriptionStatus @default(FREE)
+  tier                  SubscriptionTier   @default(FREE)
+
+  startDate             DateTime?
+  expiryDate            DateTime?
+  autoRenew             Boolean            @default(false)
+
+  // StoreKit fields
+  transactionId         String?
+  productId             String?
+  originalTransactionId String?
+
+  // Entitlements (denormalized for quick access)
+  maxCitiesPerWeek      Int                @default(1)
+  maxPlansPerCity       Int                @default(10)
+  weekendAccess         Boolean            @default(false)
+  groupPlansAccess      Boolean            @default(false)
+  savedCitiesAccess     Boolean            @default(false)
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  // Relations
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([clerkUserId])
+  @@index([transactionId])
+  @@index([status])
+}
+
+enum SubscriptionStatus {
+  FREE
+  PRO
+  TRIAL
+  EXPIRED
+  CANCELLED
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+}
+
+// ==================== CITIES ====================
+
+model City {
+  id                 String      @id @default(cuid())
+  cityId             String      @unique // Legacy ID for compatibility (e.g., 'nyc-001')
+  name               String
+  country            String
+  countryCode        String
+  rank               Int
+  timezone           String
+
+  // Display assets
+  heroImage          String?
+  cardImage          String?
+  accentColor        String?     @default("#00D9FF")
+
+  // Metadata
+  totalPlansThisWeek Int         @default(0)
+  featured           Boolean     @default(false)
+
+  // Coordinates
+  latitude           Float
+  longitude          Float
+
+  lastUpdated        DateTime    @default(now())
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  // Relations
+  plans              Plan[]
+  groupFlows         GroupFlow[]
+  savedByUsers       SavedCity[]
+  viewedByUsers      ViewedCity[]
+
+  @@index([rank])
+  @@index([featured])
+  @@index([name])
+}
+
+// ==================== PLANS ====================
+
+model Plan {
+  id             String          @id @default(cuid())
+  planId         String          @unique // Legacy ID (e.g., 'nyc-plan-001')
+  cityId         String
+  rank           Int
+
+  title          String
+  venueName      String
+  description    String?
+  category       String // e.g., 'Rooftop Bar', 'Live Music'
+  type           PlanType
+
+  // Images
+  heroImage      String?
+  thumbnailImage String?
+  galleryImages  String[]        @default([])
+
+  // Location
+  address        String?
+  neighborhood   String?
+  googleMapsUrl  String?
+  latitude       Float?
+  longitude      Float?
+
+  // Schedule
+  date           String? // ISO date string
+  startTime      String?
+  endTime        String?
+  isWeekend      Boolean         @default(false)
+  weekday        String?
+
+  // Pricing
+  entryFee       Int? // In cents
+  currency       String          @default("USD")
+  priceRange     String? // e.g., '$$'
+  freeEntry      Boolean         @default(true)
+
+  // AI Tags
+  genres         String[]        @default([])
+  vibes          String[]        @default([])
+  eventType      String?
+
+  // Flags
+  isIndividual   Boolean         @default(true)
+  isGroup        Boolean         @default(false)
+  isFeatured     Boolean         @default(false)
+
+  // Reviews
+  averageRating  Float?
+  totalReviews   Int             @default(0)
+  reviewSource   String?
+
+  // Metadata
+  source         String          @default("AI-generated")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  city           City            @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  flowSteps      GroupFlowStep[]
+
+  @@index([cityId])
+  @@index([rank])
+  @@index([isWeekend])
+  @@index([type])
+}
+
+enum PlanType {
+  BAR
+  CLUB
+  EVENT
+  RESTAURANT
+}
+
+// ==================== GROUP FLOWS ====================
+
+model GroupFlow {
+  id            String          @id @default(cuid())
+  flowId        String          @unique // Legacy ID (e.g., 'nyc-flow-001')
+  cityId        String
+  rank          Int
+
+  title         String
+  description   String?
+
+  // Duration
+  totalHours    Float
+  startTime     String?
+  endTime       String?
+
+  // Pricing
+  totalEstimate Int? // In cents
+  currency      String          @default("USD")
+
+  // Flags
+  isWeekend     Boolean         @default(false)
+  proOnly       Boolean         @default(true)
+  aiGenerated   Boolean         @default(true)
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  city          City            @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  steps         GroupFlowStep[]
+
+  @@index([cityId])
+  @@index([rank])
+}
+
+model GroupFlowStep {
+  id         String    @id @default(cuid())
+  flowId     String
+  planId     String
+  stepNumber Int
+
+  title      String
+  venueName  String
+  duration   Int // In minutes
+  thumbnail  String?
+
+  // Relations
+  flow       GroupFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  plan       Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([flowId, stepNumber])
+  @@index([flowId])
+  @@index([planId])
+}
+
+// ==================== USER ACTIVITY ====================
+
+model UserActivity {
+  id        String       @id @default(cuid())
+  userId    String
+
+  type      ActivityType
+  cityId    String?
+  planId    String?
+  flowId    String?
+
+  source    String? // e.g., 'explore_tab', 'search'
+  sessionId String?
+
+  createdAt DateTime     @default(now())
+
+  // Relations
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+enum ActivityType {
+  VIEWED_CITY
+  VIEWED_PLAN
+  VIEWED_FLOW
+  SAVED_CITY
+  UNSAVED_CITY
+  SEARCH
+}
+
+model SavedCity {
+  id      String   @id @default(cuid())
+  userId  String
+  cityId  String
+
+  notes   String?
+  savedAt DateTime @default(now())
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city    City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cityId])
+  @@index([userId])
+  @@index([cityId])
+}
+
+model ViewedCity {
+  id        String   @id @default(cuid())
+  userId    String
+  cityId    String
+
+  viewedAt  DateTime @default(now())
+  viewCount Int      @default(1)
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cityId])
+  @@index([userId])
+  @@index([viewedAt])
+}
+
+// ==================== APP CONFIG ====================
+
+model AppConfig {
+  id                String   @id @default("app")
+  currentWeek       String // e.g., '2025-W03'
+  weekStartDate     DateTime
+  weekEndDate       DateTime
+
+  // Free tier config
+  freeMaxCities     Int      @default(1)
+  freeMaxPlans      Int      @default(10)
+  freeWeekendAccess Boolean  @default(false)
+
+  // Pro tier config
+  proMaxCities      Int      @default(100)
+  proMaxPlans       Int      @default(50)
+  proWeekendAccess  Boolean  @default(true)
+
+  updatedAt         DateTime @updatedAt
 }
