@@ -9,8 +9,7 @@
 import Foundation
 import SwiftUI
 import AuthenticationServices
-// Uncomment after adding Supabase SDK:
-// import Supabase
+import Supabase
 
 /// Authentication state for the app
 enum AuthState {
@@ -159,16 +158,6 @@ class AuthenticationManager: NSObject, ObservableObject {
                 return
             }
 
-            // Get user info
-            let userId = appleIDCredential.user
-            let email = appleIDCredential.email
-            let fullName = [
-                appleIDCredential.fullName?.givenName,
-                appleIDCredential.fullName?.familyName
-            ].compactMap { $0 }.joined(separator: " ")
-
-            // Uncomment after adding Supabase SDK:
-            /*
             do {
                 let session = try await supabaseManager.client.auth.signInWithIdToken(
                     credentials: .init(
@@ -195,37 +184,6 @@ class AuthenticationManager: NSObject, ObservableObject {
                 if Config.enableDebugLogging {
                     print("[AuthenticationManager] Apple Sign In error: \(error)")
                 }
-            }
-            */
-
-            // Placeholder until SDK is added
-            // Create mock session for testing
-            let session = Session(
-                accessToken: "mock_token_\(userId)",
-                refreshToken: "mock_refresh_\(userId)",
-                expiresAt: Date().addingTimeInterval(3600),
-                userId: userId
-            )
-
-            let user = SupabaseUser(
-                id: userId,
-                email: email,
-                userMetadata: SupabaseUser.UserMetadata(
-                    fullName: fullName.isEmpty ? nil : fullName,
-                    avatarUrl: nil,
-                    provider: "apple"
-                )
-            )
-
-            supabaseManager.updateSession(session)
-            supabaseManager.updateUser(user)
-            self.currentUser = user
-            self.authState = .authenticated
-
-            await syncUserWithBackend()
-
-            if Config.enableDebugLogging {
-                print("[AuthenticationManager] Apple Sign In successful (mock) for user: \(userId)")
             }
 
         case .failure(let error):
@@ -258,8 +216,6 @@ class AuthenticationManager: NSObject, ObservableObject {
             throw AuthError.invalidCredentials
         }
 
-        // Uncomment after adding Supabase SDK:
-        /*
         do {
             let session = try await supabaseManager.client.auth.signIn(
                 email: email,
@@ -285,42 +241,6 @@ class AuthenticationManager: NSObject, ObservableObject {
             isLoading = false
             throw AuthError.signInFailed(error.localizedDescription)
         }
-        */
-
-        // Placeholder until SDK is added
-        // Simulate sign in delay
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-
-        let userId = UUID().uuidString
-        let session = Session(
-            accessToken: "mock_token_\(userId)",
-            refreshToken: "mock_refresh_\(userId)",
-            expiresAt: Date().addingTimeInterval(3600),
-            userId: userId
-        )
-
-        let user = SupabaseUser(
-            id: userId,
-            email: email,
-            userMetadata: SupabaseUser.UserMetadata(
-                fullName: nil,
-                avatarUrl: nil,
-                provider: "email"
-            )
-        )
-
-        supabaseManager.updateSession(session)
-        supabaseManager.updateUser(user)
-        self.currentUser = user
-        self.authState = .authenticated
-
-        UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
-
-        await syncUserWithBackend()
-
-        if Config.enableDebugLogging {
-            print("[AuthenticationManager] Email sign in successful (mock) for: \(email)")
-        }
 
         isLoading = false
     }
@@ -342,8 +262,6 @@ class AuthenticationManager: NSObject, ObservableObject {
             throw AuthError.signUpFailed("Password must be at least 8 characters")
         }
 
-        // Uncomment after adding Supabase SDK:
-        /*
         do {
             var metadata: [String: AnyJSON] = [:]
             if let fullName = fullName, !fullName.isEmpty {
@@ -383,41 +301,6 @@ class AuthenticationManager: NSObject, ObservableObject {
             isLoading = false
             throw AuthError.signUpFailed(error.localizedDescription)
         }
-        */
-
-        // Placeholder until SDK is added
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-
-        let userId = UUID().uuidString
-        let session = Session(
-            accessToken: "mock_token_\(userId)",
-            refreshToken: "mock_refresh_\(userId)",
-            expiresAt: Date().addingTimeInterval(3600),
-            userId: userId
-        )
-
-        let user = SupabaseUser(
-            id: userId,
-            email: email,
-            userMetadata: SupabaseUser.UserMetadata(
-                fullName: fullName,
-                avatarUrl: nil,
-                provider: "email"
-            )
-        )
-
-        supabaseManager.updateSession(session)
-        supabaseManager.updateUser(user)
-        self.currentUser = user
-        self.authState = .authenticated
-
-        UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
-
-        await syncUserWithBackend()
-
-        if Config.enableDebugLogging {
-            print("[AuthenticationManager] Sign up successful (mock) for: \(email)")
-        }
 
         isLoading = false
     }
@@ -435,8 +318,6 @@ class AuthenticationManager: NSObject, ObservableObject {
             throw AuthError.invalidCredentials
         }
 
-        // Uncomment after adding Supabase SDK:
-        /*
         do {
             try await supabaseManager.client.auth.resetPasswordForEmail(email)
             if Config.enableDebugLogging {
@@ -446,14 +327,6 @@ class AuthenticationManager: NSObject, ObservableObject {
             self.errorMessage = "Password reset failed: \(error.localizedDescription)"
             isLoading = false
             throw AuthError.unknown(error.localizedDescription)
-        }
-        */
-
-        // Placeholder until SDK is added
-        try await Task.sleep(nanoseconds: 500_000_000)
-
-        if Config.enableDebugLogging {
-            print("[AuthenticationManager] Password reset email sent (mock) to: \(email)")
         }
 
         isLoading = false
@@ -510,8 +383,6 @@ class AuthenticationManager: NSObject, ObservableObject {
     private func syncUserWithBackend() async {
         guard let user = currentUser else { return }
 
-        // Uncomment when APIService is implemented:
-        /*
         do {
             try await APIService.shared.syncUser()
             if Config.enableDebugLogging {
@@ -523,14 +394,9 @@ class AuthenticationManager: NSObject, ObservableObject {
             }
             // Don't fail auth if backend sync fails
         }
-        */
 
         // Store user ID locally for quick access
         UserDefaults.standard.set(user.id, forKey: Config.UserDefaultsKeys.cachedUserId)
-
-        if Config.enableDebugLogging {
-            print("[AuthenticationManager] User sync placeholder - will sync with backend when APIService is ready")
-        }
     }
 
     // MARK: - Helper Methods

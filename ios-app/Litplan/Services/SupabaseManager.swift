@@ -5,15 +5,9 @@
 //  Created for Sprint 6 - Supabase Integration
 //  Manages Supabase client initialization and session handling
 //
-//  IMPORTANT: Add Supabase Swift SDK via Swift Package Manager:
-//  1. In Xcode: File > Add Package Dependencies
-//  2. Enter: https://github.com/supabase-community/supabase-swift
-//  3. Select version 2.0.0 or later
-//
 
 import Foundation
-// Uncomment after adding Supabase SDK:
-// import Supabase
+import Supabase
 
 /// Manages Supabase client and session
 @MainActor
@@ -31,8 +25,7 @@ class SupabaseManager: ObservableObject {
 
     // MARK: - Supabase Client
 
-    // Uncomment after adding Supabase SDK:
-    // private(set) var client: SupabaseClient!
+    private(set) var client: SupabaseClient!
 
     // MARK: - Initialization
 
@@ -42,13 +35,10 @@ class SupabaseManager: ObservableObject {
 
     /// Initialize the Supabase client
     private func initializeClient() {
-        // Uncomment after adding Supabase SDK:
-        /*
         client = SupabaseClient(
             supabaseURL: URL(string: Config.supabaseURL)!,
             supabaseKey: Config.supabaseAnonKey
         )
-        */
 
         isInitialized = true
 
@@ -66,8 +56,6 @@ class SupabaseManager: ObservableObject {
 
     /// Check for existing session on app launch
     func checkExistingSession() async {
-        // Uncomment after adding Supabase SDK:
-        /*
         do {
             let session = try await client.auth.session
             self.currentSession = Session(from: session)
@@ -85,19 +73,11 @@ class SupabaseManager: ObservableObject {
                 print("[SupabaseManager] No existing session found")
             }
         }
-        */
-
-        // Placeholder until SDK is added
-        if Config.enableDebugLogging {
-            print("[SupabaseManager] Checking for existing session...")
-        }
     }
 
     /// Get the current access token for API calls
     /// - Returns: The access token if available
     func getAccessToken() async -> String? {
-        // Uncomment after adding Supabase SDK:
-        /*
         do {
             let session = try await client.auth.session
             return session.accessToken
@@ -107,27 +87,16 @@ class SupabaseManager: ObservableObject {
             }
             return nil
         }
-        */
-
-        // Placeholder until SDK is added
-        return currentSession?.accessToken
     }
 
     /// Refresh the current session
     func refreshSession() async throws {
-        // Uncomment after adding Supabase SDK:
-        /*
         let session = try await client.auth.refreshSession()
         self.currentSession = Session(from: session)
         self.currentUser = SupabaseUser(from: session.user)
 
         if Config.enableDebugLogging {
             print("[SupabaseManager] Session refreshed successfully")
-        }
-        */
-
-        if Config.enableDebugLogging {
-            print("[SupabaseManager] Session refresh requested")
         }
     }
 
@@ -136,8 +105,6 @@ class SupabaseManager: ObservableObject {
         currentSession = nil
         currentUser = nil
 
-        // Uncomment after adding Supabase SDK:
-        /*
         do {
             try await client.auth.signOut()
             if Config.enableDebugLogging {
@@ -147,11 +114,6 @@ class SupabaseManager: ObservableObject {
             if Config.enableDebugLogging {
                 print("[SupabaseManager] Error clearing session: \(error)")
             }
-        }
-        */
-
-        if Config.enableDebugLogging {
-            print("[SupabaseManager] Session cleared")
         }
     }
 
@@ -175,38 +137,42 @@ class SupabaseManager: ObservableObject {
 
     /// Listen for auth state changes
     func listenForAuthChanges() {
-        // Uncomment after adding Supabase SDK:
-        /*
         Task {
-            for await event in client.auth.authStateChanges {
+            for await (event, session) in client.auth.authStateChanges {
                 await MainActor.run {
                     switch event {
-                    case .initialSession(let session):
+                    case .initialSession:
                         if let session = session {
                             self.currentSession = Session(from: session)
                             self.currentUser = SupabaseUser(from: session.user)
                         }
-                    case .signedIn(let session):
-                        self.currentSession = Session(from: session)
-                        self.currentUser = SupabaseUser(from: session.user)
+                    case .signedIn:
+                        if let session = session {
+                            self.currentSession = Session(from: session)
+                            self.currentUser = SupabaseUser(from: session.user)
+                        }
                     case .signedOut:
                         self.currentSession = nil
                         self.currentUser = nil
-                    case .tokenRefreshed(let session):
-                        self.currentSession = Session(from: session)
-                    case .userUpdated(let user):
-                        self.currentUser = SupabaseUser(from: user)
+                    case .tokenRefreshed:
+                        if let session = session {
+                            self.currentSession = Session(from: session)
+                        }
+                    case .userUpdated:
+                        if let session = session {
+                            self.currentUser = SupabaseUser(from: session.user)
+                        }
                     case .passwordRecovery:
                         break
                     case .mfaChallengeVerified:
                         break
-                    @unknown default:
-                        break
+                    case .userDeleted:
+                        self.currentSession = nil
+                        self.currentUser = nil
                     }
                 }
             }
         }
-        */
 
         if Config.enableDebugLogging {
             print("[SupabaseManager] Auth state listener started")
@@ -223,15 +189,12 @@ struct Session: Codable {
     let expiresAt: Date?
     let userId: String
 
-    // Uncomment after adding Supabase SDK:
-    /*
     init(from supabaseSession: Supabase.Session) {
         self.accessToken = supabaseSession.accessToken
         self.refreshToken = supabaseSession.refreshToken
         self.expiresAt = supabaseSession.expiresAt
         self.userId = supabaseSession.user.id.uuidString
     }
-    */
 
     init(accessToken: String, refreshToken: String, expiresAt: Date?, userId: String) {
         self.accessToken = accessToken
@@ -265,8 +228,6 @@ struct SupabaseUser: Codable, Identifiable {
         }
     }
 
-    // Uncomment after adding Supabase SDK:
-    /*
     init(from supabaseUser: Supabase.User) {
         self.id = supabaseUser.id.uuidString
         self.email = supabaseUser.email
@@ -280,7 +241,6 @@ struct SupabaseUser: Codable, Identifiable {
             provider: supabaseUser.appMetadata["provider"]?.stringValue
         )
     }
-    */
 
     init(id: String, email: String?, phone: String? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, appMetadata: [String: String]? = nil, userMetadata: UserMetadata? = nil) {
         self.id = id
