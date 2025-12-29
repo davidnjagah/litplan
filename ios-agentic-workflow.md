@@ -390,6 +390,178 @@ Day 1:
 
 ---
 
+## 📦 Version Control & Backup Strategy
+
+### Why This Matters
+Before making significant architectural changes (database migrations, auth system changes, major refactors), **always create a versioned backup**. This protects your working code and allows easy rollback.
+
+### Git Setup (Required)
+
+**Step 1: Initialize Git Repository**
+```bash
+cd my-ios-app
+git init
+git branch -M main
+```
+
+**Step 2: Create .gitignore**
+```gitignore
+# Dependencies
+node_modules/
+Pods/
+.build/
+
+# Environment
+.env
+.env.local
+*.local
+
+# IDE
+.idea/
+*.xcworkspace
+xcuserdata/
+
+# Build outputs
+build/
+DerivedData/
+*.ipa
+
+# Secrets (NEVER commit these)
+*.p8
+*.p12
+*.mobileprovision
+GoogleService-Info.plist
+firebase-credentials.json
+```
+
+**Step 3: First Commit**
+```bash
+git add -A
+git commit -m "v1.0.0: Initial version - [describe current state]"
+git tag -a v1.0.0 -m "Version 1.0.0: [description]"
+```
+
+**Step 4: Push to Remote**
+```bash
+git remote add origin https://github.com/[username]/[repo].git
+git push -u origin main --tags
+```
+
+### Versioning Strategy (Semantic Versioning)
+
+Use **MAJOR.MINOR.PATCH** format:
+
+| Version | When to Use | Example |
+|---------|-------------|---------|
+| **MAJOR** (X.0.0) | Breaking changes, architecture overhauls | `v2.0.0: Migrated to Prisma + Clerk` |
+| **MINOR** (1.X.0) | New features, backward compatible | `v1.1.0: Added group flows feature` |
+| **PATCH** (1.0.X) | Bug fixes, small improvements | `v1.0.1: Fixed auth token refresh` |
+
+### Pre-Major-Change Checklist
+
+Before starting a major sprint (database migration, auth change, etc.):
+
+1. **Create Local Backup**
+   ```bash
+   # Copy entire project to parent folder with version label
+   cp -R /path/to/project /path/to/project-v1-pre-[change-name]
+   ```
+
+2. **Commit Current State**
+   ```bash
+   git add -A
+   git commit -m "v[X.Y.Z]: Pre-[change] snapshot - [current state description]"
+   git tag -a v[X.Y.Z] -m "Snapshot before [change]"
+   ```
+
+3. **Push to Remote**
+   ```bash
+   git push origin main --tags
+   ```
+
+4. **Document in DAILY_LOG.md**
+   ```markdown
+   ### Version Checkpoint
+   - **Version**: v1.0.0
+   - **Date**: [date]
+   - **State**: Pre-Prisma/Clerk migration
+   - **Backup Location**: /parent/folder/project-v1-pre-prisma-clerk
+   - **GitHub Tag**: v1.0.0
+   ```
+
+### Branch Strategy for Major Changes
+
+```bash
+# Create feature branch for major work
+git checkout -b feature/prisma-clerk-migration
+
+# Work on the feature...
+# Make commits along the way...
+
+# When complete, merge back
+git checkout main
+git merge feature/prisma-clerk-migration
+git tag -a v2.0.0 -m "Version 2.0.0: Prisma + Clerk Migration"
+git push origin main --tags
+```
+
+### Rollback Procedure
+
+If something goes wrong:
+
+**Option 1: Git Rollback**
+```bash
+# View tags
+git tag -l
+
+# Checkout previous version
+git checkout v1.0.0
+
+# Create branch from that point if needed
+git checkout -b rollback/v1.0.0
+```
+
+**Option 2: Local Backup**
+```bash
+# If git is corrupted or unavailable
+cp -R /path/to/project-v1-pre-change /path/to/project
+```
+
+### Version History Template
+
+Create `.ai-team/VERSION_HISTORY.md`:
+
+```markdown
+# Version History
+
+## v2.0.0 (In Progress)
+- **Status**: Sprint 5 - Prisma + Clerk Migration
+- **Changes**:
+  - Database: Firestore → Prisma/PlanetScale
+  - Auth: iCloud → Clerk
+  - Subscriptions linked to Clerk IDs
+
+## v1.0.0 (December 29, 2024)
+- **Tag**: v1.0.0
+- **Backup**: litplanAI-v1-pre-prisma-clerk
+- **State**: Firebase/Firestore implementation complete
+- **Features**:
+  - iOS app with SwiftUI
+  - Firebase Cloud Functions backend
+  - StoreKit 2 subscriptions
+  - Sign in with Apple auth
+```
+
+### Golden Rules
+
+1. **Never delete backups** until new version is stable in production
+2. **Always tag releases** before major changes
+3. **Document version state** in DAILY_LOG.md and VERSION_HISTORY.md
+4. **Test rollback procedure** before starting major migrations
+5. **Keep at least 2 versions** of local backups (current - 1, current - 2)
+
+---
+
 ## 🔥 Ready to Start?
 
 Tell me:

@@ -27,7 +27,11 @@
       "Bash(gh auth:*)",
       "Bash(git init:*)",
       "Bash(git branch:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nv1.0.0: Pre-Prisma/Clerk Migration - Firebase/Firestore Implementation\n\n## Summary\nInitial version of Litplan iOS app with Firebase/Firestore backend.\nThis commit marks the state before migrating to Prisma + Clerk.\n\n## Features Included\n- iOS App \\(SwiftUI, iOS 17+\\)\n  - Home/Explore view with city card stacks\n  - Search view for city lookup\n  - Viewed Cities tab\n  - Profile view\n  - Component library \\(buttons, cards, states\\)\n\n- Backend \\(Firebase Cloud Functions + TypeScript\\)\n  - Firestore data models \\(User, City, Plan, GroupFlow\\)\n  - Authentication with Sign in with Apple\n  - Subscription management with StoreKit 2\n  - All API endpoints implemented\n  - Weekly AI plan refresh scheduled function\n\n- AI Team Workflow\n  - Complete .ai-team coordination folder\n  - Sprint plans and daily logs\n  - QA reports and checklists\n\n## Tech Stack\n- Database: Cloud Firestore\n- Auth: Sign in with Apple / iCloud\n- Payments: StoreKit 2\n- Backend: Firebase Cloud Functions\n- iOS: SwiftUI, iOS 17+\n\n## Next Version\nv2.0.0 will migrate to:\n- Database: Prisma + PostgreSQL / PlanetScale\n- Auth: Clerk \\(Google, Apple, Email/Password\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git tag:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)"
     ]
   }
 }
