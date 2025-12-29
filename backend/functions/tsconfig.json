@@ -13,11 +13,14 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "declaration": true,
+    "declarationMap": true
   },
   "compileOnSave": true,
   "include": [
-    "src"
+    "src",
+    "api"
   ],
   "exclude": [
     "node_modules",

@@ -3,12 +3,21 @@
 // Database: PostgreSQL (local) / Supabase (production)
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Enable edge compatibility for Vercel serverless
+  previewFeatures = ["driverAdapters"]
+  // Binary targets for different platforms
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
   provider     = "postgresql"
+  // Connection pooling URL (PgBouncer on port 6543 for serverless)
+  // This URL should use the connection pooler for better serverless performance
   url          = env("DATABASE_URL")
+  // Direct connection URL for migrations (optional, port 5432)
+  // Used by Prisma Migrate to execute schema changes
+  directUrl    = env("DIRECT_DATABASE_URL")
   relationMode = "prisma" // Required for PlanetScale compatibility
 }
 

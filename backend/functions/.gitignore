@@ -3,6 +3,9 @@
 *.js
 *.js.map
 
+# Exception: Keep api directory TypeScript files
+!api/*.ts
+
 # Dependencies
 node_modules/
 
@@ -45,3 +48,6 @@ coverage/
 /generated/prisma
 prisma/*.db
 prisma/*.db-journal
+
+# Vercel
+.vercel

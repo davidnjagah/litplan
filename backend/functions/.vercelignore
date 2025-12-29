@@ -1,0 +1,46 @@
+# Vercel Ignore File
+# These files will not be uploaded to Vercel
+
+# Development files
+.env
+.env.local
+.env.development
+.env.development.local
+.runtimeconfig.json
+
+# Documentation (except DEPLOYMENT.md which may be useful)
+*.md
+!DEPLOYMENT.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+coverage/
+*.test.ts
+*.spec.ts
+jest.config.js
+
+# Firebase (not used in Vercel deployment)
+.firebase/
+firebase.json
+firestore.rules
+firestore.indexes.json
+firebase-debug.log
+firestore-debug.log
+
+# Scripts (not needed in runtime)
+scripts/
+
+# Local database files
+prisma/*.db
+prisma/*.db-journal
+
+# Build artifacts (Vercel builds fresh)
+lib/
+
+# OS files
+.DS_Store
+Thumbs.db
