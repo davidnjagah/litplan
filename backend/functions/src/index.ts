@@ -32,6 +32,9 @@ import healthRoutes from './api/health';
 import clerkAuthRoutes from './api/routes/auth';
 import clerkWebhookRoutes from './api/webhooks/clerk';
 
+// Import V2 API routes (Sprint 5 Phase 4 - Prisma + Clerk)
+import v2Router from './api/routes/v2';
+
 // Create Express app
 const app = express();
 
@@ -67,18 +70,57 @@ app.use('/subscription', subscriptionRoutes); // Sprint 2, Day 8: Subscription e
 // New auth endpoints using Clerk: /api/v2/auth/*
 app.use('/api/v2/auth', clerkAuthRoutes);
 
+// V2 API Routes (Sprint 5 Phase 4 - Prisma + Clerk)
+// All new endpoints using Prisma services and Clerk authentication
+app.use('/api/v2', v2Router);
+
 // Root route - API documentation
 app.get('/', (req, res) => {
   res.status(200).json({
     message: 'Litplan Backend API',
-    version: '1.0.0',
+    version: '2.0.0',
     endpoints: {
       health: '/health',
-      // Legacy auth (Firebase/Apple Sign-In) - deprecated
-      auth: {
-        login: 'POST /auth/login',
+      // V2 API - Prisma + Clerk (Sprint 5 Phase 4) - RECOMMENDED
+      'api/v2': {
+        info: 'GET /api/v2 (API info and endpoints)',
+        cities: {
+          list: 'GET /api/v2/cities',
+          featured: 'GET /api/v2/cities/featured',
+          search: 'GET /api/v2/cities/search?q=query',
+          details: 'GET /api/v2/cities/:cityId',
+          plans: 'GET /api/v2/cities/:cityId/plans (auth required)',
+          groupFlows: 'GET /api/v2/cities/:cityId/group-flows (pro only)',
+        },
+        plans: {
+          details: 'GET /api/v2/plans/:planId (auth required)',
+          featured: 'GET /api/v2/plans/featured/:cityId',
+        },
+        groupFlows: {
+          details: 'GET /api/v2/group-flows/:flowId (pro only)',
+        },
+        user: {
+          profile: 'GET /api/v2/user/profile (auth required)',
+          updateProfile: 'PATCH /api/v2/user/profile (auth required)',
+          viewedCities: 'GET /api/v2/user/viewed-cities (auth required)',
+          recordView: 'POST /api/v2/user/viewed-cities/:cityId (auth required)',
+          savedCities: 'GET /api/v2/user/saved-cities (pro only)',
+          saveCity: 'POST /api/v2/user/saved-cities/:cityId (pro only)',
+          unsaveCity: 'DELETE /api/v2/user/saved-cities/:cityId (pro only)',
+          activity: 'GET /api/v2/user/activity (auth required)',
+        },
+        subscription: {
+          status: 'GET /api/v2/subscription (auth required)',
+          entitlements: 'GET /api/v2/subscription/entitlements (auth required)',
+          validate: 'POST /api/v2/subscription/validate (auth required)',
+          restore: 'POST /api/v2/subscription/restore (auth required)',
+        },
+        config: {
+          appConfig: 'GET /api/v2/config',
+          tierLimits: 'GET /api/v2/config/tier-limits',
+        },
       },
-      // Clerk Authentication (Sprint 5 Phase 3) - recommended
+      // Clerk Authentication (Sprint 5 Phase 3)
       'api/v2/auth': {
         sync: 'POST /api/v2/auth/sync (sync Clerk user to database)',
         me: 'GET /api/v2/auth/me (get current user with subscription)',
@@ -89,33 +131,36 @@ app.get('/', (req, res) => {
       webhooks: {
         clerk: 'POST /webhooks/clerk (Clerk webhook events)',
       },
-      user: {
-        me: 'GET /user/me',
-        updatePreferences: 'PATCH /user/me',
-        viewedCities: 'GET /user/viewedCities',
-        trackCityView: 'POST /user/viewedCities',
-        savedCities: 'GET /user/savedCities (Pro only)',
-        saveCity: 'POST /user/savedCities/:cityId (Pro only)',
-        unsaveCity: 'DELETE /user/savedCities/:cityId',
-      },
-      cities: {
-        list: 'GET /cities',
-        getCity: 'GET /cities/:cityId (tracks weekly city limit)',
-        getPlans: 'GET /cities/:cityId/plans?type=[individual|group]',
-        savedCities: 'GET /cities/saved (Pro only)',
-        saveCity: 'POST /cities/save (Pro only)',
-        unsaveCity: 'DELETE /cities/save/:cityId (Pro only)',
-      },
-      plans: {
-        getPlan: 'GET /plans/:planId (tracks plan view limit, blocks weekend plans for free users)',
-      },
-      config: {
-        getConfig: 'GET /config',
-      },
-      subscription: {
-        validate: 'POST /subscription/validate',
-        status: 'GET /subscription/status',
-        restore: 'POST /subscription/restore',
+      // Legacy endpoints (Firebase Auth based) - DEPRECATED
+      legacy: {
+        auth: {
+          login: 'POST /auth/login',
+        },
+        user: {
+          me: 'GET /user/me',
+          updatePreferences: 'PATCH /user/me',
+          viewedCities: 'GET /user/viewedCities',
+          trackCityView: 'POST /user/viewedCities',
+          savedCities: 'GET /user/savedCities (Pro only)',
+          saveCity: 'POST /user/savedCities/:cityId (Pro only)',
+          unsaveCity: 'DELETE /user/savedCities/:cityId',
+        },
+        cities: {
+          list: 'GET /cities',
+          getCity: 'GET /cities/:cityId',
+          getPlans: 'GET /cities/:cityId/plans',
+        },
+        plans: {
+          getPlan: 'GET /plans/:planId',
+        },
+        config: {
+          getConfig: 'GET /config',
+        },
+        subscription: {
+          validate: 'POST /subscription/validate',
+          status: 'GET /subscription/status',
+          restore: 'POST /subscription/restore',
+        },
       },
     },
     tierLimits: {
