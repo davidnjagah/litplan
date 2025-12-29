@@ -23,7 +23,8 @@
     "seed:groupFlows": "npm run build && node lib/scripts/seedGroupFlows.js",
     "dev": "npx ts-node src/server.ts",
     "dev:watch": "npx nodemon --exec 'npx ts-node' src/server.ts",
-    "db:seed": "npx prisma db seed"
+    "db:seed": "npx prisma db seed",
+    "setup:storage": "npx ts-node src/scripts/setupStorageBuckets.ts"
   },
   "prisma": {
     "seed": "npx ts-node prisma/seed.ts"
