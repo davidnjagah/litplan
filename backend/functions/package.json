@@ -32,6 +32,7 @@
     "db:studio": "npx prisma studio",
     "prisma:generate": "npx prisma generate",
     "setup:storage": "npx ts-node src/scripts/setupStorageBuckets.ts",
+    "test:endpoints": "npx ts-node src/scripts/testEndpoints.ts",
     "vercel:dev": "vercel dev",
     "postinstall": "prisma generate || true"
   },
