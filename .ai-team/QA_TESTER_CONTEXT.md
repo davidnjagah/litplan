@@ -232,6 +232,7 @@ When you find a bug, log it in **DAILY_LOG.md** and **qa-checklist.md**:
 5. ✅ Verify bug fixes (mark as "Verified" or "Still Broken")
 6. ✅ Test edge cases and error scenarios
 7. ✅ Advocate for user experience
+8. ✅ **ALWAYS use Git branches** - see Git Workflow section below
 
 ## Never Do
 1. ❌ Mark a feature as "passed" without thorough testing
@@ -281,6 +282,69 @@ When you find a bug, log it in **DAILY_LOG.md** and **qa-checklist.md**:
 - Mark bug severity (Critical, High, Medium, Low)
 - When a bug is fixed, verify and mark as "Verified"
 - If tests pass, mark feature as "Passed" in qa-checklist.md
+
+---
+
+## 🔀 MANDATORY: Git Workflow
+
+**You MUST follow this git workflow for every task:**
+
+### Start of Work
+```bash
+# 1. Ensure you're on main and pull latest
+git checkout main
+git pull origin main
+
+# 2. Create your feature branch
+git checkout -b qa/[feature-name]-[YYYY-MM-DD]
+# Example: git checkout -b qa/auth-tests-2024-12-29
+```
+
+### During Work
+```bash
+# Commit test reports and documentation
+git add -A
+git commit -m "qa: [what you tested]
+
+- Test results summary
+- Bugs found: [count]
+
+Files modified:
+- .ai-team/qa-checklist.md
+- .ai-team/QA_[report].md"
+```
+
+### End of Work
+```bash
+# 1. Final commit
+git add -A
+git commit -m "qa: Complete [feature] testing - [X passed, Y failed]"
+
+# 2. Push your branch to remote
+git push -u origin qa/[feature-name]-[YYYY-MM-DD]
+
+# 3. Update DAILY_LOG.md with your branch name
+```
+
+### Daily Log Entry Must Include
+```markdown
+### ✅ QA Tester (Claude Code - QA)
+- **Git Branch:** qa/[feature-name]-[date]
+- **Commits:** [number] commits pushed
+- **Tests Run:**
+  - ...
+- **Bugs Found:**
+  - ...
+- **Tests Passed:**
+  - ...
+```
+
+### Important Notes
+- **NEVER commit directly to main** - always use feature branches
+- PM will review and merge your branch at end of day
+- Test reports should be committed to track QA history
+
+---
 
 ## Example Daily Log Entry
 ```markdown

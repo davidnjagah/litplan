@@ -203,7 +203,14 @@ cd my-ios-app
 claude
 
 # In Claude Code prompt:
-"You are the UI Designer. Read .ai-team/UI_DESIGNER_CONTEXT.md and today's task in DAILY_LOG.md. Build the login screen following our design system. Update the log when done."
+"You are the UI Designer. Read .ai-team/UI_DESIGNER_CONTEXT.md and today's task in DAILY_LOG.md.
+
+MANDATORY GIT WORKFLOW:
+1. First, create your feature branch: git checkout -b ui/[feature-name]-[date]
+2. Build the login screen following our design system
+3. Commit your work frequently with clear messages
+4. When done, push your branch: git push -u origin ui/[feature-name]-[date]
+5. Update DAILY_LOG.md with your progress and branch name"
 ```
 
 **Terminal 2 - Backend Engineer:**
@@ -212,7 +219,14 @@ cd my-ios-app/backend
 claude
 
 # In Claude Code prompt:
-"You are the Backend Engineer. Read .ai-team/BACKEND_ENGINEER_CONTEXT.md and build the auth API as specified. Update DAILY_LOG.md with your progress."
+"You are the Backend Engineer. Read .ai-team/BACKEND_ENGINEER_CONTEXT.md and build the auth API as specified.
+
+MANDATORY GIT WORKFLOW:
+1. First, create your feature branch: git checkout -b backend/[feature-name]-[date]
+2. Implement the API endpoints
+3. Commit your work frequently with clear messages
+4. When done, push your branch: git push -u origin backend/[feature-name]-[date]
+5. Update DAILY_LOG.md with your progress and branch name"
 ```
 
 **Terminal 3 - QA Tester:**
@@ -221,17 +235,188 @@ cd my-ios-app
 claude
 
 # In Claude Code prompt:
-"You are the QA Tester. Read .ai-team/QA_TESTER_CONTEXT.md. Once UI and Backend are done, test the auth flow. Log results in DAILY_LOG.md."
+"You are the QA Tester. Read .ai-team/QA_TESTER_CONTEXT.md. Once UI and Backend are done, test the auth flow.
+
+MANDATORY GIT WORKFLOW:
+1. First, create your feature branch: git checkout -b qa/[feature-name]-[date]
+2. Run tests and document results
+3. Commit test files and reports
+4. When done, push your branch: git push -u origin qa/[feature-name]-[date]
+5. Log results in DAILY_LOG.md with your branch name"
 ```
 
-### Evening (Review with PM - Me)
+### Evening (Review & Merge with PM - Me)
 
 Come back to claude.ai:
 ```
 You: "Here's today's DAILY_LOG.md [paste or upload]"
 
-Me: I'll review, identify issues, and plan tomorrow's sprint.
+Me (PM): I'll:
+1. Review all agent branches
+2. Check code quality and completeness
+3. Merge approved work into main branch
+4. Push to remote repository
+5. Tag if milestone reached
+6. Plan tomorrow's sprint
 ```
+
+---
+
+## 🔀 MANDATORY: Git Branch Workflow for Agents
+
+### Why This is Required
+Every agent MUST work on their own git branch. This ensures:
+- No code conflicts between agents
+- Easy rollback if something breaks
+- Clear audit trail of who changed what
+- PM can review before merging to main
+
+### Branch Naming Convention
+
+| Agent | Branch Pattern | Example |
+|-------|----------------|---------|
+| UI Designer | `ui/[feature]-[date]` | `ui/login-screen-2024-12-29` |
+| Backend Engineer | `backend/[feature]-[date]` | `backend/auth-api-2024-12-29` |
+| QA Tester | `qa/[feature]-[date]` | `qa/auth-tests-2024-12-29` |
+
+### Agent Git Workflow (REQUIRED)
+
+**Step 1: Start of Work - Create Branch**
+```bash
+# Pull latest main first
+git checkout main
+git pull origin main
+
+# Create your feature branch
+git checkout -b [role]/[feature]-[date]
+```
+
+**Step 2: During Work - Commit Frequently**
+```bash
+# Stage changes
+git add -A
+
+# Commit with descriptive message
+git commit -m "[role]: [what you did]
+
+- Detail 1
+- Detail 2
+
+Files modified:
+- path/to/file1
+- path/to/file2"
+```
+
+**Step 3: End of Work - Push Branch**
+```bash
+# Push to remote
+git push -u origin [role]/[feature]-[date]
+
+# Update DAILY_LOG.md with branch name
+```
+
+### PM End-of-Day Merge Process (REQUIRED)
+
+**Step 1: Review All Branches**
+```bash
+# List all remote branches
+git fetch --all
+git branch -r
+
+# Check each agent's branch
+git log origin/ui/[branch] --oneline -5
+git log origin/backend/[branch] --oneline -5
+git log origin/qa/[branch] --oneline -5
+```
+
+**Step 2: Merge Approved Work**
+```bash
+# Start from main
+git checkout main
+git pull origin main
+
+# Merge UI Designer's work
+git merge origin/ui/[branch] --no-ff -m "Merge ui/[branch]: [summary]"
+
+# Merge Backend Engineer's work
+git merge origin/backend/[branch] --no-ff -m "Merge backend/[branch]: [summary]"
+
+# Merge QA Tester's work
+git merge origin/qa/[branch] --no-ff -m "Merge qa/[branch]: [summary]"
+```
+
+**Step 3: Push to Remote & Clean Up**
+```bash
+# Push merged main
+git push origin main
+
+# Tag if milestone reached
+git tag -a v[X.Y.Z] -m "Sprint [N] Day [X]: [summary]"
+git push origin --tags
+
+# Delete merged branches (optional)
+git branch -d ui/[branch]
+git branch -d backend/[branch]
+git branch -d qa/[branch]
+git push origin --delete ui/[branch]
+git push origin --delete backend/[branch]
+git push origin --delete qa/[branch]
+```
+
+**Step 4: Document in DAILY_LOG.md**
+```markdown
+### 📊 Product Manager (Claude - PM) - End of Day
+- **Branches Merged:**
+  - ui/login-screen-2024-12-29 → main
+  - backend/auth-api-2024-12-29 → main
+  - qa/auth-tests-2024-12-29 → main
+- **Merge Commit:** abc1234
+- **Tag Created:** v1.1.0 (if applicable)
+- **Remote Push:** ✅ Completed
+- **Issues Found:** None / [list issues]
+- **Next Day Plan:** [tasks for tomorrow]
+```
+
+### Conflict Resolution
+
+If merge conflicts occur:
+
+```bash
+# During merge, if conflicts appear
+git status  # See conflicting files
+
+# Open conflicting files and resolve manually
+# Look for <<<<<<< HEAD, =======, >>>>>>> markers
+
+# After resolving
+git add [resolved-file]
+git commit -m "Resolve merge conflict in [file]"
+```
+
+### Daily Git Checklist
+
+**Agents (Start of Day):**
+- [ ] `git checkout main && git pull origin main`
+- [ ] `git checkout -b [role]/[feature]-[date]`
+
+**Agents (During Work):**
+- [ ] Commit every significant change
+- [ ] Use clear commit messages
+- [ ] Reference task/bug IDs in commits
+
+**Agents (End of Work):**
+- [ ] `git add -A && git commit -m "[summary]"`
+- [ ] `git push -u origin [branch]`
+- [ ] Update DAILY_LOG.md with branch name
+
+**PM (End of Day):**
+- [ ] `git fetch --all`
+- [ ] Review each agent's branch
+- [ ] Merge approved branches to main
+- [ ] `git push origin main`
+- [ ] Tag if milestone reached
+- [ ] Document in DAILY_LOG.md
+- [ ] Plan next day's tasks
 
 ---
 

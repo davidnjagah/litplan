@@ -93,6 +93,7 @@ Trigger paywalls when:
 6. ✅ Write error handling for all endpoints
 7. ✅ Use environment variables for secrets (Firebase config, API keys)
 8. ✅ Test endpoints with Postman or curl before marking complete
+9. ✅ **ALWAYS use Git branches** - see Git Workflow section below
 
 ## Never Do
 1. ❌ Store sensitive data in plain text (use Firebase config/secrets)
@@ -246,6 +247,69 @@ Use realistic data:
 - If you change an API contract, update **backend-specs.md**
 - Document any backend architecture decisions
 - If blocked, note it in DAILY_LOG under "Blockers"
+
+---
+
+## 🔀 MANDATORY: Git Workflow
+
+**You MUST follow this git workflow for every task:**
+
+### Start of Work
+```bash
+# 1. Ensure you're on main and pull latest
+git checkout main
+git pull origin main
+
+# 2. Create your feature branch
+git checkout -b backend/[feature-name]-[YYYY-MM-DD]
+# Example: git checkout -b backend/auth-api-2024-12-29
+```
+
+### During Work
+```bash
+# Commit frequently with descriptive messages
+git add -A
+git commit -m "backend: [what you did]
+
+- Detail 1
+- Detail 2
+
+Files modified:
+- backend/functions/src/api/[file].ts
+- backend/functions/src/models/[file].ts"
+```
+
+### End of Work
+```bash
+# 1. Final commit
+git add -A
+git commit -m "backend: Complete [feature] implementation"
+
+# 2. Push your branch to remote
+git push -u origin backend/[feature-name]-[YYYY-MM-DD]
+
+# 3. Update DAILY_LOG.md with your branch name
+```
+
+### Daily Log Entry Must Include
+```markdown
+### 🔧 Backend Engineer (Claude Code - Backend)
+- **Git Branch:** backend/[feature-name]-[date]
+- **Commits:** [number] commits pushed
+- **Tasks Completed:**
+  - ...
+- **Files Modified:**
+  - ...
+- **API Changes:**
+  - ...
+```
+
+### Important Notes
+- **NEVER commit directly to main** - always use feature branches
+- PM will review and merge your branch at end of day
+- If you encounter merge conflicts, document in DAILY_LOG under Blockers
+
+---
 
 ## Example Daily Log Entry
 ```markdown

@@ -117,6 +117,7 @@ Always reference:
 7. ✅ Add VoiceOver labels to interactive elements
 8. ✅ Test animations at 60fps
 9. ✅ Use actual mock data (10 cities, real venues)
+10. ✅ **ALWAYS use Git branches** - see Git Workflow section below
 
 ## Never Do
 1. ❌ Use light mode color schemes (dark theme only)
@@ -159,6 +160,65 @@ Always reference:
 - When you complete a task, update **DAILY_LOG.md** immediately
 - If you make a design decision (new component, pattern change), document it in **ui-decisions.md**
 - If blocked or need clarification, note it in DAILY_LOG under "Blockers"
+
+---
+
+## 🔀 MANDATORY: Git Workflow
+
+**You MUST follow this git workflow for every task:**
+
+### Start of Work
+```bash
+# 1. Ensure you're on main and pull latest
+git checkout main
+git pull origin main
+
+# 2. Create your feature branch
+git checkout -b ui/[feature-name]-[YYYY-MM-DD]
+# Example: git checkout -b ui/login-screen-2024-12-29
+```
+
+### During Work
+```bash
+# Commit frequently with descriptive messages
+git add -A
+git commit -m "ui: [what you did]
+
+- Detail 1
+- Detail 2
+
+Files modified:
+- ios-app/Litplan/Views/[file].swift
+- ios-app/Litplan/Components/[file].swift"
+```
+
+### End of Work
+```bash
+# 1. Final commit
+git add -A
+git commit -m "ui: Complete [feature] implementation"
+
+# 2. Push your branch to remote
+git push -u origin ui/[feature-name]-[YYYY-MM-DD]
+
+# 3. Update DAILY_LOG.md with your branch name
+```
+
+### Daily Log Entry Must Include
+```markdown
+### 🎨 UI Designer (Claude Code - Designer)
+- **Git Branch:** ui/[feature-name]-[date]
+- **Commits:** [number] commits pushed
+- **Tasks Completed:**
+  - ...
+- **Files Modified:**
+  - ...
+```
+
+### Important Notes
+- **NEVER commit directly to main** - always use feature branches
+- PM will review and merge your branch at end of day
+- If you encounter merge conflicts, document in DAILY_LOG under Blockers
 
 ## Quality Standards
 - All animations run at 60fps
