@@ -34,8 +34,10 @@ class SubscriptionManager: ObservableObject {
 
     private var updateListenerTask: Task<Void, Error>?
 
-    // Backend API configuration
-    private let backendURL = "https://us-central1-litplan-ai.cloudfunctions.net/api"
+    // Backend API configuration - now using Config
+    private var backendURL: String {
+        return Config.legacyAPIBaseURL
+    }
 
     // MARK: - Initialization
 
@@ -364,16 +366,13 @@ class SubscriptionManager: ObservableObject {
         return String(transaction.id)
     }
 
-    /// Get authentication token (placeholder - integrate with Firebase Auth)
+    /// Get authentication token from SupabaseManager
     /// - Returns: The auth token if available
     private func getAuthToken() -> String? {
-        // TODO: Integrate with Firebase Auth to get actual token
-        // For now, return nil (backend validation will be skipped in development)
-
-        // In production, this would be:
-        // return Auth.auth().currentUser?.getIDToken()
-
-        return nil
+        // Get token from Supabase session
+        // Note: Using synchronous access since we're in a sync context
+        // For async context, use: await SupabaseManager.shared.getAccessToken()
+        return SupabaseManager.shared.currentSession?.accessToken
     }
 
     // MARK: - Transaction Listener
