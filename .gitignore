@@ -91,3 +91,15 @@ iOSInjectionProject/
 
 ## macOS
 .DS_Store
+
+## Environment files
+.env
+.env.local
+.env.*.local
+
+## Prisma
+backend/functions/prisma/*.db
+backend/functions/prisma/*.db-journal
+
+## Node
+node_modules/
