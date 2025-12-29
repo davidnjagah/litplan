@@ -1,11 +1,12 @@
 /**
  * V2 API Router
  *
- * Central router for all v2 API endpoints using Prisma and Clerk authentication.
+ * Central router for all v2 API endpoints using Prisma and Supabase authentication.
  * This module combines all v2 routes into a single Express router.
  *
  * @module api/routes/v2
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
+ * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  */
 
 import { Router } from 'express';
@@ -34,7 +35,8 @@ router.get('/', (req, res) => {
     success: true,
     data: {
       version: '2.0.0',
-      message: 'Litplan API v2 - Prisma + Clerk',
+      message: 'Litplan API v2 - Prisma + Supabase Auth',
+      authentication: 'Supabase JWT Bearer Token',
       endpoints: {
         cities: {
           list: 'GET /api/v2/cities',

@@ -47,12 +47,34 @@ export type SupabaseAuthEvent =
   | 'USER_DELETED'
   | 'PASSWORD_RECOVERY';
 
+// Database webhook types (for Postgres triggers)
+export type SupabaseDBWebhookType = 'INSERT' | 'UPDATE' | 'DELETE';
+
 export interface SupabaseWebhookPayload {
-  type: SupabaseAuthEvent;
+  type: SupabaseDBWebhookType;
   table: string;
-  record: any;
+  record: {
+    id: string;
+    email?: string;
+    raw_user_meta_data?: {
+      full_name?: string;
+      avatar_url?: string;
+      name?: string;
+    };
+    [key: string]: any;
+  };
   schema: string;
-  old_record?: any;
+  old_record?: {
+    id: string;
+    [key: string]: any;
+  };
+}
+
+// Auth webhook payload (different from DB webhook)
+export interface SupabaseAuthWebhookPayload {
+  type: SupabaseAuthEvent;
+  user: SupabaseUser;
+  session?: SupabaseSession;
 }
 
 // Auth context for middleware

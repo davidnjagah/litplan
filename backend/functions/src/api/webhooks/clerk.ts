@@ -147,8 +147,9 @@ async function handleUserCreated(data: ClerkUserEventData): Promise<void> {
     const imageUrl = getImageUrl(data);
 
     // Create user in database
+    // Note: Using supabaseUserId field but storing Clerk ID for backward compatibility
     const newUser = await UserService.createUser({
-      clerkUserId: data.id,
+      supabaseUserId: data.id,  // Store Clerk ID in supabaseUserId field
       email,
       displayName,
       imageUrl,

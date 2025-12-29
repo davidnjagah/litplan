@@ -83,8 +83,9 @@ router.post('/sync', requireAuth, async (req: AuthenticatedRequest, res: Respons
       }
 
       // Create user in database
+      // Note: Using supabaseUserId field but storing Clerk ID for backward compatibility
       const newUser = await UserService.createUser({
-        clerkUserId,
+        supabaseUserId: clerkUserId,  // Store Clerk ID in supabaseUserId field
         email,
         displayName,
         imageUrl,
@@ -152,7 +153,7 @@ router.post('/sync', requireAuth, async (req: AuthenticatedRequest, res: Respons
       data: {
         user: {
           id: user.id,
-          clerkUserId: user.clerkUserId,
+          clerkUserId: user.supabaseUserId,  // Map supabaseUserId to clerkUserId for backward compatibility
           email: user.email,
           displayName: user.displayName,
           imageUrl: user.imageUrl,
@@ -241,7 +242,7 @@ router.get('/me', requireAuthWithUser, async (req: AuthenticatedRequest, res: Re
       data: {
         user: {
           id: user.id,
-          clerkUserId: user.clerkUserId,
+          clerkUserId: user.supabaseUserId,  // Map supabaseUserId to clerkUserId for backward compatibility
           email: user.email,
           displayName: user.displayName,
           imageUrl: user.imageUrl,
@@ -327,7 +328,7 @@ router.patch('/me', requireAuthWithUser, async (req: AuthenticatedRequest, res: 
       data: {
         user: {
           id: updatedUser.id,
-          clerkUserId: updatedUser.clerkUserId,
+          clerkUserId: updatedUser.supabaseUserId,  // Map supabaseUserId to clerkUserId for backward compatibility
           email: updatedUser.email,
           displayName: updatedUser.displayName,
           imageUrl: updatedUser.imageUrl,

@@ -211,8 +211,9 @@ export async function loadUser(
       }
 
       // Create user in database
+      // Note: Using supabaseUserId field but storing Clerk ID for backward compatibility
       const newUser = await UserService.createUser({
-        clerkUserId,
+        supabaseUserId: clerkUserId,  // Store Clerk ID in supabaseUserId field
         email,
         displayName,
         imageUrl,
@@ -237,9 +238,10 @@ export async function loadUser(
     }
 
     // Attach user context to request
+    // Note: Using supabaseUserId field for backward compatibility
     req.user = {
       id: user.id,
-      clerkUserId: user.clerkUserId,
+      clerkUserId: user.supabaseUserId,  // Map supabaseUserId to clerkUserId for backward compatibility
       email: user.email || undefined,
       displayName: user.displayName || undefined,
       subscription: user.subscription

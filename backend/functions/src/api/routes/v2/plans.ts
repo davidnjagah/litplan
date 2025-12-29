@@ -1,10 +1,11 @@
 /**
  * V2 Plans Routes
  *
- * API endpoints for plan-related operations using Prisma and Clerk authentication.
+ * API endpoints for plan-related operations using Prisma and Supabase authentication.
  *
  * @module api/routes/v2/plans
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
+ * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  */
 
 import { Router, Response } from 'express';

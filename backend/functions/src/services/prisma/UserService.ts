@@ -6,12 +6,21 @@
  *
  * @module services/prisma/UserService
  * @since Sprint 5 Phase 2 - Prisma Service Layer
+ * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  */
 
 import prisma from '../../lib/prisma';
 import { User, Subscription, SavedCity, ViewedCity } from '@prisma/client';
 
 export interface CreateUserInput {
+  supabaseUserId: string;
+  email?: string;
+  displayName?: string;
+  imageUrl?: string;
+}
+
+// Keep legacy interface for backward compatibility
+export interface CreateUserInputLegacy {
   clerkUserId: string;
   email?: string;
   displayName?: string;
@@ -36,19 +45,30 @@ export interface UserWithRelations extends User {
 
 export class UserService {
   /**
-   * Get a user by their Clerk user ID
-   * @param clerkUserId - The Clerk user ID
+   * Get a user by their Supabase user ID
+   * @param supabaseUserId - The Supabase user ID
    * @returns User or null if not found
    */
-  static async getUserByClerkId(clerkUserId: string): Promise<User | null> {
+  static async getUserBySupabaseId(supabaseUserId: string): Promise<User | null> {
     try {
       return await prisma.user.findUnique({
-        where: { clerkUserId },
+        where: { supabaseUserId },
       });
     } catch (error) {
-      console.error(`Error fetching user by Clerk ID ${clerkUserId}:`, error);
+      console.error(`Error fetching user by Supabase ID ${supabaseUserId}:`, error);
       throw new Error('Failed to fetch user');
     }
+  }
+
+  /**
+   * Get a user by their Clerk user ID (DEPRECATED - use getUserBySupabaseId)
+   * @param clerkUserId - The Clerk user ID
+   * @returns User or null if not found
+   * @deprecated Use getUserBySupabaseId instead
+   */
+  static async getUserByClerkId(clerkUserId: string): Promise<User | null> {
+    // Map to Supabase ID field for backward compatibility
+    return this.getUserBySupabaseId(clerkUserId);
   }
 
   /**
@@ -76,9 +96,9 @@ export class UserService {
     try {
       return await prisma.user.create({
         data: {
-          clerkUserId: data.clerkUserId,
+          supabaseUserId: data.supabaseUserId,
           email: data.email,
-          displayName: data.displayName,
+          displayName: data.displayName || data.email?.split('@')[0],
           imageUrl: data.imageUrl,
         },
       });
@@ -107,24 +127,39 @@ export class UserService {
   }
 
   /**
-   * Update user by Clerk ID
+   * Update user by Supabase ID
+   * @param supabaseUserId - The Supabase user ID
+   * @param data - Partial user data to update
+   * @returns Updated user
+   */
+  static async updateUserBySupabaseId(
+    supabaseUserId: string,
+    data: UpdateUserInput
+  ): Promise<User> {
+    try {
+      return await prisma.user.update({
+        where: { supabaseUserId },
+        data,
+      });
+    } catch (error) {
+      console.error(`Error updating user by Supabase ID ${supabaseUserId}:`, error);
+      throw new Error('Failed to update user');
+    }
+  }
+
+  /**
+   * Update user by Clerk ID (DEPRECATED - use updateUserBySupabaseId)
    * @param clerkUserId - The Clerk user ID
    * @param data - Partial user data to update
    * @returns Updated user
+   * @deprecated Use updateUserBySupabaseId instead
    */
   static async updateUserByClerkId(
     clerkUserId: string,
     data: UpdateUserInput
   ): Promise<User> {
-    try {
-      return await prisma.user.update({
-        where: { clerkUserId },
-        data,
-      });
-    } catch (error) {
-      console.error(`Error updating user by Clerk ID ${clerkUserId}:`, error);
-      throw new Error('Failed to update user');
-    }
+    // Map to Supabase ID field for backward compatibility
+    return this.updateUserBySupabaseId(clerkUserId, data);
   }
 
   /**
@@ -145,19 +180,30 @@ export class UserService {
   }
 
   /**
-   * Delete a user by Clerk ID
-   * @param clerkUserId - The Clerk user ID
+   * Delete a user by Supabase ID
+   * @param supabaseUserId - The Supabase user ID
    * @returns Deleted user
    */
-  static async deleteUserByClerkId(clerkUserId: string): Promise<User> {
+  static async deleteUserBySupabaseId(supabaseUserId: string): Promise<User> {
     try {
       return await prisma.user.delete({
-        where: { clerkUserId },
+        where: { supabaseUserId },
       });
     } catch (error) {
-      console.error(`Error deleting user by Clerk ID ${clerkUserId}:`, error);
+      console.error(`Error deleting user by Supabase ID ${supabaseUserId}:`, error);
       throw new Error('Failed to delete user');
     }
+  }
+
+  /**
+   * Delete a user by Clerk ID (DEPRECATED - use deleteUserBySupabaseId)
+   * @param clerkUserId - The Clerk user ID
+   * @returns Deleted user
+   * @deprecated Use deleteUserBySupabaseId instead
+   */
+  static async deleteUserByClerkId(clerkUserId: string): Promise<User> {
+    // Map to Supabase ID field for backward compatibility
+    return this.deleteUserBySupabaseId(clerkUserId);
   }
 
   /**
@@ -180,24 +226,37 @@ export class UserService {
   }
 
   /**
-   * Get user with subscription by Clerk ID
-   * @param clerkUserId - The Clerk user ID
+   * Get user with subscription by Supabase ID
+   * @param supabaseUserId - The Supabase user ID
    * @returns User with subscription or null
    */
-  static async getUserWithSubscriptionByClerkId(
-    clerkUserId: string
+  static async getUserWithSubscriptionBySupabaseId(
+    supabaseUserId: string
   ): Promise<UserWithSubscription | null> {
     try {
       return await prisma.user.findUnique({
-        where: { clerkUserId },
+        where: { supabaseUserId },
         include: {
           subscription: true,
         },
       });
     } catch (error) {
-      console.error(`Error fetching user with subscription by Clerk ID ${clerkUserId}:`, error);
+      console.error(`Error fetching user with subscription by Supabase ID ${supabaseUserId}:`, error);
       throw new Error('Failed to fetch user with subscription');
     }
+  }
+
+  /**
+   * Get user with subscription by Clerk ID (DEPRECATED - use getUserWithSubscriptionBySupabaseId)
+   * @param clerkUserId - The Clerk user ID
+   * @returns User with subscription or null
+   * @deprecated Use getUserWithSubscriptionBySupabaseId instead
+   */
+  static async getUserWithSubscriptionByClerkId(
+    clerkUserId: string
+  ): Promise<UserWithSubscription | null> {
+    // Map to Supabase ID field for backward compatibility
+    return this.getUserWithSubscriptionBySupabaseId(clerkUserId);
   }
 
   /**
@@ -222,21 +281,32 @@ export class UserService {
   }
 
   /**
-   * Check if a user exists by Clerk ID
-   * @param clerkUserId - The Clerk user ID
+   * Check if a user exists by Supabase ID
+   * @param supabaseUserId - The Supabase user ID
    * @returns true if user exists
    */
-  static async userExistsByClerkId(clerkUserId: string): Promise<boolean> {
+  static async userExistsBySupabaseId(supabaseUserId: string): Promise<boolean> {
     try {
       const user = await prisma.user.findUnique({
-        where: { clerkUserId },
+        where: { supabaseUserId },
         select: { id: true },
       });
       return user !== null;
     } catch (error) {
-      console.error(`Error checking user existence by Clerk ID ${clerkUserId}:`, error);
+      console.error(`Error checking user existence by Supabase ID ${supabaseUserId}:`, error);
       throw new Error('Failed to check user existence');
     }
+  }
+
+  /**
+   * Check if a user exists by Clerk ID (DEPRECATED - use userExistsBySupabaseId)
+   * @param clerkUserId - The Clerk user ID
+   * @returns true if user exists
+   * @deprecated Use userExistsBySupabaseId instead
+   */
+  static async userExistsByClerkId(clerkUserId: string): Promise<boolean> {
+    // Map to Supabase ID field for backward compatibility
+    return this.userExistsBySupabaseId(clerkUserId);
   }
 
   /**
@@ -247,16 +317,16 @@ export class UserService {
   static async getOrCreateUser(data: CreateUserInput): Promise<User> {
     try {
       return await prisma.user.upsert({
-        where: { clerkUserId: data.clerkUserId },
+        where: { supabaseUserId: data.supabaseUserId },
         update: {
           email: data.email,
           displayName: data.displayName,
           imageUrl: data.imageUrl,
         },
         create: {
-          clerkUserId: data.clerkUserId,
+          supabaseUserId: data.supabaseUserId,
           email: data.email,
-          displayName: data.displayName,
+          displayName: data.displayName || data.email?.split('@')[0],
           imageUrl: data.imageUrl,
         },
       });

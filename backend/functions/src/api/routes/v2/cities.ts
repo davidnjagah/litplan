@@ -1,10 +1,11 @@
 /**
  * V2 Cities Routes
  *
- * API endpoints for city-related operations using Prisma and Clerk authentication.
+ * API endpoints for city-related operations using Prisma and Supabase authentication.
  *
  * @module api/routes/v2/cities
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
+ * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  */
 
 import { Router, Response } from 'express';

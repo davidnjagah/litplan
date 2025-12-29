@@ -1,10 +1,11 @@
 /**
  * V2 User Routes
  *
- * API endpoints for user profile and activity operations using Prisma and Clerk authentication.
+ * API endpoints for user profile and activity operations using Prisma and Supabase authentication.
  *
  * @module api/routes/v2/user
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
+ * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  */
 
 import { Router, Response } from 'express';
@@ -52,7 +53,7 @@ router.get(
         data: {
           user: {
             id: user.id,
-            clerkUserId: user.clerkUserId,
+            supabaseUserId: user.supabaseUserId,
             email: user.email,
             displayName: user.displayName,
             imageUrl: user.imageUrl,
@@ -143,7 +144,7 @@ router.patch(
         data: {
           user: {
             id: updatedUser.id,
-            clerkUserId: updatedUser.clerkUserId,
+            supabaseUserId: updatedUser.supabaseUserId,
             email: updatedUser.email,
             displayName: updatedUser.displayName,
             imageUrl: updatedUser.imageUrl,

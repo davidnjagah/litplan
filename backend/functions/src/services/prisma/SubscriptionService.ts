@@ -6,6 +6,7 @@
  *
  * @module services/prisma/SubscriptionService
  * @since Sprint 5 Phase 2 - Prisma Service Layer
+ * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  */
 
 import prisma from '../../lib/prisma';
@@ -83,19 +84,30 @@ export class SubscriptionService {
   }
 
   /**
-   * Get subscription by Clerk user ID
-   * @param clerkUserId - The Clerk user ID
+   * Get subscription by Supabase user ID
+   * @param supabaseUserId - The Supabase user ID
    * @returns Subscription or null if not found
    */
-  static async getSubscriptionByClerkId(clerkUserId: string): Promise<Subscription | null> {
+  static async getSubscriptionBySupabaseId(supabaseUserId: string): Promise<Subscription | null> {
     try {
       return await prisma.subscription.findUnique({
-        where: { clerkUserId },
+        where: { supabaseUserId },
       });
     } catch (error) {
-      console.error(`Error fetching subscription by Clerk ID ${clerkUserId}:`, error);
+      console.error(`Error fetching subscription by Supabase ID ${supabaseUserId}:`, error);
       throw new Error('Failed to fetch subscription');
     }
+  }
+
+  /**
+   * Get subscription by Clerk user ID (DEPRECATED - use getSubscriptionBySupabaseId)
+   * @param clerkUserId - The Clerk user ID
+   * @returns Subscription or null if not found
+   * @deprecated Use getSubscriptionBySupabaseId instead
+   */
+  static async getSubscriptionByClerkId(clerkUserId: string): Promise<Subscription | null> {
+    // Map to Supabase ID field for backward compatibility
+    return this.getSubscriptionBySupabaseId(clerkUserId);
   }
 
   /**
@@ -109,10 +121,10 @@ export class SubscriptionService {
     data: SubscriptionCreateInput
   ): Promise<Subscription> {
     try {
-      // First, get the user to get their clerkUserId
+      // First, get the user to get their supabaseUserId
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { clerkUserId: true },
+        select: { supabaseUserId: true },
       });
 
       if (!user) {
@@ -126,7 +138,7 @@ export class SubscriptionService {
       return await prisma.subscription.create({
         data: {
           userId,
-          clerkUserId: user.clerkUserId,
+          supabaseUserId: user.supabaseUserId,
           status: data.status || SubscriptionStatus.FREE,
           tier,
           startDate: data.startDate,
@@ -155,11 +167,11 @@ export class SubscriptionService {
     data: Partial<Subscription>
   ): Promise<Subscription> {
     try {
-      // Remove id, userId, clerkUserId from update data
-      const { id: _, userId: __, clerkUserId: ___, ...updateData } = data as Subscription & {
+      // Remove id, userId, supabaseUserId from update data
+      const { id: _, userId: __, supabaseUserId: ___, ...updateData } = data as Subscription & {
         id: string;
         userId: string;
-        clerkUserId: string;
+        supabaseUserId: string;
       };
 
       return await prisma.subscription.update({
@@ -295,13 +307,13 @@ export class SubscriptionService {
   }
 
   /**
-   * Check entitlements by Clerk ID
-   * @param clerkUserId - The Clerk user ID
+   * Check entitlements by Supabase ID
+   * @param supabaseUserId - The Supabase user ID
    * @returns User's current entitlements
    */
-  static async checkEntitlementsByClerkId(clerkUserId: string): Promise<Entitlements> {
+  static async checkEntitlementsBySupabaseId(supabaseUserId: string): Promise<Entitlements> {
     try {
-      const subscription = await this.getSubscriptionByClerkId(clerkUserId);
+      const subscription = await this.getSubscriptionBySupabaseId(supabaseUserId);
 
       if (!subscription) {
         return {
@@ -331,9 +343,20 @@ export class SubscriptionService {
         isActive,
       };
     } catch (error) {
-      console.error(`Error checking entitlements by Clerk ID ${clerkUserId}:`, error);
+      console.error(`Error checking entitlements by Supabase ID ${supabaseUserId}:`, error);
       throw new Error('Failed to check entitlements');
     }
+  }
+
+  /**
+   * Check entitlements by Clerk ID (DEPRECATED - use checkEntitlementsBySupabaseId)
+   * @param clerkUserId - The Clerk user ID
+   * @returns User's current entitlements
+   * @deprecated Use checkEntitlementsBySupabaseId instead
+   */
+  static async checkEntitlementsByClerkId(clerkUserId: string): Promise<Entitlements> {
+    // Map to Supabase ID field for backward compatibility
+    return this.checkEntitlementsBySupabaseId(clerkUserId);
   }
 
   /**

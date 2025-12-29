@@ -28,11 +28,15 @@ import plansRoutes from './api/plans';
 import savedCitiesRoutes from './api/savedCities';
 import healthRoutes from './api/health';
 
-// Import Clerk authentication routes and webhooks (Sprint 5 Phase 3)
+// Import Clerk authentication routes and webhooks (Sprint 5 Phase 3) - DEPRECATED
 import clerkAuthRoutes from './api/routes/auth';
 import clerkWebhookRoutes from './api/webhooks/clerk';
 
-// Import V2 API routes (Sprint 5 Phase 4 - Prisma + Clerk)
+// Import Supabase authentication routes and webhooks (Sprint 6 Phase 2) - NEW
+import supabaseAuthRoutes from './api/routes/v2/supabaseAuth';
+import supabaseWebhookRoutes from './api/webhooks/supabase';
+
+// Import V2 API routes (Sprint 5 Phase 4 - Prisma + Clerk, now updated for Supabase)
 import v2Router from './api/routes/v2';
 
 // Create Express app
@@ -66,12 +70,19 @@ app.use('/plans', plansRoutes); // Sprint 3, Day 13: Plan limits and weekend enf
 app.use('/config', configRoutes);
 app.use('/subscription', subscriptionRoutes); // Sprint 2, Day 8: Subscription endpoints
 
-// Clerk Authentication Routes (Sprint 5 Phase 3)
-// New auth endpoints using Clerk: /api/v2/auth/*
+// Clerk Authentication Routes (Sprint 5 Phase 3) - DEPRECATED
+// Legacy auth endpoints using Clerk: /api/v2/auth/*
 app.use('/api/v2/auth', clerkAuthRoutes);
 
-// V2 API Routes (Sprint 5 Phase 4 - Prisma + Clerk)
-// All new endpoints using Prisma services and Clerk authentication
+// Supabase Authentication Routes (Sprint 6 Phase 2) - NEW
+// New auth endpoints using Supabase: /api/v2/auth/supabase/*
+app.use('/api/v2/auth/supabase', supabaseAuthRoutes);
+
+// Supabase Webhooks (Sprint 6 Phase 2)
+app.use('/webhooks/supabase', supabaseWebhookRoutes);
+
+// V2 API Routes (Sprint 5 Phase 4 - Prisma + Clerk, now updated for Supabase)
+// All new endpoints using Prisma services and Supabase authentication
 app.use('/api/v2', v2Router);
 
 // Root route - API documentation
@@ -120,16 +131,25 @@ app.get('/', (req, res) => {
           tierLimits: 'GET /api/v2/config/tier-limits',
         },
       },
-      // Clerk Authentication (Sprint 5 Phase 3)
+      // Supabase Authentication (Sprint 6 Phase 2) - NEW, RECOMMENDED
+      'api/v2/auth/supabase': {
+        sync: 'POST /api/v2/auth/supabase/sync (sync Supabase user to database)',
+        me: 'GET /api/v2/auth/supabase/me (get current user with subscription)',
+        updateProfile: 'PATCH /api/v2/auth/supabase/me (update display name)',
+        deleteAccount: 'DELETE /api/v2/auth/supabase/account (delete user account)',
+        status: 'GET /api/v2/auth/supabase/status (check auth status)',
+      },
+      // Clerk Authentication (Sprint 5 Phase 3) - DEPRECATED
       'api/v2/auth': {
-        sync: 'POST /api/v2/auth/sync (sync Clerk user to database)',
-        me: 'GET /api/v2/auth/me (get current user with subscription)',
-        updateProfile: 'PATCH /api/v2/auth/me (update display name)',
-        deleteAccount: 'DELETE /api/v2/auth/account (delete user account)',
-        status: 'GET /api/v2/auth/status (check auth status)',
+        sync: 'POST /api/v2/auth/sync (sync Clerk user to database) [DEPRECATED]',
+        me: 'GET /api/v2/auth/me (get current user with subscription) [DEPRECATED]',
+        updateProfile: 'PATCH /api/v2/auth/me (update display name) [DEPRECATED]',
+        deleteAccount: 'DELETE /api/v2/auth/account (delete user account) [DEPRECATED]',
+        status: 'GET /api/v2/auth/status (check auth status) [DEPRECATED]',
       },
       webhooks: {
-        clerk: 'POST /webhooks/clerk (Clerk webhook events)',
+        supabase: 'POST /webhooks/supabase (Supabase Auth webhook events)',
+        clerk: 'POST /webhooks/clerk (Clerk webhook events) [DEPRECATED]',
       },
       // Legacy endpoints (Firebase Auth based) - DEPRECATED
       legacy: {
