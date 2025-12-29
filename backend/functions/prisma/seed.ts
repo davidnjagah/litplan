@@ -645,7 +645,7 @@ async function seedUsers() {
   // Free user
   const freeUser = await prisma.user.create({
     data: {
-      clerkUserId: 'clerk_test_free_user',
+      supabaseUserId: 'supabase_test_free_user',
       email: 'free@test.litplan.app',
       displayName: 'Free Test User',
       imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop',
@@ -656,7 +656,7 @@ async function seedUsers() {
   await prisma.subscription.create({
     data: {
       userId: freeUser.id,
-      clerkUserId: freeUser.clerkUserId,
+      supabaseUserId: freeUser.supabaseUserId,
       status: SubscriptionStatus.FREE,
       tier: SubscriptionTier.FREE,
       autoRenew: false,
@@ -673,7 +673,7 @@ async function seedUsers() {
   // Pro user
   const proUser = await prisma.user.create({
     data: {
-      clerkUserId: 'clerk_test_pro_user',
+      supabaseUserId: 'supabase_test_pro_user',
       email: 'pro@test.litplan.app',
       displayName: 'Pro Test User',
       imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop',
@@ -687,7 +687,7 @@ async function seedUsers() {
   await prisma.subscription.create({
     data: {
       userId: proUser.id,
-      clerkUserId: proUser.clerkUserId,
+      supabaseUserId: proUser.supabaseUserId,
       status: SubscriptionStatus.PRO,
       tier: SubscriptionTier.PRO,
       startDate: new Date(),
@@ -856,13 +856,13 @@ async function main() {
     console.log('');
     console.log('Test Users:');
     console.log('  Free User:');
-    console.log('    - Clerk ID: clerk_test_free_user');
+    console.log('    - Supabase ID: supabase_test_free_user');
     console.log('    - Email: free@test.litplan.app');
     console.log('    - Max Cities: 1/week');
     console.log('    - Max Plans: 10/city');
     console.log('');
     console.log('  Pro User:');
-    console.log('    - Clerk ID: clerk_test_pro_user');
+    console.log('    - Supabase ID: supabase_test_pro_user');
     console.log('    - Email: pro@test.litplan.app');
     console.log('    - Max Cities: 100/week');
     console.log('    - Max Plans: 50/city');

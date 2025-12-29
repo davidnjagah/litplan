@@ -1,6 +1,6 @@
 // Litplan Backend - Prisma Schema
-// Sprint 5: Prisma + Clerk Migration
-// Database: PostgreSQL (local) / PlanetScale (production)
+// Sprint 6: Supabase Migration (formerly Clerk)
+// Database: PostgreSQL (local) / Supabase (production)
 
 generator client {
   provider = "prisma-client-js"
@@ -15,13 +15,13 @@ datasource db {
 // ==================== USER & AUTH ====================
 
 model User {
-  id            String    @id @default(cuid())
-  clerkUserId   String    @unique // Clerk's user ID
-  email         String?   @unique
-  displayName   String?
-  imageUrl      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  supabaseUserId  String    @unique // Supabase Auth user ID
+  email           String?   @unique
+  displayName     String?
+  imageUrl        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Relations
   subscription  Subscription?
@@ -29,14 +29,14 @@ model User {
   savedCities   SavedCity[]
   viewedCities  ViewedCity[]
 
-  @@index([clerkUserId])
+  @@index([supabaseUserId])
   @@index([email])
 }
 
 model Subscription {
   id                    String             @id @default(cuid())
   userId                String             @unique
-  clerkUserId           String             @unique // Clerk ID for easy lookup
+  supabaseUserId        String             @unique // Supabase Auth user ID for easy lookup
 
   status                SubscriptionStatus @default(FREE)
   tier                  SubscriptionTier   @default(FREE)
@@ -45,12 +45,12 @@ model Subscription {
   expiryDate            DateTime?
   autoRenew             Boolean            @default(false)
 
-  // StoreKit fields
+  // StoreKit fields - KEEP UNCHANGED
   transactionId         String?
   productId             String?
   originalTransactionId String?
 
-  // Entitlements (denormalized for quick access)
+  // Entitlements - KEEP UNCHANGED
   maxCitiesPerWeek      Int                @default(1)
   maxPlansPerCity       Int                @default(10)
   weekendAccess         Boolean            @default(false)
@@ -63,7 +63,7 @@ model Subscription {
   // Relations
   user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([clerkUserId])
+  @@index([supabaseUserId])
   @@index([transactionId])
   @@index([status])
 }

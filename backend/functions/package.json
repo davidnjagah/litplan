@@ -20,7 +20,13 @@
     "seed:cities": "npm run build && node lib/scripts/seedCities.js",
     "seed:plans": "npm run build && node lib/scripts/seedPlans.js",
     "seed:users": "npm run build && node lib/scripts/seedUsers.js",
-    "seed:groupFlows": "npm run build && node lib/scripts/seedGroupFlows.js"
+    "seed:groupFlows": "npm run build && node lib/scripts/seedGroupFlows.js",
+    "dev": "npx ts-node src/server.ts",
+    "dev:watch": "npx nodemon --exec 'npx ts-node' src/server.ts",
+    "db:seed": "npx prisma db seed"
+  },
+  "prisma": {
+    "seed": "npx ts-node prisma/seed.ts"
   },
   "engines": {
     "node": "18"
@@ -30,6 +36,7 @@
     "@clerk/backend": "^2.29.0",
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@prisma/client": "^6.19.1",
+    "@supabase/supabase-js": "^2.89.0",
     "axios": "^1.6.5",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
