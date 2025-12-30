@@ -203,6 +203,77 @@ class AuthenticationManager: NSObject, ObservableObject {
         isLoading = false
     }
 
+    // MARK: - Sign In with Google
+
+    /// Handle Sign in with Google using Supabase OAuth
+    func signInWithGoogle() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // Get the OAuth sign in URL for Google provider
+            let oauthURL = try supabaseManager.client.auth.getOAuthSignInURL(
+                provider: .google,
+                redirectTo: URL(string: "com.litplan.app://oauth-callback")
+            )
+
+            // Open the OAuth URL in the system browser
+            if await UIApplication.shared.canOpenURL(oauthURL) {
+                await UIApplication.shared.open(oauthURL)
+
+                if Config.enableDebugLogging {
+                    print("[AuthenticationManager] Google OAuth URL opened: \(oauthURL)")
+                }
+            } else {
+                self.errorMessage = "Cannot open Google Sign In"
+                if Config.enableDebugLogging {
+                    print("[AuthenticationManager] Cannot open OAuth URL: \(oauthURL)")
+                }
+            }
+        } catch {
+            self.errorMessage = "Google Sign In failed: \(error.localizedDescription)"
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Google Sign In error: \(error)")
+            }
+        }
+
+        isLoading = false
+    }
+
+    /// Handle OAuth callback URL from Google Sign In
+    func handleOAuthCallback(url: URL) async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // Extract the session from the callback URL
+            let session = try await supabaseManager.client.auth.session(from: url)
+
+            // Update session
+            supabaseManager.updateSession(Session(from: session))
+            supabaseManager.updateUser(SupabaseUser(from: session.user))
+
+            self.currentUser = SupabaseUser(from: session.user)
+            self.authState = .authenticated
+
+            // Sync with backend
+            await syncUserWithBackend()
+
+            UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
+
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Google Sign In successful for user: \(session.user.id)")
+            }
+        } catch {
+            self.errorMessage = "OAuth callback failed: \(error.localizedDescription)"
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] OAuth callback error: \(error)")
+            }
+        }
+
+        isLoading = false
+    }
+
     // MARK: - Email/Password Authentication
 
     /// Sign in with email and password

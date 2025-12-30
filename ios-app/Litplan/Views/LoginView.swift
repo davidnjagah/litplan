@@ -105,6 +105,32 @@ struct LoginView: View {
             .frame(height: 50)
             .cornerRadius(Spacing.sm)
 
+            // Sign in with Google
+            Button(action: {
+                Task {
+                    await authManager.signInWithGoogle()
+                }
+            }) {
+                HStack(spacing: Spacing.md) {
+                    // Google "G" logo using custom view
+                    GoogleLogoView()
+                        .frame(width: 20, height: 20)
+
+                    Text("Sign in with Google")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.textPrimary)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.white)
+                .cornerRadius(Spacing.sm)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Spacing.sm)
+                        .stroke(Color.surfaceSecondary, lineWidth: 1)
+                )
+            }
+
             // Divider
             HStack {
                 Rectangle()
@@ -517,6 +543,42 @@ struct ForgotPasswordSheet: View {
     }
 }
 
+// MARK: - Google Logo View
+
+/// Custom Google "G" logo using SwiftUI shapes to match brand guidelines
+struct GoogleLogoView: View {
+    var body: some View {
+        ZStack {
+            // Blue section (top-right)
+            Circle()
+                .trim(from: 0.0, to: 0.25)
+                .stroke(Color(red: 66/255, green: 133/255, blue: 244/255), style: StrokeStyle(lineWidth: 4, lineCap: .butt))
+
+            // Green section (bottom-right)
+            Circle()
+                .trim(from: 0.25, to: 0.5)
+                .stroke(Color(red: 52/255, green: 168/255, blue: 83/255), style: StrokeStyle(lineWidth: 4, lineCap: .butt))
+
+            // Yellow section (bottom-left)
+            Circle()
+                .trim(from: 0.5, to: 0.75)
+                .stroke(Color(red: 251/255, green: 188/255, blue: 5/255), style: StrokeStyle(lineWidth: 4, lineCap: .butt))
+
+            // Red section (top-left)
+            Circle()
+                .trim(from: 0.75, to: 1.0)
+                .stroke(Color(red: 234/255, green: 67/255, blue: 53/255), style: StrokeStyle(lineWidth: 4, lineCap: .butt))
+
+            // Horizontal bar for the "G"
+            Rectangle()
+                .fill(Color(red: 66/255, green: 133/255, blue: 244/255))
+                .frame(width: 8, height: 4)
+                .offset(x: 3, y: 0)
+        }
+        .rotationEffect(.degrees(-90))
+    }
+}
+
 // MARK: - Preview
 
 #Preview("Login View") {
@@ -527,4 +589,11 @@ struct ForgotPasswordSheet: View {
 #Preview("Email Login") {
     LoginView()
         .environmentObject(AuthenticationManager.shared)
+}
+
+#Preview("Google Logo") {
+    GoogleLogoView()
+        .frame(width: 40, height: 40)
+        .padding()
+        .background(Color.white)
 }

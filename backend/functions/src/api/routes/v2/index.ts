@@ -8,6 +8,7 @@
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
  * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  * @updated Sprint 6 Phase 4 - Storage Migration
+ * @updated Sprint 8 - Enhanced profile endpoint with savedCitiesCount for iOS ProfileView
  */
 
 import { Router } from 'express';

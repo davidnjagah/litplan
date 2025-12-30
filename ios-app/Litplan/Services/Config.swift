@@ -29,7 +29,7 @@ enum Config {
 
     /// Supabase anonymous key for public API access
     /// Note: This key is safe to use in client apps - row level security is enforced server-side
-    static let supabaseAnonKey = "YOUR_SUPABASE_ANON_KEY_HERE"
+    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa3RkaWdhbmtqc3p1cHZyc3F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwMTY0MzcsImV4cCI6MjA4MjU5MjQzN30.lxRTafWUnKoQ4DBDTQEC9oioxYDejqtkT3apMC2Ervk"
 
     // MARK: - API Configuration
 

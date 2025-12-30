@@ -26,6 +26,14 @@ const router = Router();
 /**
  * GET /api/v2/user/profile
  * Get user profile with subscription (auth required)
+ *
+ * Returns complete user profile for iOS ProfileView:
+ * - User info (id, email, displayName, avatarUrl)
+ * - Subscription details (tier, status, expiryDate)
+ * - Entitlements (feature access flags)
+ * - savedCitiesCount for display
+ *
+ * @since Sprint 8 - Enhanced for iOS ProfileView
  */
 router.get(
   '/profile',
@@ -45,8 +53,11 @@ router.get(
         return;
       }
 
-      // Get entitlements
-      const entitlements = await SubscriptionService.checkEntitlements(user.id);
+      // Get entitlements and saved cities count in parallel
+      const [entitlements, savedCitiesCount] = await Promise.all([
+        SubscriptionService.checkEntitlements(user.id),
+        UserActivityService.getSavedCityCount(user.id),
+      ]);
 
       res.json({
         success: true,
@@ -70,6 +81,7 @@ router.get(
               }
             : null,
           entitlements,
+          savedCitiesCount,
         },
       });
     } catch (error) {
