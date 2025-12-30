@@ -42,9 +42,13 @@
 		034 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134 /* LaunchScreenView.swift */; };
 		2E44806F926C4DB197321DEA /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A79DBEF7822148A4A78F0907 /* HapticManager.swift */; };
 		55FA7A24C5F9440FB527E3C3 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA6A160B87640F8AF932512 /* AsyncImageView.swift */; };
+		7523AACB826003E039BF4125 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */; };
 		A1A4FAC30BF3E48C2743C6D8 /* PaywallTrigger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88BF7F37FA4D5EC2FEA959DC /* PaywallTrigger.swift */; };
 		A22CEDE3588BB8854586ED97 /* GroupFlowCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EFBF955DD16CBF0D543890A /* GroupFlowCard.swift */; };
+		AF6D7AB0D079B453C649E464 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */; };
+		BC4834BA979EA17C75FEDCEB /* HelpSupportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8AF7F53B688C23623B2B84 /* HelpSupportView.swift */; };
 		BE2B8A3C96A3A3120BE6A1CD /* ErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */; };
+		D57E718C03564816A6D908AA /* NotificationsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B25A9CE26813A1F1C6E048 /* NotificationsSettingsView.swift */; };
 		DD99AFFD452ED2C3DA626451 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5309BDE2320E0532A23CED3C /* EmptyStateView.swift */; };
 		E9A9E6C58B38DF7A69D0F579 /* DetailedGroupFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */; };
 		F7EB5BA37FED0DC4739E5379 /* GroupFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C94516B2740331C2C25E62F /* GroupFlow.swift */; };
@@ -90,10 +94,14 @@
 		39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DetailedGroupFlowView.swift; sourceTree = "<group>"; };
 		4C94516B2740331C2C25E62F /* GroupFlow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupFlow.swift; sourceTree = "<group>"; };
 		5309BDE2320E0532A23CED3C /* EmptyStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		6A8AF7F53B688C23623B2B84 /* HelpSupportView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelpSupportView.swift; sourceTree = "<group>"; };
 		88BF7F37FA4D5EC2FEA959DC /* PaywallTrigger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PaywallTrigger.swift; sourceTree = "<group>"; };
 		A79DBEF7822148A4A78F0907 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
+		D0B25A9CE26813A1F1C6E048 /* NotificationsSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationsSettingsView.swift; sourceTree = "<group>"; };
 		D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
 		E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingStateView.swift; sourceTree = "<group>"; };
+		F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		FDA6A160B87640F8AF932512 /* AsyncImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -152,6 +160,10 @@
 				123 /* PaywallView.swift */,
 				133 /* LoginView.swift */,
 				134 /* LaunchScreenView.swift */,
+				B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */,
+				D0B25A9CE26813A1F1C6E048 /* NotificationsSettingsView.swift */,
+				6A8AF7F53B688C23623B2B84 /* HelpSupportView.swift */,
+				F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -245,6 +257,9 @@
 			dependencies = (
 			);
 			name = Litplan;
+			packageProductDependencies = (
+				211DED512F02E98C00532BB1 /* Supabase */,
+			);
 			productName = Litplan;
 			productReference = 100 /* Litplan.app */;
 			productType = "com.apple.product-type.application";
@@ -342,6 +357,10 @@
 				032 /* APIService.swift in Sources */,
 				033 /* LoginView.swift in Sources */,
 				034 /* LaunchScreenView.swift in Sources */,
+				7523AACB826003E039BF4125 /* AccountSettingsView.swift in Sources */,
+				D57E718C03564816A6D908AA /* NotificationsSettingsView.swift in Sources */,
+				BC4834BA979EA17C75FEDCEB /* HelpSupportView.swift in Sources */,
+				AF6D7AB0D079B453C649E464 /* AboutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -562,6 +581,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		211DED512F02E98C00532BB1 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 211DED502F02E98C00532BB0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 700 /* Project object */;
 }

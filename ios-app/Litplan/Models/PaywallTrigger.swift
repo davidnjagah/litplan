@@ -13,6 +13,7 @@ enum PaywallTrigger: Equatable {
     case weekendPlan(cityName: String)    // Trying to view weekend plan
     case cityLimit                        // 2nd city in the week
     case saveCity(cityName: String)       // Trying to save a city
+    case profile                          // Opened from profile subscription settings
 
     var title: String {
         switch self {
@@ -24,6 +25,8 @@ enum PaywallTrigger: Equatable {
             return "Explore More Cities"
         case .saveCity:
             return "Save Your Favorite Cities"
+        case .profile:
+            return "Upgrade to Litplan Pro"
         }
     }
 
@@ -37,6 +40,8 @@ enum PaywallTrigger: Equatable {
             return "Free users can explore 1 city per week. Upgrade to Pro for unlimited cities."
         case .saveCity(let city):
             return "Save \(city) to your favorites for quick access. This feature is available with Litplan Pro."
+        case .profile:
+            return "Get unlimited access to all cities, save favorites, and unlock premium nightlife experiences."
         }
     }
 
@@ -50,6 +55,8 @@ enum PaywallTrigger: Equatable {
             return "globe.americas.fill"
         case .saveCity:
             return "heart.fill"
+        case .profile:
+            return "crown.fill"
         }
     }
 }
@@ -66,6 +73,8 @@ extension PaywallTrigger: Identifiable {
             return "cityLimit"
         case .saveCity(let city):
             return "saveCity_\(city)"
+        case .profile:
+            return "profile"
         }
     }
 }

@@ -20,7 +20,7 @@ struct ContentView: View {
             switch authManager.authState {
             case .unknown:
                 // Show loading while determining auth state
-                LaunchScreenView()
+                LaunchScreenView(onComplete: {})
 
             case .unauthenticated:
                 // Show login view
@@ -33,7 +33,7 @@ struct ContentView: View {
 
             // Launch screen overlay during app initialization
             if showingLaunchScreen {
-                LaunchScreenView()
+                LaunchScreenView(onComplete: {})
                     .transition(.opacity)
                     .zIndex(1)
             }

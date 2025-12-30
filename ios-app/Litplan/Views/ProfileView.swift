@@ -3,16 +3,58 @@
 //  Litplan
 //
 //  Created by UI Designer Agent on 12/28/25.
-//  Profile tab - Sprint 2, Day 10 implementation
+//  Updated Sprint 8 - Connected to real Supabase data
 //
 
 import SwiftUI
 
 struct ProfileView: View {
-    // Mock user - in production, this would come from UserService
-    @State private var user: User = User.mockPro
-    @State private var savedCities: [SavedCity] = SavedCity.mockSavedCities
+    // Authentication manager for user data
+    @ObservedObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var supabaseManager = SupabaseManager.shared
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
+    // State for saved cities (will be fetched from API)
+    @State private var savedCities: [SavedCity] = []
+    @State private var isLoadingSavedCities: Bool = false
+    @State private var savedCitiesError: String? = nil
+
+    // Sheet and navigation state
     @State private var showUpgradeSheet = false
+    @State private var showSignOutConfirmation = false
+    @State private var isSigningOut = false
+    @State private var showAccountSettings = false
+    @State private var showNotificationSettings = false
+    @State private var showHelpSupport = false
+    @State private var showAbout = false
+    @State private var showSubscriptionManagement = false
+
+    // Computed properties for user data
+    private var userName: String {
+        if let fullName = supabaseManager.currentUser?.userMetadata?.fullName, !fullName.isEmpty {
+            return fullName
+        }
+        if let email = supabaseManager.currentUser?.email ?? authManager.currentUser?.email {
+            return email.components(separatedBy: "@").first ?? "User"
+        }
+        return "User"
+    }
+
+    private var userEmail: String {
+        return supabaseManager.currentUser?.email ?? authManager.currentUser?.email ?? "Not signed in"
+    }
+
+    private var userPhotoURL: String? {
+        return supabaseManager.currentUser?.userMetadata?.avatarUrl
+    }
+
+    private var subscriptionTier: SubscriptionTier {
+        return subscriptionManager.isProUser ? .pro : .free
+    }
+
+    private var isAuthenticated: Bool {
+        return authManager.isAuthenticated
+    }
 
     var body: some View {
         NavigationStack {
@@ -31,6 +73,9 @@ struct ProfileView: View {
                         // Settings Section
                         settingsSection
 
+                        // Sign Out Section
+                        signOutSection
+
                         // Bottom padding
                         Spacer()
                             .frame(height: Spacing.xl)
@@ -41,6 +86,35 @@ struct ProfileView: View {
             .navigationBarHidden(true)
             .sheet(isPresented: $showUpgradeSheet) {
                 upgradeSheet
+            }
+            .sheet(isPresented: $showAccountSettings) {
+                AccountSettingsView()
+            }
+            .sheet(isPresented: $showNotificationSettings) {
+                NotificationsSettingsView()
+            }
+            .sheet(isPresented: $showHelpSupport) {
+                HelpSupportView()
+            }
+            .sheet(isPresented: $showAbout) {
+                AboutView()
+            }
+            .sheet(isPresented: $showSubscriptionManagement) {
+                PaywallView(trigger: .profile)
+            }
+            .alert("Sign Out", isPresented: $showSignOutConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Sign Out", role: .destructive) {
+                    performSignOut()
+                }
+            } message: {
+                Text("Are you sure you want to sign out?")
+            }
+            .onAppear {
+                loadSavedCities()
+            }
+            .refreshable {
+                await refreshData()
             }
         }
     }
@@ -54,11 +128,28 @@ struct ProfileView: View {
                     .fill(Color.surfacePrimary)
                     .frame(width: 100, height: 100)
 
-                if let photoURL = user.profilePhotoURL {
-                    // In production, use AsyncImage to load from URL
-                    Image(systemName: "person.circle.fill")
-                        .font(.system(size: 100))
-                        .foregroundColor(.accentPrimary)
+                if let photoURL = userPhotoURL, let url = URL(string: photoURL) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 100, height: 100)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 100, height: 100)
+                                .clipShape(Circle())
+                        case .failure:
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 100))
+                                .foregroundColor(.accentPrimary)
+                        @unknown default:
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 100))
+                                .foregroundColor(.accentPrimary)
+                        }
+                    }
                 } else {
                     Image(systemName: "person.circle.fill")
                         .font(.system(size: 100))
@@ -68,12 +159,12 @@ struct ProfileView: View {
             .accessibilityLabel("Profile photo")
 
             // User Name
-            Text(user.name)
+            Text(userName)
                 .font(.displayMedium)
                 .foregroundColor(.textPrimary)
 
             // Email
-            Text(user.email)
+            Text(userEmail)
                 .font(.body)
                 .foregroundColor(.textSecondary)
 
@@ -86,29 +177,29 @@ struct ProfileView: View {
     // MARK: - Subscription Badge
     private var subscriptionBadge: some View {
         HStack(spacing: Spacing.xs) {
-            Image(systemName: user.subscriptionTier.badgeIcon)
+            Image(systemName: subscriptionTier.badgeIcon)
                 .font(.system(size: 14))
-                .foregroundColor(user.subscriptionTier.badgeColor)
+                .foregroundColor(subscriptionTier.badgeColor)
                 .accessibilityHidden(true)
 
-            Text(user.subscriptionTier.displayName)
+            Text(subscriptionTier.displayName)
                 .font(.callout)
                 .fontWeight(.semibold)
-                .foregroundColor(user.subscriptionTier.badgeColor)
+                .foregroundColor(subscriptionTier.badgeColor)
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.xs)
         .background(
-            user.subscriptionTier == .pro
+            subscriptionTier == .pro
                 ? Color.accentPrimary.opacity(0.15)
                 : Color.surfaceSecondary
         )
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(user.subscriptionTier.badgeColor.opacity(0.3), lineWidth: 1)
+                .stroke(subscriptionTier.badgeColor.opacity(0.3), lineWidth: 1)
         )
-        .accessibilityLabel("Subscription: \(user.subscriptionTier.displayName)")
+        .accessibilityLabel("Subscription: \(subscriptionTier.displayName)")
     }
 
     // MARK: - Saved Cities Section
@@ -123,7 +214,7 @@ struct ProfileView: View {
 
                 Spacer()
 
-                if user.subscriptionTier == .pro {
+                if subscriptionTier == .pro {
                     Text("\(savedCities.count) saved")
                         .font(.callout)
                         .foregroundColor(.textTertiary)
@@ -132,9 +223,13 @@ struct ProfileView: View {
             .padding(.horizontal, Spacing.md)
 
             // Content based on subscription tier
-            if user.subscriptionTier == .pro {
+            if subscriptionTier == .pro {
                 // Pro users see their saved cities
-                if savedCities.isEmpty {
+                if isLoadingSavedCities {
+                    loadingStateCard
+                } else if let error = savedCitiesError {
+                    errorStateCard(message: error)
+                } else if savedCities.isEmpty {
                     emptyStateCard(
                         icon: "bookmark",
                         title: "No saved cities yet",
@@ -151,6 +246,53 @@ struct ProfileView: View {
                 upgradeToProCard
             }
         }
+    }
+
+    // MARK: - Loading State Card
+    private var loadingStateCard: some View {
+        StandardCard {
+            HStack(spacing: Spacing.md) {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .accentPrimary))
+
+                Text("Loading saved cities...")
+                    .font(.body)
+                    .foregroundColor(.textSecondary)
+
+                Spacer()
+            }
+            .padding(Spacing.lg)
+        }
+        .padding(.horizontal, Spacing.md)
+    }
+
+    // MARK: - Error State Card
+    private func errorStateCard(message: String) -> some View {
+        StandardCard {
+            VStack(spacing: Spacing.md) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 40))
+                    .foregroundColor(.warning)
+
+                Text("Unable to load saved cities")
+                    .font(.bodyLarge)
+                    .foregroundColor(.textPrimary)
+
+                Text(message)
+                    .font(.callout)
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+
+                Button(action: { loadSavedCities() }) {
+                    Text("Try Again")
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .foregroundColor(.accentPrimary)
+                }
+            }
+            .padding(Spacing.lg)
+        }
+        .padding(.horizontal, Spacing.md)
     }
 
     // MARK: - Saved City Row
@@ -230,7 +372,7 @@ struct ProfileView: View {
                     title: "Account Settings",
                     iconColor: .accentPrimary
                 ) {
-                    print("Navigate to Account Settings")
+                    showAccountSettings = true
                 }
 
                 settingsRow(
@@ -238,7 +380,7 @@ struct ProfileView: View {
                     title: "Subscription Management",
                     iconColor: .accentSecondary
                 ) {
-                    print("Navigate to Subscription Management")
+                    showSubscriptionManagement = true
                 }
 
                 settingsRow(
@@ -246,7 +388,7 @@ struct ProfileView: View {
                     title: "Notifications",
                     iconColor: .warning
                 ) {
-                    print("Navigate to Notifications")
+                    showNotificationSettings = true
                 }
 
                 settingsRow(
@@ -254,7 +396,7 @@ struct ProfileView: View {
                     title: "Help & Support",
                     iconColor: .textSecondary
                 ) {
-                    print("Navigate to Help & Support")
+                    showHelpSupport = true
                 }
 
                 settingsRow(
@@ -262,7 +404,7 @@ struct ProfileView: View {
                     title: "About Litplan",
                     iconColor: .textSecondary
                 ) {
-                    print("Navigate to About")
+                    showAbout = true
                 }
             }
             .padding(.horizontal, Spacing.md)
@@ -374,8 +516,8 @@ struct ProfileView: View {
                 // CTA Button
                 VStack(spacing: Spacing.sm) {
                     PrimaryButton(title: "Start Free Trial") {
-                        print("Start free trial")
                         showUpgradeSheet = false
+                        showSubscriptionManagement = true
                     }
 
                     Text("$9.99/month after trial")
@@ -402,6 +544,118 @@ struct ProfileView: View {
 
             Spacer()
         }
+    }
+
+    // MARK: - Sign Out Section
+    private var signOutSection: some View {
+        VStack(spacing: Spacing.md) {
+            Button(action: {
+                showSignOutConfirmation = true
+            }) {
+                HStack(spacing: Spacing.md) {
+                    if isSigningOut {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .error))
+                            .frame(width: 20, height: 20)
+                    } else {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 20))
+                            .foregroundColor(.error)
+                    }
+
+                    Text(isSigningOut ? "Signing Out..." : "Sign Out")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.error)
+
+                    Spacer()
+                }
+                .padding(Spacing.md)
+                .background(Color.surfacePrimary)
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.error.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(isSigningOut)
+            .accessibilityLabel("Sign out of your account")
+            .accessibilityHint("Double tap to sign out")
+        }
+        .padding(.horizontal, Spacing.md)
+    }
+
+    // MARK: - Perform Sign Out
+    private func performSignOut() {
+        isSigningOut = true
+        Task {
+            await authManager.signOut()
+            isSigningOut = false
+        }
+    }
+
+    // MARK: - Load Saved Cities
+    private func loadSavedCities() {
+        guard subscriptionManager.isProUser else {
+            savedCities = []
+            return
+        }
+
+        isLoadingSavedCities = true
+        savedCitiesError = nil
+
+        Task {
+            do {
+                // Try to fetch saved cities from API
+                // Note: If there's no saved cities endpoint yet, use empty array
+                let cities = try await fetchSavedCitiesFromAPI()
+                await MainActor.run {
+                    savedCities = cities
+                    isLoadingSavedCities = false
+                }
+            } catch {
+                await MainActor.run {
+                    // If API fails, show error but allow retry
+                    savedCitiesError = error.localizedDescription
+                    isLoadingSavedCities = false
+
+                    // For now, if no endpoint exists, just show empty state
+                    if case APIError.notFound = error {
+                        savedCitiesError = nil
+                        savedCities = []
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Fetch Saved Cities from API
+    private func fetchSavedCitiesFromAPI() async throws -> [SavedCity] {
+        // This would call the actual API endpoint for saved cities
+        // For now, return empty array since the endpoint may not exist yet
+        // The API structure would be similar to:
+        // let response: SavedCitiesResponse = try await APIService.shared.request(
+        //     endpoint: "\(Config.Endpoints.userProfile)/saved-cities",
+        //     method: .GET,
+        //     requiresAuth: true
+        // )
+        // return response.savedCities
+
+        // Return empty for now - saved cities will be implemented when API endpoint is ready
+        return []
+    }
+
+    // MARK: - Refresh Data
+    private func refreshData() async {
+        // Refresh subscription status
+        await subscriptionManager.checkSubscriptionStatus()
+
+        // Refresh user data
+        await authManager.checkAuthState()
+
+        // Reload saved cities
+        loadSavedCities()
     }
 }
 
