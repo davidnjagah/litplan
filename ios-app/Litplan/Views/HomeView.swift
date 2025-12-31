@@ -30,8 +30,8 @@ struct HomeView: View {
         subscriptionManager.isProUser
     }
 
-    // Get cities from MockDataService (will be replaced with API call)
-    private let allCities = MockDataService.shared.cities
+    // Cached cities for filtering after API load (fallback to MockDataService when offline)
+    @State private var allCities: [City] = []
     private var trendingCities: [City] {
         Array(cities.prefix(5))
     }
@@ -354,14 +354,17 @@ struct HomeView: View {
     // MARK: - API Data Loading
 
     private func loadPlans() {
-        // Check internet connection first
+        // Check internet connection first - if offline, use MockDataService fallback
         guard networkMonitor.isConnected else {
-            hasError = true
-            errorData = NSError(
-                domain: "NetworkError",
-                code: -1009,
-                userInfo: [NSLocalizedDescriptionKey: "network connection lost"]
-            )
+            // Use mock data as offline fallback for content data (cities/plans)
+            allCities = MockDataService.shared.cities
+            cities = allCities
+            isLoading = false
+            hasError = false
+
+            if Config.enableDebugLogging {
+                print("[HomeView] Offline - using cached/mock cities data")
+            }
             return
         }
 
@@ -370,53 +373,24 @@ struct HomeView: View {
         errorData = nil
         loadingStartTime = Date()
 
-        // Show loading state only after 500ms delay (for slow API responses)
-        let delayTask = DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            if self.isLoading {
-                // Still loading after 500ms, keep showing loading state
-            }
-        }
+        // Fetch cities from API with fallback to mock data
+        Task {
+            do {
+                // Use APIService's fetchCitiesWithFallback which handles offline/error cases
+                let fetchedCities = await APIService.shared.fetchCitiesWithFallback()
 
-        // Simulate API call with delay
-        // In production, this would call GET /cities API endpoint
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            // Check if user at plan limit (free users)
-            if !self.isProUser {
-                let viewedCount = self.viewedCitiesThisWeek.count
-                if viewedCount >= 1 {
-                    // User at limit, still show cities but trigger paywall on tap
-                    // Don't block data loading
+                await MainActor.run {
+                    allCities = fetchedCities
+                    cities = fetchedCities
+                    isLoading = false
+                    hasError = false
+                    loadingStartTime = nil
+
+                    if Config.enableDebugLogging {
+                        print("[HomeView] Loaded \(fetchedCities.count) cities")
+                    }
                 }
             }
-
-            // Simulate random success/failure for testing error states
-            // Remove this randomization in production
-            let shouldSucceed = true // Change to Bool.random() to test error states
-
-            if shouldSucceed {
-                // Success - load cities from mock data
-                self.cities = self.allCities
-                self.isLoading = false
-                self.hasError = false
-
-                // Check if API returned empty array
-                if self.cities.isEmpty {
-                    // Show empty state instead of error
-                    self.hasError = false
-                }
-            } else {
-                // Failure - show error state
-                self.cities = []
-                self.isLoading = false
-                self.hasError = true
-                self.errorData = NSError(
-                    domain: "APIError",
-                    code: 500,
-                    userInfo: [NSLocalizedDescriptionKey: "DATABASE_ERROR"]
-                )
-            }
-
-            self.loadingStartTime = nil
         }
     }
 
@@ -432,11 +406,10 @@ struct HomeView: View {
             return
         }
 
-        // Simulate API refresh
-        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-
-        // In production, this would call GET /cities API endpoint
-        cities = allCities
+        // Fetch fresh cities from API with fallback
+        let fetchedCities = await APIService.shared.fetchCitiesWithFallback()
+        allCities = fetchedCities
+        cities = fetchedCities
 
         // Show success toast
         if !cities.isEmpty {

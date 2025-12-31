@@ -22,8 +22,9 @@ struct SearchView: View {
         subscriptionManager.isProUser
     }
 
-    // Get all cities from MockDataService
-    private let allCities = MockDataService.shared.cities
+    // Cities loaded from API (with fallback to MockDataService when offline)
+    @State private var allCities: [City] = []
+    @State private var isLoadingCities: Bool = false
 
     // Trending cities (top 6 featured cities)
     private var trendingCities: [City] {
@@ -88,6 +89,26 @@ struct SearchView: View {
                     paywallTrigger = nil
                 }
                 .environmentObject(subscriptionManager)
+            }
+            .onAppear {
+                if allCities.isEmpty && !isLoadingCities {
+                    loadCities()
+                }
+            }
+        }
+    }
+
+    // MARK: - Load Cities
+    private func loadCities() {
+        isLoadingCities = true
+
+        Task {
+            // Use API with fallback to mock data for content
+            let fetchedCities = await APIService.shared.fetchCitiesWithFallback()
+
+            await MainActor.run {
+                allCities = fetchedCities
+                isLoadingCities = false
             }
         }
     }
@@ -213,7 +234,7 @@ struct SearchView: View {
         .accessibilityHint("Double tap to explore \(city.metadata.planCount) nightlife plans")
     }
 
-    // MARK: - Recent Searches Section (Pro Feature Placeholder)
+    // MARK: - Recent Searches Section
     private var recentSearchesSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             Text("Recent Searches")
@@ -223,13 +244,13 @@ struct SearchView: View {
                 .padding(.horizontal, Spacing.md)
                 .accessibilityAddTraits(.isHeader)
 
-            // Placeholder for Pro feature
+            // Empty state - no search history yet
             HStack(spacing: Spacing.sm) {
                 Image(systemName: "clock.arrow.circlepath")
                     .foregroundColor(.textTertiary)
                     .font(.system(size: 18))
 
-                Text("Search history available with Litplan Pro")
+                Text("No recent searches")
                     .font(.callout)
                     .foregroundColor(.textSecondary)
             }

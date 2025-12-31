@@ -388,10 +388,8 @@ struct CityDetailsView: View {
 
     // MARK: - Helper Functions
     private func loadPlansAsync() async {
-        // Load plans asynchronously off the main thread to avoid blocking UI
-        let loadedPlans = await Task.detached(priority: .userInitiated) {
-            MockDataService.shared.getPlans(for: city.id)
-        }.value
+        // Load plans from API with fallback to mock data for offline support
+        let loadedPlans = await APIService.shared.fetchPlansWithFallback(cityId: city.id)
 
         // Update state on main actor
         await MainActor.run {
@@ -400,7 +398,8 @@ struct CityDetailsView: View {
     }
 
     private func loadGroupFlowsAsync() async {
-        // Load group flows asynchronously off the main thread
+        // Load group flows - currently using mock data until API endpoint is available
+        // Group flows are content data, so mock fallback is acceptable
         let loadedGroupFlows = await Task.detached(priority: .userInitiated) {
             MockDataService.shared.getGroupFlows(for: city.id)
         }.value

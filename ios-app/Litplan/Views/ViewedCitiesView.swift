@@ -100,7 +100,7 @@ struct ViewedCitiesView: View {
         EmptyStateView(
             icon: "building.2.crop.circle",
             title: "No Cities Viewed Yet",
-            message: "Start exploring cities to see your viewing history here"
+            message: "Start exploring! Your viewing history will appear here."
         )
     }
 
@@ -185,14 +185,14 @@ struct ViewedCitiesView: View {
                 await MainActor.run {
                     // Check if user is authenticated
                     if case APIError.unauthorized = error {
-                        // Use fallback mock data for unauthenticated users
-                        viewedCities = ViewedCity.samples
-                        totalCount = viewedCities.count
+                        // User not authenticated - show empty state (no mock data for user-specific content)
+                        viewedCities = []
+                        totalCount = 0
                         hasMoreData = false
                         isLoading = false
 
                         if Config.enableDebugLogging {
-                            print("[ViewedCitiesView] User not authenticated, using mock data")
+                            print("[ViewedCitiesView] User not authenticated, showing empty state")
                         }
                     } else {
                         errorData = error
@@ -344,12 +344,8 @@ struct ViewedCitiesView: View {
     }
 
     private func convertViewedCityToCity(_ viewedCity: ViewedCity) -> City {
-        // For mock data, find the city from MockDataService
-        if let city = MockDataService.shared.cities.first(where: { $0.id == viewedCity.cityId }) {
-            return city
-        }
-
-        // Fallback: create City from ViewedCity data
+        // Create City from ViewedCity data (API data)
+        // The ViewedCity contains all the necessary city information from the API response
         return City(
             id: viewedCity.cityId,
             name: viewedCity.name,
