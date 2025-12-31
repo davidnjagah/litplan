@@ -228,10 +228,10 @@ router.get('/me', requireAuthWithUser, async (req: AuthenticatedRequest, res: Re
 
     try {
       const savedCities = await UserActivityService.getSavedCities(user.id);
-      const viewedCities = await UserActivityService.getViewedCities(user.id);
+      const viewedCitiesResult = await UserActivityService.getViewedCities(user.id);
       activityStats = {
         savedCitiesCount: savedCities.length,
-        viewedCitiesCount: viewedCities.length,
+        viewedCitiesCount: viewedCitiesResult.total,
       };
     } catch (statsError) {
       console.warn('Failed to fetch activity stats:', statsError);

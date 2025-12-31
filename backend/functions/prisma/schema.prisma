@@ -33,9 +33,10 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   // Relations
-  subscription  Subscription?
-  savedCities   SavedCity[]
-  viewedCities  ViewedCity[]
+  subscription    Subscription?
+  savedCities     SavedCity[]
+  viewedCities    ViewedCity[]
+  searchedCities  SearchedCity[]
 
   @@index([supabaseUserId])
   @@index([email])
@@ -122,6 +123,7 @@ model City {
   groupFlows         GroupFlow[]
   savedByUsers       SavedCity[]
   viewedByUsers      ViewedCity[]
+  searchedByUsers    SearchedCity[]
 
   @@index([rank])
   @@index([featured])
@@ -282,20 +284,39 @@ model SavedCity {
 }
 
 model ViewedCity {
-  id        String   @id @default(cuid())
-  userId    String
-  cityId    String
+  id           String   @id @default(cuid())
+  userId       String
+  cityId       String
 
-  viewedAt  DateTime @default(now())
-  viewCount Int      @default(1)
+  viewedAt     DateTime @default(now())
+  lastViewedAt DateTime @default(now()) // Updates on each view for efficient sorting
+  viewCount    Int      @default(1)
 
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city         City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
 
   @@unique([userId, cityId])
   @@index([userId])
   @@index([viewedAt])
+  @@index([userId, lastViewedAt]) // Composite index for efficient paginated user history queries
+}
+
+model SearchedCity {
+  id          String   @id @default(cuid())
+  userId      String
+  cityId      String
+  searchQuery String   // The search term used
+
+  searchedAt  DateTime @default(now())
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city        City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([searchedAt])
+  @@index([userId, searchedAt]) // Composite index for efficient user history queries
 }
 
 // ==================== APP CONFIG ====================

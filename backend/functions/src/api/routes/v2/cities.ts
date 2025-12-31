@@ -199,8 +199,8 @@ router.get(
 
         if (citiesViewedThisWeek >= entitlements.maxCitiesPerWeek) {
           // Check if this city was already viewed this week
-          const viewedCities = await UserActivityService.getViewedCities(req.user!.id, 10);
-          const alreadyViewed = viewedCities.some((vc) => vc.cityId === city!.id);
+          const viewedCitiesResult = await UserActivityService.getViewedCities(req.user!.id, 10, 0);
+          const alreadyViewed = viewedCitiesResult.viewedCities.some((vc) => vc.cityId === city!.id);
 
           if (!alreadyViewed) {
             res.status(403).json({

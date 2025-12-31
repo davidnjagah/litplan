@@ -7,6 +7,7 @@
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
  * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  * @updated Sprint 9 - Removed UserActivity model, activity tracked via ViewedCity only
+ * @updated Sprint 10 - Added SearchedCity tracking and pagination support
  */
 
 import { Router, Response } from 'express';
@@ -180,7 +181,16 @@ router.patch(
 
 /**
  * GET /api/v2/user/viewed-cities
- * Get viewed cities (auth required)
+ * Get viewed cities with pagination (auth required)
+ *
+ * Query params:
+ * - limit: Maximum number of cities to return (default 20)
+ * - offset: Number of cities to skip (default 0)
+ *
+ * Returns cities with view metadata, sorted by lastViewedAt DESC
+ * Includes full city data (name, image, etc.)
+ *
+ * @since Sprint 10 - Added pagination support
  */
 router.get(
   '/viewed-cities',
@@ -188,18 +198,48 @@ router.get(
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-      const viewedCities = await UserActivityService.getViewedCities(req.user!.id, limit);
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+
+      // Validate pagination params
+      if (isNaN(limit) || limit < 1 || limit > 100) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Limit must be between 1 and 100',
+          },
+        });
+        return;
+      }
+      if (isNaN(offset) || offset < 0) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Offset must be a non-negative number',
+          },
+        });
+        return;
+      }
+
+      const result = await UserActivityService.getViewedCities(req.user!.id, limit, offset);
 
       res.json({
         success: true,
         data: {
-          viewedCities: viewedCities.map((vc) => ({
+          viewedCities: result.viewedCities.map((vc) => ({
             cityId: vc.cityId,
             city: vc.city,
             viewedAt: vc.viewedAt,
+            lastViewedAt: vc.lastViewedAt,
             viewCount: vc.viewCount,
           })),
-          count: viewedCities.length,
+          pagination: {
+            total: result.total,
+            limit: result.limit,
+            offset: result.offset,
+            hasMore: result.hasMore,
+          },
         },
       });
     } catch (error) {
@@ -217,7 +257,12 @@ router.get(
 
 /**
  * POST /api/v2/user/viewed-cities/:cityId
- * Record city view (auth required)
+ * Record a city view (auth required)
+ *
+ * Upserts: increments viewCount if exists, creates if not.
+ * Updates lastViewedAt timestamp on each view.
+ *
+ * @since Sprint 10 - Enhanced with lastViewedAt
  */
 router.post(
   '/viewed-cities/:cityId',
@@ -251,6 +296,7 @@ router.post(
           viewedCity: {
             cityId: viewedCity.cityId,
             viewedAt: viewedCity.viewedAt,
+            lastViewedAt: viewedCity.lastViewedAt,
             viewCount: viewedCity.viewCount,
           },
         },
@@ -425,5 +471,149 @@ router.delete(
 
 // Sprint 9: Removed /activity endpoint - UserActivity model has been removed
 // Activity is now tracked via ViewedCity table only
+
+// ==================== SEARCHED CITIES ====================
+
+/**
+ * POST /api/v2/user/searched-cities
+ * Record a city search (auth required)
+ *
+ * Creates a new record for each search (for analytics).
+ * Body: { cityId: string, searchQuery: string }
+ *
+ * @since Sprint 10 - City search tracking
+ */
+router.post(
+  '/searched-cities',
+  requireAuthWithUser,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { cityId, searchQuery } = req.body;
+
+      // Validate input
+      if (!cityId || typeof cityId !== 'string') {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'cityId is required and must be a string',
+          },
+        });
+        return;
+      }
+
+      if (!searchQuery || typeof searchQuery !== 'string' || searchQuery.trim().length === 0) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'searchQuery is required and must be a non-empty string',
+          },
+        });
+        return;
+      }
+
+      // Find the city
+      let city = await CityService.getCityByLegacyId(cityId);
+      if (!city) {
+        city = await CityService.getCityById(cityId);
+      }
+
+      if (!city) {
+        res.status(404).json({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'City not found',
+          },
+        });
+        return;
+      }
+
+      const searchedCity = await UserActivityService.recordCitySearch(
+        req.user!.id,
+        city.id,
+        searchQuery
+      );
+
+      res.status(201).json({
+        success: true,
+        data: {
+          searchedCity: {
+            cityId: searchedCity.cityId,
+            searchQuery: searchedCity.searchQuery,
+            searchedAt: searchedCity.searchedAt,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Error recording city search:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SERVER_ERROR',
+          message: 'Failed to record city search',
+        },
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/v2/user/searched-cities
+ * Get user's search history (auth required)
+ *
+ * Query params:
+ * - limit: Maximum number of unique cities to return (default 10)
+ *
+ * Returns recent unique cities searched.
+ *
+ * @since Sprint 10 - City search history
+ */
+router.get(
+  '/searched-cities',
+  requireAuthWithUser,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+
+      // Validate limit
+      if (isNaN(limit) || limit < 1 || limit > 50) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Limit must be between 1 and 50',
+          },
+        });
+        return;
+      }
+
+      const searchHistory = await UserActivityService.getSearchHistory(req.user!.id, limit);
+
+      res.json({
+        success: true,
+        data: {
+          searchHistory: searchHistory.map((sc) => ({
+            cityId: sc.cityId,
+            city: sc.city,
+            searchQuery: sc.searchQuery,
+            searchedAt: sc.searchedAt,
+          })),
+          count: searchHistory.length,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching search history:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SERVER_ERROR',
+          message: 'Failed to fetch search history',
+        },
+      });
+    }
+  }
+);
 
 export default router;

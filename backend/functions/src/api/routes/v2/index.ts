@@ -10,6 +10,7 @@
  * @updated Sprint 6 Phase 4 - Storage Migration
  * @updated Sprint 8 - Enhanced profile endpoint with savedCitiesCount for iOS ProfileView
  * @updated Sprint 9 - Removed /activity endpoint, using ViewedCity tracking only
+ * @updated Sprint 10 - Added SearchedCity tracking and pagination support
  */
 
 import { Router } from 'express';
@@ -61,8 +62,10 @@ router.get('/', (req, res) => {
         user: {
           profile: 'GET /api/v2/user/profile (auth required)',
           updateProfile: 'PATCH /api/v2/user/profile (auth required)',
-          viewedCities: 'GET /api/v2/user/viewed-cities (auth required)',
+          viewedCities: 'GET /api/v2/user/viewed-cities?limit=20&offset=0 (auth required, paginated)',
           recordView: 'POST /api/v2/user/viewed-cities/:cityId (auth required)',
+          searchedCities: 'GET /api/v2/user/searched-cities?limit=10 (auth required)',
+          recordSearch: 'POST /api/v2/user/searched-cities (auth required)',
           savedCities: 'GET /api/v2/user/saved-cities (pro only)',
           saveCity: 'POST /api/v2/user/saved-cities/:cityId (pro only)',
           unsaveCity: 'DELETE /api/v2/user/saved-cities/:cityId (pro only)',

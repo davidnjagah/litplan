@@ -42,6 +42,8 @@ export {
   UserActivityService,
   type SavedCityWithDetails,
   type ViewedCityWithDetails,
+  type SearchedCityWithDetails,
+  type PaginatedViewedCities,
 } from './UserActivityService';
 export {
   AppConfigService,
