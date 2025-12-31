@@ -33,6 +33,9 @@
     "prisma:generate": "npx prisma generate",
     "setup:storage": "npx ts-node src/scripts/setupStorageBuckets.ts",
     "test:endpoints": "npx ts-node src/scripts/testEndpoints.ts",
+    "cleanup:dry-run": "npx ts-node src/scripts/cleanupMockData.ts --dry-run",
+    "cleanup:force": "npx ts-node src/scripts/cleanupMockData.ts --force",
+    "check:integrity": "npx ts-node src/scripts/checkDataIntegrity.ts",
     "vercel:dev": "vercel dev",
     "postinstall": "prisma generate || true"
   },
