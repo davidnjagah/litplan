@@ -20,6 +20,11 @@ struct HomeView: View {
     @State private var loadingStartTime: Date? = nil
     @State private var toast: ToastData? = nil
 
+    // Sprint 15: Recommended Group Plans
+    @State private var recommendedGroupFlows: [GroupFlow] = []
+    @State private var selectedGroupFlow: GroupFlow? = nil
+    @State private var showGroupFlowDetails = false
+
     // Network monitoring
     @EnvironmentObject private var networkMonitor: NetworkMonitor
 
@@ -132,6 +137,11 @@ struct HomeView: View {
                                 )
                             }
 
+                            // Sprint 15: Recommended Group Plans section
+                            if !recommendedGroupFlows.isEmpty {
+                                recommendedGroupPlansSection
+                            }
+
                             // Top US Cities section
                             if !topUSCities.isEmpty {
                                 citySection(
@@ -191,6 +201,21 @@ struct HomeView: View {
                         showCityDetails = false
                         selectedCity = nil
                     }
+                }
+            }
+            .fullScreenCover(isPresented: $showGroupFlowDetails) {
+                if let groupFlow = selectedGroupFlow {
+                    DetailedGroupFlowView(
+                        groupFlow: groupFlow,
+                        onDismiss: {
+                            showGroupFlowDetails = false
+                            selectedGroupFlow = nil
+                        },
+                        onUpgrade: {
+                            showGroupFlowDetails = false
+                            paywallTrigger = .groupFlow(cityName: getCityName(for: groupFlow))
+                        }
+                    )
                 }
             }
             .onAppear {
@@ -367,6 +392,8 @@ struct HomeView: View {
             // Use mock data as offline fallback for content data (cities/plans)
             allCities = MockDataService.shared.cities
             cities = allCities
+            // Sprint 15: Load recommended group flows offline
+            loadRecommendedGroupFlows()
             isLoading = false
             hasError = false
 
@@ -390,6 +417,8 @@ struct HomeView: View {
                 await MainActor.run {
                     allCities = fetchedCities
                     cities = fetchedCities
+                    // Sprint 15: Load recommended group flows
+                    loadRecommendedGroupFlows()
                     isLoading = false
                     hasError = false
                     loadingStartTime = nil
@@ -424,6 +453,186 @@ struct HomeView: View {
             toast = ToastData(type: .success, message: "Plans updated")
             HapticManager.shared.success()
         }
+    }
+
+    // MARK: - Sprint 15: Recommended Group Plans
+
+    /// Load recommended group flows from all available cities
+    private func loadRecommendedGroupFlows() {
+        // Gather group flows from all cities that have them
+        var allFlows: [GroupFlow] = []
+
+        // Get group flows from cities that have them in MockDataService
+        let cityIdsWithFlows = ["nyc-001", "la-001", "mad-001"]
+        for cityId in cityIdsWithFlows {
+            let flows = MockDataService.shared.getGroupFlows(for: cityId)
+            allFlows.append(contentsOf: flows)
+        }
+
+        // Shuffle and take up to 6 for display
+        recommendedGroupFlows = Array(allFlows.shuffled().prefix(6))
+
+        if Config.enableDebugLogging {
+            print("[HomeView] Loaded \(recommendedGroupFlows.count) recommended group flows")
+        }
+    }
+
+    /// Get city name for a group flow
+    private func getCityName(for groupFlow: GroupFlow) -> String {
+        // Match by cityId
+        if let city = MockDataService.shared.cities.first(where: { $0.id == groupFlow.cityId }) {
+            return city.name
+        }
+        // Fallback: try matching by prefix
+        if let city = MockDataService.shared.cities.first(where: { groupFlow.cityId.hasPrefix($0.id.prefix(3).lowercased()) }) {
+            return city.name
+        }
+        return "Unknown City"
+    }
+
+    /// Handle group plan tap with premium gating
+    private func handleGroupPlanTap(_ groupFlow: GroupFlow) {
+        HapticManager.shared.medium()
+
+        if isProUser {
+            // Pro users can view full details
+            selectedGroupFlow = groupFlow
+            showGroupFlowDetails = true
+        } else {
+            // Free users see paywall
+            let cityName = getCityName(for: groupFlow)
+            paywallTrigger = .groupFlow(cityName: cityName)
+        }
+    }
+
+    // MARK: - Recommended Group Plans Section
+    private var recommendedGroupPlansSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Section header
+            HStack {
+                Text("Recommended Group Plans")
+                    .font(.displayMedium)
+                    .fontWeight(.bold)
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+            }
+            .padding(.horizontal, Spacing.md)
+            .accessibilityAddTraits(.isHeader)
+
+            // Horizontal scroll of group plan cards
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.md) {
+                    Spacer().frame(width: Spacing.xxs)
+
+                    ForEach(recommendedGroupFlows) { groupFlow in
+                        RecommendedGroupPlanCard(
+                            groupFlow: groupFlow,
+                            cityName: getCityName(for: groupFlow),
+                            isProUser: isProUser
+                        ) {
+                            handleGroupPlanTap(groupFlow)
+                        } onUpgrade: {
+                            let cityName = getCityName(for: groupFlow)
+                            paywallTrigger = .groupFlow(cityName: cityName)
+                        }
+                    }
+
+                    Spacer().frame(width: Spacing.xxs)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Sprint 15: Recommended Group Plan Card
+struct RecommendedGroupPlanCard: View {
+    let groupFlow: GroupFlow
+    let cityName: String
+    let isProUser: Bool
+    var onTap: () -> Void
+    var onUpgrade: () -> Void
+
+    /// Total hours for display
+    private var totalHours: Int {
+        groupFlow.totalDuration / 60
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Image placeholder with lock overlay for free users
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 200, height: 120)
+
+                // Gradient overlay for visual interest
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.accentPrimary.opacity(0.3), Color.accentSecondary.opacity(0.2)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .cornerRadius(12)
+                .frame(width: 200, height: 120)
+
+                // Group icon in center
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(.white.opacity(0.6))
+
+                // Lock overlay for free users
+                if !isProUser {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Image(systemName: "lock.fill")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                                .padding(6)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(4)
+                                .padding(8)
+                        }
+                    }
+                    .frame(width: 200, height: 120)
+                }
+            }
+
+            // City name
+            Text(cityName)
+                .font(.caption)
+                .foregroundColor(.accentPrimary)
+                .fontWeight(.medium)
+
+            // Group Plan title
+            Text(groupFlow.title)
+                .font(.callout)
+                .fontWeight(.medium)
+                .foregroundColor(.textPrimary)
+                .lineLimit(2)
+
+            // Summary info
+            HStack(spacing: Spacing.sm) {
+                Label("\(groupFlow.activities.count) venues", systemImage: "mappin.and.ellipse")
+                Label("\(totalHours)h", systemImage: "clock")
+            }
+            .font(.caption)
+            .foregroundColor(.textSecondary)
+        }
+        .frame(width: 200)
+        .onTapGesture {
+            if isProUser {
+                onTap()
+            } else {
+                HapticManager.shared.warning()
+                onUpgrade()
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(cityName), \(groupFlow.title), \(groupFlow.activities.count) venues, \(totalHours) hours")
+        .accessibilityHint(isProUser ? "Double tap to view full itinerary" : "Double tap to unlock with Pro")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
