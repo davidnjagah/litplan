@@ -5,6 +5,7 @@
 //  Created by UI Designer Agent on 12/28/25.
 //  Sprint 2, Day 9 - Viewed Cities tab with history of cities user has explored
 //  Sprint 10 - Connected to real API data with pagination
+//  Sprint 12 - Graceful fallback to recommended cities when API unavailable
 //
 
 import SwiftUI
@@ -20,6 +21,7 @@ struct ViewedCitiesView: View {
     @State private var selectedCity: City?
     @State private var showCityDetails: Bool = false
     @State private var paywallTrigger: PaywallTrigger? = nil
+    @State private var showingRecommendations: Bool = false
 
     // Pagination state
     @State private var currentOffset: Int = 0
@@ -29,6 +31,11 @@ struct ViewedCitiesView: View {
 
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
+    // Recommended cities from MockDataService
+    private var recommendedCities: [City] {
+        Array(MockDataService.shared.cities.prefix(8))
+    }
 
     private var isProUser: Bool {
         subscriptionManager.isProUser
@@ -42,10 +49,9 @@ struct ViewedCitiesView: View {
 
                 if isLoading && viewedCities.isEmpty {
                     loadingView
-                } else if hasError && viewedCities.isEmpty {
-                    errorView
                 } else if viewedCities.isEmpty {
-                    emptyStateView
+                    // Show recommended cities instead of error or empty state
+                    recommendedCitiesView
                 } else {
                     viewedCitiesList
                 }
@@ -77,31 +83,39 @@ struct ViewedCitiesView: View {
         LoadingStateView(message: "Loading your cities...")
     }
 
-    // MARK: - Error View
-    private var errorView: some View {
-        Group {
-            if let error = errorData {
-                ErrorStateView(error: error) {
-                    loadViewedCities()
+    // MARK: - Recommended Cities View (Fallback for empty/error states)
+    private var recommendedCitiesView: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                // Header section
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    // Main title
+                    Text(showingRecommendations ? "Discover Cities" : "Start Exploring")
+                        .font(.displayLarge)
+                        .foregroundColor(.textPrimary)
+
+                    // Subtitle
+                    Text(showingRecommendations ? "Popular destinations to explore" : "Check out these popular destinations")
+                        .font(.callout)
+                        .foregroundColor(.textSecondary)
                 }
-            } else {
-                ErrorStateView(
-                    title: "Unable to Load Cities",
-                    message: "We couldn't load your viewed cities. Please try again."
-                ) {
-                    loadViewedCities()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Spacing.md)
+                .padding(.top, 60) // Account for safe area
+                .padding(.bottom, Spacing.lg)
+
+                // Recommended cities list
+                LazyVStack(spacing: Spacing.md) {
+                    ForEach(recommendedCities) { city in
+                        RecommendedCityCard(city: city) {
+                            handleRecommendedCityTap(city)
+                        }
+                    }
                 }
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.lg)
             }
         }
-    }
-
-    // MARK: - Empty State View
-    private var emptyStateView: some View {
-        EmptyStateView(
-            icon: "building.2.crop.circle",
-            title: "No Cities Viewed Yet",
-            message: "Start exploring! Your viewing history will appear here."
-        )
     }
 
     // MARK: - Viewed Cities List
@@ -183,24 +197,18 @@ struct ViewedCitiesView: View {
                 }
             } catch {
                 await MainActor.run {
-                    // Check if user is authenticated
-                    if case APIError.unauthorized = error {
-                        // User not authenticated - show empty state (no mock data for user-specific content)
-                        viewedCities = []
-                        totalCount = 0
-                        hasMoreData = false
-                        isLoading = false
+                    // On any error, gracefully fall back to recommended cities
+                    viewedCities = []
+                    totalCount = 0
+                    hasMoreData = false
+                    isLoading = false
+                    showingRecommendations = true
 
-                        if Config.enableDebugLogging {
-                            print("[ViewedCitiesView] User not authenticated, showing empty state")
-                        }
-                    } else {
-                        errorData = error
-                        hasError = true
-                        isLoading = false
-
-                        if Config.enableDebugLogging {
-                            print("[ViewedCitiesView] Failed to load viewed cities: \(error)")
+                    if Config.enableDebugLogging {
+                        if case APIError.unauthorized = error {
+                            print("[ViewedCitiesView] User not authenticated, showing recommended cities")
+                        } else {
+                            print("[ViewedCitiesView] API error, falling back to recommended cities: \(error)")
                         }
                     }
                 }
@@ -364,8 +372,168 @@ struct ViewedCitiesView: View {
             )
         )
     }
+
+    /// Handle tap on a recommended city from the fallback view
+    private func handleRecommendedCityTap(_ city: City) {
+        // Haptic feedback on tap
+        HapticManager.shared.medium()
+
+        // Free users: check weekly city limit
+        if !isProUser {
+            // Load current viewed cities
+            let currentViewedCities: Set<String>
+            if let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
+               let cities = try? JSONDecoder().decode(Set<String>.self, from: data) {
+                currentViewedCities = cities
+            } else {
+                currentViewedCities = []
+            }
+
+            // If this city hasn't been viewed yet this week
+            if !currentViewedCities.contains(city.id) {
+                // Check if they've already viewed 1 city this week
+                if currentViewedCities.count >= 1 {
+                    HapticManager.shared.warning()
+                    paywallTrigger = .cityLimit
+                    return
+                }
+
+                // Add to viewed cities
+                var updatedCities = currentViewedCities
+                updatedCities.insert(city.id)
+
+                // Save back to UserDefaults
+                if let data = try? JSONEncoder().encode(updatedCities) {
+                    UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
+                }
+            }
+        }
+
+        // Record city view to backend (fire and forget)
+        Task {
+            do {
+                try await APIService.shared.recordCityView(cityId: city.id)
+            } catch {
+                // Silently fail - this is fire and forget
+                if Config.enableDebugLogging {
+                    print("[ViewedCitiesView] Failed to record recommended city view: \(error)")
+                }
+            }
+        }
+
+        // Navigate to city details
+        selectedCity = city
+        showCityDetails = true
+    }
 }
 
-#Preview {
+// MARK: - Recommended City Card Component
+/// Card component for displaying recommended cities in the fallback view
+struct RecommendedCityCard: View {
+    let city: City
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: Spacing.sm) {
+                // Left: City thumbnail image (80x80pt matching ViewedCityCard)
+                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl))
+                    .frame(width: 80, height: 80)
+                    .cornerRadius(12)
+                    .clipped()
+
+                // Right: City info
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    // City name
+                    Text(city.name)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+
+                    // Country with flag
+                    HStack(spacing: 4) {
+                        Text(city.displayAssets.countryFlag)
+                            .font(.system(size: 14))
+
+                        Text(city.country)
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // Plan count and featured badge
+                    HStack(spacing: Spacing.sm) {
+                        // Plan count
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 11))
+                                .foregroundColor(.textTertiary)
+
+                            Text("\(city.metadata.planCount) plans")
+                                .font(.caption)
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        // Featured badge if applicable
+                        if city.metadata.featured {
+                            Text("Featured")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundColor(.accentPrimary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.accentPrimary.opacity(0.15))
+                                )
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Right chevron indicator
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(Spacing.sm)
+            .background(Color.surfacePrimary)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.surfaceSecondary, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("\(city.name), \(city.country)")
+        .accessibilityHint("Double tap to explore \(city.metadata.planCount) nightlife plans")
+    }
+}
+
+#Preview("Viewed Cities") {
     ViewedCitiesView()
+}
+
+#Preview("Recommended City Card") {
+    ZStack {
+        Color.appBackground
+            .ignoresSafeArea()
+
+        VStack(spacing: Spacing.md) {
+            RecommendedCityCard(city: MockDataService.shared.cities[0]) {
+                print("Tapped NYC")
+            }
+
+            RecommendedCityCard(city: MockDataService.shared.cities[3]) {
+                print("Tapped London")
+            }
+
+            RecommendedCityCard(city: MockDataService.shared.cities[5]) {
+                print("Tapped Tokyo")
+            }
+        }
+        .padding(Spacing.md)
+    }
 }
