@@ -12,7 +12,15 @@ struct SearchView: View {
     @State private var searchQuery = ""
     @State private var selectedCity: City?
     @State private var showCityDetails = false
+    @State private var paywallTrigger: PaywallTrigger? = nil
     @FocusState private var isSearchFocused: Bool
+
+    // Subscription manager for premium gating
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
+    private var isProUser: Bool {
+        subscriptionManager.isProUser
+    }
 
     // Get all cities from MockDataService
     private let allCities = MockDataService.shared.cities
@@ -74,6 +82,12 @@ struct SearchView: View {
                         selectedCity = nil
                     }
                 }
+            }
+            .sheet(item: $paywallTrigger) { trigger in
+                PaywallView(trigger: trigger) {
+                    paywallTrigger = nil
+                }
+                .environmentObject(subscriptionManager)
             }
         }
     }
@@ -329,6 +343,40 @@ struct SearchView: View {
     private func handleCityTap(_ city: City) {
         // Dismiss keyboard if open
         isSearchFocused = false
+
+        // Haptic feedback on tap
+        HapticManager.shared.medium()
+
+        // Free users: check weekly city limit
+        if !isProUser {
+            // Load current viewed cities
+            let currentViewedCities: Set<String>
+            if let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
+               let cities = try? JSONDecoder().decode(Set<String>.self, from: data) {
+                currentViewedCities = cities
+            } else {
+                currentViewedCities = []
+            }
+
+            // If this city hasn't been viewed yet
+            if !currentViewedCities.contains(city.id) {
+                // Check if they've already viewed 1 city this week
+                if currentViewedCities.count >= 1 {
+                    HapticManager.shared.warning()
+                    paywallTrigger = .cityLimit
+                    return
+                }
+
+                // Add to viewed cities
+                var updatedCities = currentViewedCities
+                updatedCities.insert(city.id)
+
+                // Save back to UserDefaults
+                if let data = try? JSONEncoder().encode(updatedCities) {
+                    UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
+                }
+            }
+        }
 
         // Show city details view
         selectedCity = city

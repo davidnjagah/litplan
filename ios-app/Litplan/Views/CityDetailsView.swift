@@ -26,9 +26,12 @@ struct CityDetailsView: View {
     @State private var selectedPlan: Plan? = nil
     @State private var showPlanDetails: Bool = false
 
-    // Pro feature - will be connected to actual subscription status later
+    // Subscription manager for premium gating
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
+    // Pro feature - connected to SubscriptionManager
     private var isProUser: Bool {
-        UserDefaults.standard.bool(forKey: "isProUser")
+        subscriptionManager.isProUser
     }
 
     // Accessibility - Reduce Motion
@@ -366,13 +369,18 @@ struct CityDetailsView: View {
                         isProUser: isProUser,
                         onTapViewItinerary: {
                             selectedGroupFlow = groupFlow
+                        },
+                        onTapUnlock: {
+                            paywallTrigger = .groupFlow(cityName: city.name)
                         }
                     )
                 }
 
                 // Paywall card for free users after showing 3 group plans
                 if !isProUser && groupFlows.count > 3 {
-                    GroupPlansPaywallCard()
+                    GroupPlansPaywallCard {
+                        paywallTrigger = .groupFlow(cityName: city.name)
+                    }
                 }
             }
         }
@@ -509,6 +517,8 @@ struct PlanDetailsView: View {
 
 // MARK: - Group Plans Paywall Card
 struct GroupPlansPaywallCard: View {
+    var onTapUpgrade: (() -> Void)? = nil
+
     var body: some View {
         VStack(spacing: Spacing.md) {
             Image(systemName: "crown.fill")
@@ -526,8 +536,8 @@ struct GroupPlansPaywallCard: View {
                 .padding(.horizontal, Spacing.md)
 
             Button(action: {
-                // TODO: Show paywall modal
-                print("Show paywall")
+                HapticManager.shared.medium()
+                onTapUpgrade?()
             }) {
                 Text("Upgrade to Pro")
                     .font(.system(size: 16, weight: .semibold))

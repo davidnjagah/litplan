@@ -14,9 +14,14 @@ struct ViewedCitiesView: View {
     @State private var isRefreshing: Bool = false
     @State private var selectedCity: City?
     @State private var showCityDetails: Bool = false
+    @State private var paywallTrigger: PaywallTrigger? = nil
 
-    // For mock data - in production this would be real user status
-    @State private var isProUser: Bool = false
+    // Subscription manager for premium gating
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
+    private var isProUser: Bool {
+        subscriptionManager.isProUser
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,6 +44,12 @@ struct ViewedCitiesView: View {
                         showCityDetails = false
                     }
                 }
+            }
+            .sheet(item: $paywallTrigger) { trigger in
+                PaywallView(trigger: trigger) {
+                    paywallTrigger = nil
+                }
+                .environmentObject(subscriptionManager)
             }
             .onAppear {
                 loadViewedCities()
@@ -127,6 +138,40 @@ struct ViewedCitiesView: View {
     }
 
     private func handleCityTap(_ viewedCity: ViewedCity) {
+        // Haptic feedback on tap
+        HapticManager.shared.medium()
+
+        // Free users: check weekly city limit
+        if !isProUser {
+            // Load current viewed cities
+            let currentViewedCities: Set<String>
+            if let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
+               let cities = try? JSONDecoder().decode(Set<String>.self, from: data) {
+                currentViewedCities = cities
+            } else {
+                currentViewedCities = []
+            }
+
+            // If this city hasn't been viewed yet this week
+            if !currentViewedCities.contains(viewedCity.cityId) {
+                // Check if they've already viewed 1 city this week
+                if currentViewedCities.count >= 1 {
+                    HapticManager.shared.warning()
+                    paywallTrigger = .cityLimit
+                    return
+                }
+
+                // Add to viewed cities
+                var updatedCities = currentViewedCities
+                updatedCities.insert(viewedCity.cityId)
+
+                // Save back to UserDefaults
+                if let data = try? JSONEncoder().encode(updatedCities) {
+                    UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
+                }
+            }
+        }
+
         // Convert ViewedCity to City for navigation
         // In production, this would fetch the full City object from the backend
         let city = convertViewedCityToCity(viewedCity)

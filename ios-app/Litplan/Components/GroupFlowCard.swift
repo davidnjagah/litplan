@@ -12,6 +12,7 @@ struct GroupFlowCard: View {
     let groupFlow: GroupFlow
     let isProUser: Bool
     let onTapViewItinerary: () -> Void
+    var onTapUnlock: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
@@ -213,8 +214,9 @@ struct GroupFlowCard: View {
             if isProUser {
                 onTapViewItinerary()
             } else {
-                // Free users see the lock - will show paywall in Sprint 3
-                print("🔒 Paywall: Group Flows are Pro-only")
+                // Free users see the lock - show paywall
+                HapticManager.shared.warning()
+                onTapUnlock?()
             }
         }) {
             HStack(spacing: Spacing.xs) {

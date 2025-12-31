@@ -23,8 +23,11 @@ struct HomeView: View {
     // Network monitoring
     @EnvironmentObject private var networkMonitor: NetworkMonitor
 
+    // Subscription manager for premium gating
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
     private var isProUser: Bool {
-        UserDefaults.standard.bool(forKey: "isProUser")
+        subscriptionManager.isProUser
     }
 
     // Get cities from MockDataService (will be replaced with API call)
