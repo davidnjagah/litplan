@@ -77,9 +77,16 @@ struct CityDetailsView: View {
             }
         }
         .fullScreenCover(item: $selectedGroupFlow) { groupFlow in
-            DetailedGroupFlowView(groupFlow: groupFlow) {
-                selectedGroupFlow = nil
-            }
+            DetailedGroupFlowView(
+                groupFlow: groupFlow,
+                onDismiss: {
+                    selectedGroupFlow = nil
+                },
+                onUpgrade: {
+                    selectedGroupFlow = nil
+                    paywallTrigger = .groupFlow(cityName: city.name)
+                }
+            )
         }
         .fullScreenCover(isPresented: $showPlanDetails) {
             if let plan = selectedPlan {
