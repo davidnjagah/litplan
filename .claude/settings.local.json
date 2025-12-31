@@ -34,7 +34,17 @@
       "Bash(git push:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: Add version control strategy and VERSION_HISTORY.md\n\n- Added comprehensive version control section to ios-agentic-workflow.md\n- Created VERSION_HISTORY.md documenting v1.0.0 state\n- Includes rollback procedures and backup strategy\n- Documents semantic versioning conventions\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nworkflow: Add mandatory git branching workflow for all agents\n\nMAJOR WORKFLOW UPDATE: All agents must now use feature branches\n\nChanges:\n- ios-agentic-workflow.md: Added comprehensive git branching section\n  - Mandatory branch creation at start of work\n  - Commit guidelines during work\n  - Push requirements at end of work\n  - PM end-of-day merge process\n  - Daily git checklist for agents and PM\n  - Conflict resolution guide\n\n- Updated all agent context files with git requirements:\n  - BACKEND_ENGINEER_CONTEXT.md: backend/[feature]-[date] branches\n  - UI_DESIGNER_CONTEXT.md: ui/[feature]-[date] branches\n  - QA_TESTER_CONTEXT.md: qa/[feature]-[date] branches\n\nProcess:\n1. Agents create feature branches at start of work\n2. Agents commit frequently with descriptive messages\n3. Agents push branches at end of work\n4. PM reviews all branches\n5. PM merges approved work into main\n6. PM pushes to remote and tags milestones\n\nThis ensures:\n- No direct commits to main\n- Code review before merge\n- Clear audit trail\n- Easy rollback if needed\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(npx prisma init:*)"
+      "Bash(npx prisma init:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(ios-app/Litplan/Components/GroupFlowCard.swift )",
+      "Bash(ios-app/Litplan/Models/PaywallTrigger.swift )",
+      "Bash(ios-app/Litplan/Views/CityDetailsView.swift )",
+      "Bash(ios-app/Litplan/Views/HomeView.swift )",
+      "Bash(ios-app/Litplan/Views/SearchView.swift )",
+      "Bash(ios-app/Litplan/Views/ViewedCitiesView.swift)"
     ]
   }
 }

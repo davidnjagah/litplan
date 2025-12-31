@@ -1,0 +1,11 @@
+feat(ios): Add Google Sign In UI and OAuth flow
+
+- Add "Sign in with Google" button to LoginView.swift with custom GoogleLogoView
+- Implement signInWithGoogle() method in AuthenticationManager using Supabase OAuth
+- Add handleOAuthCallback() method to process OAuth redirect responses
+- Create Info.plist with URL scheme (com.litplan.app) for OAuth callbacks
+- Update LitplanApp.swift with onOpenURL handler for OAuth deep links
+
+Sprint 8: Fix Apple Authentication + Add Google Sign In
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>

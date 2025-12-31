@@ -465,7 +465,15 @@ extension APIService {
 extension MockDataService {
     /// Get plans for a specific city ID
     func plans(for cityId: String) -> [Plan] {
-        // Return plans that match the city (in mock data, we use the city prefix)
-        return allPlans.filter { $0.id.hasPrefix(cityId.prefix(3).lowercased()) }
+        // Return plans for the city from the dictionary
+        if let cityPlans = allPlans[cityId] {
+            return cityPlans
+        }
+
+        // Fallback: search for plans with matching city prefix
+        let allPlansList: [Plan] = allPlans.values.flatMap { $0 }
+        return allPlansList.filter { plan in
+            plan.id.lowercased().hasPrefix(cityId.prefix(3).lowercased())
+        }
     }
 }

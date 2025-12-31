@@ -192,7 +192,7 @@ struct Session: Codable {
     init(from supabaseSession: Supabase.Session) {
         self.accessToken = supabaseSession.accessToken
         self.refreshToken = supabaseSession.refreshToken
-        self.expiresAt = supabaseSession.expiresAt
+        self.expiresAt = Date(timeIntervalSince1970: supabaseSession.expiresAt)
         self.userId = supabaseSession.user.id.uuidString
     }
 
