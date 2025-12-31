@@ -71,11 +71,11 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            // Viewed Cities Tab
-            ViewedCitiesView()
+            // Saved / My Plans Tab
+            MyPlansView()
                 .tabItem {
-                    Image(systemName: selectedTab == 2 ? "clock.fill" : "clock")
-                    Text("Viewed")
+                    Image(systemName: selectedTab == 2 ? "bookmark.fill" : "bookmark")
+                    Text("Saved")
                 }
                 .tag(2)
 

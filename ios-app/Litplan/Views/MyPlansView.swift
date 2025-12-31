@@ -1,0 +1,782 @@
+//
+//  MyPlansView.swift
+//  Litplan
+//
+//  Created by UI Designer Agent on 12/31/25.
+//  Sprint 13 - Transform "Viewed Cities" to "My Plans & Saved" Screen
+//  Shows saved cities, individual plans, and group plans in tabbed interface
+//
+
+import SwiftUI
+
+// MARK: - Tab Enum
+enum MyPlansTab: String, CaseIterable {
+    case savedCities = "Cities"
+    case individualPlans = "Plans"
+    case groupPlans = "Groups"
+
+    var icon: String {
+        switch self {
+        case .savedCities:
+            return "building.2"
+        case .individualPlans:
+            return "calendar"
+        case .groupPlans:
+            return "person.3"
+        }
+    }
+
+    var emptyIcon: String {
+        switch self {
+        case .savedCities:
+            return "bookmark"
+        case .individualPlans:
+            return "calendar.badge.plus"
+        case .groupPlans:
+            return "person.3.sequence"
+        }
+    }
+
+    var emptyTitle: String {
+        switch self {
+        case .savedCities:
+            return "No saved cities yet"
+        case .individualPlans:
+            return "No saved plans yet"
+        case .groupPlans:
+            return "No saved group plans yet"
+        }
+    }
+
+    var emptyMessage: String {
+        switch self {
+        case .savedCities:
+            return "Cities you bookmark will appear here for quick access"
+        case .individualPlans:
+            return "Save individual plans to easily find them later"
+        case .groupPlans:
+            return "Group plans you save will be stored here"
+        }
+    }
+}
+
+// MARK: - Main View
+struct MyPlansView: View {
+    // MARK: - State Properties
+    @State private var selectedTab: MyPlansTab = .savedCities
+    @State private var isLoading: Bool = false
+    @State private var isRefreshing: Bool = false
+
+    // Saved cities state
+    @State private var savedCities: [City] = []
+
+    // Individual plans state
+    @State private var savedPlans: [Plan] = []
+
+    // Group plans state
+    @State private var savedGroupFlows: [GroupFlow] = []
+
+    // Navigation state
+    @State private var selectedCity: City?
+    @State private var showCityDetails: Bool = false
+    @State private var selectedPlan: Plan?
+    @State private var showPlanDetails: Bool = false
+    @State private var selectedGroupFlow: GroupFlow?
+    @State private var showGroupFlowDetails: Bool = false
+    @State private var paywallTrigger: PaywallTrigger? = nil
+
+    // Subscription manager for premium gating
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+    @ObservedObject private var authManager = AuthenticationManager.shared
+
+    private var isProUser: Bool {
+        subscriptionManager.isProUser
+    }
+
+    private var totalSavedCount: Int {
+        savedCities.count + savedPlans.count + savedGroupFlows.count
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    // Header
+                    headerView
+
+                    // Segment Control
+                    segmentControl
+
+                    // Content
+                    if isLoading {
+                        loadingView
+                            .transition(.opacity)
+                    } else {
+                        contentView
+                            .transition(.opacity)
+                    }
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: isLoading)
+            .animation(.easeInOut(duration: 0.25), value: selectedTab)
+            .navigationBarHidden(true)
+            .fullScreenCover(isPresented: $showCityDetails) {
+                if let city = selectedCity {
+                    CityDetailsView(city: city) {
+                        showCityDetails = false
+                    }
+                }
+            }
+            .sheet(isPresented: $showGroupFlowDetails) {
+                if let groupFlow = selectedGroupFlow {
+                    DetailedGroupFlowView(groupFlow: groupFlow, onDismiss: {
+                        showGroupFlowDetails = false
+                    })
+                }
+            }
+            .sheet(item: $paywallTrigger) { trigger in
+                PaywallView(trigger: trigger) {
+                    paywallTrigger = nil
+                }
+                .environmentObject(subscriptionManager)
+            }
+            .onAppear {
+                loadData()
+            }
+        }
+    }
+
+    // MARK: - Header View
+    private var headerView: some View {
+        VStack(alignment: .leading, spacing: Spacing.xxs) {
+            Text("Saved")
+                .font(.displayLarge)
+                .foregroundColor(.textPrimary)
+
+            Text("\(totalSavedCount) saved item\(totalSavedCount == 1 ? "" : "s")")
+                .font(.callout)
+                .foregroundColor(.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Spacing.md)
+        .padding(.top, 60) // Account for safe area
+        .padding(.bottom, Spacing.md)
+    }
+
+    // MARK: - Segment Control
+    private var segmentControl: some View {
+        HStack(spacing: Spacing.xs) {
+            ForEach(MyPlansTab.allCases, id: \.self) { tab in
+                segmentButton(for: tab)
+            }
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.bottom, Spacing.md)
+    }
+
+    private func segmentButton(for tab: MyPlansTab) -> some View {
+        let isSelected = selectedTab == tab
+        let count = countForTab(tab)
+
+        return Button(action: {
+            HapticManager.shared.light()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedTab = tab
+            }
+        }) {
+            HStack(spacing: Spacing.xxs) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 12, weight: .medium))
+
+                Text(tab.rawValue)
+                    .font(.system(size: 14, weight: .semibold))
+
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(isSelected ? .appBackground : .textSecondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(isSelected ? Color.textPrimary.opacity(0.3) : Color.surfaceSecondary)
+                        )
+                }
+            }
+            .foregroundColor(isSelected ? .textPrimary : .textSecondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.sm)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? Color.accentPrimary : Color.surfacePrimary)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.clear : Color.surfaceSecondary, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("\(tab.rawValue), \(count) items")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func countForTab(_ tab: MyPlansTab) -> Int {
+        switch tab {
+        case .savedCities:
+            return savedCities.count
+        case .individualPlans:
+            return savedPlans.count
+        case .groupPlans:
+            return savedGroupFlows.count
+        }
+    }
+
+    // MARK: - Loading View
+    private var loadingView: some View {
+        LoadingStateView(message: "Loading your saved items...")
+    }
+
+    // MARK: - Content View
+    private var contentView: some View {
+        ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: Spacing.md) {
+                switch selectedTab {
+                case .savedCities:
+                    savedCitiesContent
+                case .individualPlans:
+                    savedPlansContent
+                case .groupPlans:
+                    savedGroupFlowsContent
+                }
+            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.bottom, Spacing.xl)
+        }
+        .refreshable {
+            await refreshData()
+        }
+    }
+
+    // MARK: - Saved Cities Content
+    @ViewBuilder
+    private var savedCitiesContent: some View {
+        if savedCities.isEmpty {
+            emptyStateView(for: .savedCities)
+        } else {
+            ForEach(savedCities) { city in
+                SavedCityCard(city: city) {
+                    handleCityTap(city)
+                }
+            }
+        }
+    }
+
+    // MARK: - Saved Plans Content
+    @ViewBuilder
+    private var savedPlansContent: some View {
+        if savedPlans.isEmpty {
+            emptyStateView(for: .individualPlans)
+        } else {
+            ForEach(Array(savedPlans.enumerated()), id: \.element.id) { index, plan in
+                SavedPlanCard(plan: plan, cityName: getCityName(for: plan)) {
+                    handlePlanTap(plan)
+                }
+            }
+        }
+    }
+
+    // MARK: - Saved Group Flows Content
+    @ViewBuilder
+    private var savedGroupFlowsContent: some View {
+        if savedGroupFlows.isEmpty {
+            emptyStateView(for: .groupPlans)
+        } else {
+            ForEach(savedGroupFlows) { groupFlow in
+                SavedGroupFlowCard(
+                    groupFlow: groupFlow,
+                    cityName: getCityName(for: groupFlow),
+                    isProUser: isProUser
+                ) {
+                    handleGroupFlowTap(groupFlow)
+                }
+            }
+        }
+    }
+
+    // MARK: - Empty State View
+    private func emptyStateView(for tab: MyPlansTab) -> some View {
+        VStack(spacing: Spacing.lg) {
+            Spacer()
+                .frame(height: Spacing.xxl)
+
+            Image(systemName: tab.emptyIcon)
+                .font(.system(size: 60, weight: .light))
+                .foregroundColor(.textTertiary)
+
+            VStack(spacing: Spacing.xs) {
+                Text(tab.emptyTitle)
+                    .font(.headline)
+                    .foregroundColor(.textPrimary)
+
+                Text(tab.emptyMessage)
+                    .font(.callout)
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Spacing.lg)
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xxl)
+    }
+
+    // MARK: - Data Loading
+    private func loadData() {
+        isLoading = true
+
+        // Check if user is authenticated
+        guard authManager.isAuthenticated || authManager.isGuest else {
+            isLoading = false
+            return
+        }
+
+        // For now, use mock data from MockDataService
+        // In production, this would fetch from API
+        Task {
+            // Simulate network delay
+            try? await Task.sleep(nanoseconds: 500_000_000)
+
+            await MainActor.run {
+                // Load mock saved cities (first 3 cities as "saved")
+                savedCities = Array(MockDataService.shared.cities.prefix(3))
+
+                // Load mock saved plans (sample plans)
+                savedPlans = [Plan.sampleBlueNote, Plan.sampleTheRoof, Plan.sampleLeBain]
+
+                // Load mock saved group flows
+                savedGroupFlows = [GroupFlow.sampleNYCFlow, GroupFlow.sampleLAFlow]
+
+                isLoading = false
+            }
+        }
+    }
+
+    private func refreshData() async {
+        isRefreshing = true
+
+        // Simulate refresh
+        try? await Task.sleep(nanoseconds: 800_000_000)
+
+        await MainActor.run {
+            // Reload data
+            savedCities = Array(MockDataService.shared.cities.prefix(3))
+            savedPlans = [Plan.sampleBlueNote, Plan.sampleTheRoof, Plan.sampleLeBain]
+            savedGroupFlows = [GroupFlow.sampleNYCFlow, GroupFlow.sampleLAFlow]
+            isRefreshing = false
+        }
+    }
+
+    // MARK: - Helper Functions
+    private func getCityName(for plan: Plan) -> String {
+        // Extract city from plan ID or use default
+        if plan.id.hasPrefix("nyc") {
+            return "New York"
+        } else if plan.id.hasPrefix("la") {
+            return "Los Angeles"
+        } else if plan.id.hasPrefix("lon") {
+            return "London"
+        }
+        return "New York"
+    }
+
+    private func getCityName(for groupFlow: GroupFlow) -> String {
+        // Find city name from cityId
+        if let city = MockDataService.shared.cities.first(where: { $0.id == groupFlow.cityId }) {
+            return city.name
+        }
+        // Fallback to parsing city ID
+        if groupFlow.cityId.hasPrefix("nyc") {
+            return "New York"
+        } else if groupFlow.cityId.hasPrefix("la") {
+            return "Los Angeles"
+        }
+        return "City"
+    }
+
+    // MARK: - Tap Handlers
+    private func handleCityTap(_ city: City) {
+        HapticManager.shared.medium()
+        selectedCity = city
+        showCityDetails = true
+    }
+
+    private func handlePlanTap(_ plan: Plan) {
+        HapticManager.shared.medium()
+        selectedPlan = plan
+        // TODO: Navigate to plan details when available
+        // For now, show a haptic feedback
+    }
+
+    private func handleGroupFlowTap(_ groupFlow: GroupFlow) {
+        HapticManager.shared.medium()
+
+        if isProUser {
+            selectedGroupFlow = groupFlow
+            showGroupFlowDetails = true
+        } else {
+            HapticManager.shared.warning()
+            paywallTrigger = .groupFlow(cityName: getCityName(for: groupFlow))
+        }
+    }
+}
+
+// MARK: - Saved City Card Component
+struct SavedCityCard: View {
+    let city: City
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: Spacing.sm) {
+                // City thumbnail
+                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl))
+                    .frame(width: 80, height: 80)
+                    .cornerRadius(12)
+                    .clipped()
+
+                // City info
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    // City name
+                    Text(city.name)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+
+                    // Country with flag
+                    HStack(spacing: 4) {
+                        Text(city.displayAssets.countryFlag)
+                            .font(.system(size: 14))
+
+                        Text(city.country)
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // Plan count
+                    HStack(spacing: Spacing.sm) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 11))
+                                .foregroundColor(.textTertiary)
+
+                            Text("\(city.metadata.planCount) plans")
+                                .font(.caption)
+                                .foregroundColor(.textSecondary)
+                        }
+
+                        if city.metadata.featured {
+                            Text("Featured")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundColor(.accentPrimary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.accentPrimary.opacity(0.15))
+                                )
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Bookmark icon and chevron
+                VStack {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.accentPrimary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.textTertiary)
+                }
+            }
+            .padding(Spacing.sm)
+            .background(Color.surfacePrimary)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.surfaceSecondary, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("\(city.name), \(city.country)")
+        .accessibilityHint("Double tap to view \(city.metadata.planCount) nightlife plans")
+    }
+}
+
+// MARK: - Saved Plan Card Component
+struct SavedPlanCard: View {
+    let plan: Plan
+    let cityName: String
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: Spacing.sm) {
+                // Plan image
+                AsyncImageView(url: URL(string: plan.images.first ?? ""))
+                    .frame(width: 80, height: 80)
+                    .cornerRadius(12)
+                    .clipped()
+
+                // Plan info
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    // Title
+                    Text(plan.title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(2)
+
+                    // Venue name
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textTertiary)
+
+                        Text(plan.venueName)
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // City and category
+                    HStack(spacing: Spacing.xs) {
+                        Text(cityName)
+                            .font(.caption)
+                            .foregroundColor(.textSecondary)
+
+                        Text("•")
+                            .font(.caption)
+                            .foregroundColor(.textTertiary)
+
+                        Text(plan.category)
+                            .font(.caption)
+                            .foregroundColor(.accentPrimary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Bookmark icon and chevron
+                VStack {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.accentPrimary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.textTertiary)
+                }
+            }
+            .padding(Spacing.sm)
+            .background(Color.surfacePrimary)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.surfaceSecondary, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("\(plan.title) at \(plan.venueName)")
+        .accessibilityHint("Double tap to view plan details")
+    }
+}
+
+// MARK: - Saved Group Flow Card Component
+struct SavedGroupFlowCard: View {
+    let groupFlow: GroupFlow
+    let cityName: String
+    let isProUser: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                // Header row
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: Spacing.xxs) {
+                        // Title
+                        Text(groupFlow.title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                            .lineLimit(2)
+
+                        // City
+                        Text(cityName)
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    Spacer()
+
+                    // Bookmark and lock icons
+                    VStack(spacing: Spacing.xs) {
+                        Image(systemName: "bookmark.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.accentPrimary)
+
+                        if !isProUser {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textTertiary)
+                        }
+                    }
+                }
+
+                // Details row
+                HStack(spacing: Spacing.md) {
+                    // Duration
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textTertiary)
+
+                        Text(groupFlow.formattedDuration)
+                            .font(.caption)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    // Venue count
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textTertiary)
+
+                        Text("\(groupFlow.activities.count) venues")
+                            .font(.caption)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    // Cost
+                    HStack(spacing: 4) {
+                        Image(systemName: "dollarsign.circle")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textTertiary)
+
+                        Text(groupFlow.formattedCost)
+                            .font(.caption)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    Spacer()
+
+                    // Difficulty badge
+                    Text(groupFlow.difficulty.capitalized)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundColor(difficultyColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(difficultyColor.opacity(0.15))
+                        )
+                }
+            }
+            .padding(Spacing.md)
+            .background(Color.surfacePrimary)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isProUser ? Color.accentPrimary.opacity(0.3) : Color.surfaceSecondary, lineWidth: isProUser ? 2 : 1)
+            )
+            .opacity(isProUser ? 1.0 : 0.7)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("\(groupFlow.title) in \(cityName)")
+        .accessibilityHint(isProUser ? "Double tap to view full itinerary" : "Pro subscription required to view")
+    }
+
+    private var difficultyColor: Color {
+        switch groupFlow.difficulty {
+        case "easy":
+            return .success
+        case "moderate":
+            return .warning
+        case "intense":
+            return .error
+        default:
+            return .textSecondary
+        }
+    }
+}
+
+// MARK: - Preview
+#Preview("My Plans - Saved Tab") {
+    MyPlansView()
+        .environmentObject(SubscriptionManager.shared)
+        .environmentObject(AuthenticationManager.shared)
+}
+
+#Preview("Saved City Card") {
+    ZStack {
+        Color.appBackground
+            .ignoresSafeArea()
+
+        SavedCityCard(city: MockDataService.shared.cities[0]) {
+            print("Tapped NYC")
+        }
+        .padding(Spacing.md)
+    }
+}
+
+#Preview("Saved Plan Card") {
+    ZStack {
+        Color.appBackground
+            .ignoresSafeArea()
+
+        SavedPlanCard(plan: Plan.sampleBlueNote, cityName: "New York") {
+            print("Tapped plan")
+        }
+        .padding(Spacing.md)
+    }
+}
+
+#Preview("Saved Group Flow Card") {
+    ZStack {
+        Color.appBackground
+            .ignoresSafeArea()
+
+        VStack(spacing: Spacing.md) {
+            SavedGroupFlowCard(
+                groupFlow: GroupFlow.sampleNYCFlow,
+                cityName: "New York",
+                isProUser: true
+            ) {
+                print("Tapped group flow")
+            }
+
+            SavedGroupFlowCard(
+                groupFlow: GroupFlow.sampleLAFlow,
+                cityName: "Los Angeles",
+                isProUser: false
+            ) {
+                print("Tapped locked group flow")
+            }
+        }
+        .padding(Spacing.md)
+    }
+}

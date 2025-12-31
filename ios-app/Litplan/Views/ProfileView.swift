@@ -4,6 +4,7 @@
 //
 //  Created by UI Designer Agent on 12/28/25.
 //  Updated Sprint 8 - Connected to real Supabase data
+//  Updated Sprint 13 - Removed Saved Cities (moved to MyPlansView/Saved tab)
 //
 
 import SwiftUI
@@ -13,11 +14,6 @@ struct ProfileView: View {
     @ObservedObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var supabaseManager = SupabaseManager.shared
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
-
-    // State for saved cities (will be fetched from API)
-    @State private var savedCities: [SavedCity] = []
-    @State private var isLoadingSavedCities: Bool = false
-    @State private var savedCitiesError: String? = nil
 
     // Sheet and navigation state
     @State private var showUpgradeSheet = false
@@ -67,9 +63,6 @@ struct ProfileView: View {
                         // Profile Header
                         profileHeader
 
-                        // Saved Cities Section
-                        savedCitiesSection
-
                         // Settings Section
                         settingsSection
 
@@ -109,9 +102,6 @@ struct ProfileView: View {
                 }
             } message: {
                 Text("Are you sure you want to sign out?")
-            }
-            .onAppear {
-                loadSavedCities()
             }
             .refreshable {
                 await refreshData()
@@ -202,166 +192,6 @@ struct ProfileView: View {
         .accessibilityLabel("Subscription: \(subscriptionTier.displayName)")
     }
 
-    // MARK: - Saved Cities Section
-    private var savedCitiesSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            // Section Header
-            HStack {
-                Text("Saved Cities")
-                    .font(.headline)
-                    .foregroundColor(.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-
-                Spacer()
-
-                if subscriptionTier == .pro {
-                    Text("\(savedCities.count) saved")
-                        .font(.callout)
-                        .foregroundColor(.textTertiary)
-                }
-            }
-            .padding(.horizontal, Spacing.md)
-
-            // Content based on subscription tier
-            if subscriptionTier == .pro {
-                // Pro users see their saved cities
-                if isLoadingSavedCities {
-                    loadingStateCard
-                        .transition(.opacity)
-                } else if let error = savedCitiesError {
-                    errorStateCard(message: error)
-                        .transition(.opacity)
-                } else if savedCities.isEmpty {
-                    emptyStateCard(
-                        icon: "bookmark",
-                        title: "No saved cities yet",
-                        description: "Cities you save will appear here"
-                    )
-                    .transition(.opacity)
-                } else {
-                    ForEach(savedCities) { city in
-                        savedCityRow(city)
-                    }
-                    .padding(.horizontal, Spacing.md)
-                    .transition(.opacity)
-                }
-            } else {
-                // Free users see upgrade prompt
-                upgradeToProCard
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: isLoadingSavedCities)
-    }
-
-    // MARK: - Loading State Card
-    private var loadingStateCard: some View {
-        StandardCard {
-            HStack(spacing: Spacing.md) {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .accentPrimary))
-
-                Text("Loading saved cities...")
-                    .font(.body)
-                    .foregroundColor(.textSecondary)
-
-                Spacer()
-            }
-            .padding(Spacing.lg)
-        }
-        .padding(.horizontal, Spacing.md)
-    }
-
-    // MARK: - Error State Card
-    private func errorStateCard(message: String) -> some View {
-        StandardCard {
-            VStack(spacing: Spacing.md) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 40))
-                    .foregroundColor(.warning)
-
-                Text("Unable to load saved cities")
-                    .font(.bodyLarge)
-                    .foregroundColor(.textPrimary)
-
-                Text(message)
-                    .font(.callout)
-                    .foregroundColor(.textSecondary)
-                    .multilineTextAlignment(.center)
-
-                Button(action: { loadSavedCities() }) {
-                    Text("Try Again")
-                        .font(.callout)
-                        .fontWeight(.medium)
-                        .foregroundColor(.accentPrimary)
-                }
-            }
-            .padding(Spacing.lg)
-        }
-        .padding(.horizontal, Spacing.md)
-    }
-
-    // MARK: - Saved City Row
-    private func savedCityRow(_ city: SavedCity) -> some View {
-        StandardCard {
-            HStack(spacing: Spacing.md) {
-                // City Icon
-                Image(systemName: "building.2.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(.accentPrimary)
-                    .frame(width: 40, height: 40)
-                    .background(Color.surfaceSecondary)
-                    .cornerRadius(8)
-
-                // City Info
-                VStack(alignment: .leading, spacing: Spacing.xxs) {
-                    Text(city.cityName)
-                        .font(.bodyLarge)
-                        .foregroundColor(.textPrimary)
-
-                    Text(city.country)
-                        .font(.callout)
-                        .foregroundColor(.textSecondary)
-                }
-
-                Spacer()
-
-                // Chevron
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14))
-                    .foregroundColor(.textTertiary)
-            }
-            .padding(Spacing.md)
-        }
-    }
-
-    // MARK: - Upgrade to Pro Card
-    private var upgradeToProCard: some View {
-        StandardCard {
-            VStack(spacing: Spacing.md) {
-                // Pro Icon
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.accentPrimary)
-
-                Text("Upgrade to Pro")
-                    .font(.headline)
-                    .foregroundColor(.textPrimary)
-
-                Text("Save unlimited cities and access exclusive features")
-                    .font(.callout)
-                    .foregroundColor(.textSecondary)
-                    .multilineTextAlignment(.center)
-
-                PrimaryButton(title: "Unlock Litplan Pro") {
-                    showUpgradeSheet = true
-                }
-            }
-            .padding(Spacing.md)
-        }
-        .padding(.horizontal, Spacing.md)
-    }
-
     // MARK: - Settings Section
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
@@ -449,28 +279,6 @@ struct ProfileView: View {
             }
             .buttonStyle(PlainButtonStyle())
         }
-    }
-
-    // MARK: - Empty State Card
-    private func emptyStateCard(icon: String, title: String, description: String) -> some View {
-        StandardCard {
-            VStack(spacing: Spacing.md) {
-                Image(systemName: icon)
-                    .font(.system(size: 40))
-                    .foregroundColor(.textTertiary)
-
-                Text(title)
-                    .font(.bodyLarge)
-                    .foregroundColor(.textPrimary)
-
-                Text(description)
-                    .font(.callout)
-                    .foregroundColor(.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(Spacing.lg)
-        }
-        .padding(.horizontal, Spacing.md)
     }
 
     // MARK: - Upgrade Sheet
@@ -601,57 +409,6 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Load Saved Cities
-    private func loadSavedCities() {
-        guard subscriptionManager.isProUser else {
-            savedCities = []
-            return
-        }
-
-        isLoadingSavedCities = true
-        savedCitiesError = nil
-
-        Task {
-            do {
-                // Try to fetch saved cities from API
-                // Note: If there's no saved cities endpoint yet, use empty array
-                let cities = try await fetchSavedCitiesFromAPI()
-                await MainActor.run {
-                    savedCities = cities
-                    isLoadingSavedCities = false
-                }
-            } catch {
-                await MainActor.run {
-                    // If API fails, show error but allow retry
-                    savedCitiesError = error.localizedDescription
-                    isLoadingSavedCities = false
-
-                    // For now, if no endpoint exists, just show empty state
-                    if case APIError.notFound = error {
-                        savedCitiesError = nil
-                        savedCities = []
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Fetch Saved Cities from API
-    private func fetchSavedCitiesFromAPI() async throws -> [SavedCity] {
-        // This would call the actual API endpoint for saved cities
-        // For now, return empty array since the endpoint may not exist yet
-        // The API structure would be similar to:
-        // let response: SavedCitiesResponse = try await APIService.shared.request(
-        //     endpoint: "\(Config.Endpoints.userProfile)/saved-cities",
-        //     method: .GET,
-        //     requiresAuth: true
-        // )
-        // return response.savedCities
-
-        // Return empty for now - saved cities will be implemented when API endpoint is ready
-        return []
-    }
-
     // MARK: - Refresh Data
     private func refreshData() async {
         // Refresh subscription status
@@ -659,9 +416,6 @@ struct ProfileView: View {
 
         // Refresh user data
         await authManager.checkAuthState()
-
-        // Reload saved cities
-        loadSavedCities()
     }
 }
 
