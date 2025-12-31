@@ -9,6 +9,7 @@
  * @updated Sprint 6 Phase 2 - Supabase Auth Integration
  * @updated Sprint 6 Phase 4 - Storage Migration
  * @updated Sprint 8 - Enhanced profile endpoint with savedCitiesCount for iOS ProfileView
+ * @updated Sprint 9 - Removed /activity endpoint, using ViewedCity tracking only
  */
 
 import { Router } from 'express';
@@ -65,7 +66,6 @@ router.get('/', (req, res) => {
           savedCities: 'GET /api/v2/user/saved-cities (pro only)',
           saveCity: 'POST /api/v2/user/saved-cities/:cityId (pro only)',
           unsaveCity: 'DELETE /api/v2/user/saved-cities/:cityId (pro only)',
-          activity: 'GET /api/v2/user/activity (auth required)',
         },
         subscription: {
           status: 'GET /api/v2/subscription (auth required)',

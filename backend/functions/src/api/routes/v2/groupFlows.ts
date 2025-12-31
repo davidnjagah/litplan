@@ -6,6 +6,7 @@
  * @module api/routes/v2/groupFlows
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
  * @updated Sprint 6 Phase 2 - Supabase Auth Integration
+ * @updated Sprint 9 - Removed UserActivity tracking, using ViewedCity only
  */
 
 import { Router, Response } from 'express';
@@ -15,7 +16,6 @@ import {
 } from '../../../middleware';
 import {
   GroupFlowService,
-  UserActivityService,
 } from '../../../services/prisma';
 
 const router = Router();
@@ -64,13 +64,7 @@ router.get(
         return;
       }
 
-      // Record flow view activity
-      await UserActivityService.recordFlowView(
-        req.user!.id,
-        groupFlow.id,
-        groupFlow.cityId,
-        'flow_detail'
-      );
+      // Sprint 9: Flow view activity removed - using ViewedCity tracking only
 
       res.json({
         success: true,

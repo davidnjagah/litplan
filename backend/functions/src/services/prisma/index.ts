@@ -7,6 +7,7 @@
  *
  * @module services/prisma
  * @since Sprint 5 Phase 2 - Prisma Service Layer
+ * @updated Sprint 9 - Removed ActivityType export (UserActivity model removed)
  */
 
 // Service exports
@@ -39,7 +40,6 @@ export {
 } from './SubscriptionService';
 export {
   UserActivityService,
-  type LogActivityData,
   type SavedCityWithDetails,
   type ViewedCityWithDetails,
 } from './UserActivityService';
@@ -50,9 +50,9 @@ export {
 } from './AppConfigService';
 
 // Re-export commonly used Prisma types for convenience
+// Sprint 9: Removed ActivityType - UserActivity model removed
 export {
   PlanType,
-  ActivityType,
   SubscriptionStatus,
   SubscriptionTier,
 } from '@prisma/client';

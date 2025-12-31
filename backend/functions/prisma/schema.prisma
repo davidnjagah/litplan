@@ -34,7 +34,6 @@ model User {
 
   // Relations
   subscription  Subscription?
-  activities    UserActivity[]
   savedCities   SavedCity[]
   viewedCities  ViewedCity[]
 
@@ -262,37 +261,8 @@ model GroupFlowStep {
 }
 
 // ==================== USER ACTIVITY ====================
-
-model UserActivity {
-  id        String       @id @default(cuid())
-  userId    String
-
-  type      ActivityType
-  cityId    String?
-  planId    String?
-  flowId    String?
-
-  source    String? // e.g., 'explore_tab', 'search'
-  sessionId String?
-
-  createdAt DateTime     @default(now())
-
-  // Relations
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([createdAt])
-  @@index([type])
-}
-
-enum ActivityType {
-  VIEWED_CITY
-  VIEWED_PLAN
-  VIEWED_FLOW
-  SAVED_CITY
-  UNSAVED_CITY
-  SEARCH
-}
+// Sprint 9: Removed UserActivity model and ActivityType enum
+// Activity tracking is now done through ViewedCity and SavedCity tables only
 
 model SavedCity {
   id      String   @id @default(cuid())

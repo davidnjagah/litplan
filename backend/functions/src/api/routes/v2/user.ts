@@ -6,6 +6,7 @@
  * @module api/routes/v2/user
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
  * @updated Sprint 6 Phase 2 - Supabase Auth Integration
+ * @updated Sprint 9 - Removed UserActivity model, activity tracked via ViewedCity only
  */
 
 import { Router, Response } from 'express';
@@ -422,44 +423,7 @@ router.delete(
   }
 );
 
-/**
- * GET /api/v2/user/activity
- * Get recent activity (auth required)
- */
-router.get(
-  '/activity',
-  requireAuthWithUser,
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
-      const activities = await UserActivityService.getRecentActivity(req.user!.id, limit);
-
-      res.json({
-        success: true,
-        data: {
-          activities: activities.map((activity) => ({
-            id: activity.id,
-            type: activity.type,
-            cityId: activity.cityId,
-            planId: activity.planId,
-            flowId: activity.flowId,
-            source: activity.source,
-            createdAt: activity.createdAt,
-          })),
-          count: activities.length,
-        },
-      });
-    } catch (error) {
-      console.error('Error fetching user activity:', error);
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'SERVER_ERROR',
-          message: 'Failed to fetch user activity',
-        },
-      });
-    }
-  }
-);
+// Sprint 9: Removed /activity endpoint - UserActivity model has been removed
+// Activity is now tracked via ViewedCity table only
 
 export default router;

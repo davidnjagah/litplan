@@ -7,6 +7,7 @@
  * @module services/prisma/UserService
  * @since Sprint 5 Phase 2 - Prisma Service Layer
  * @updated Sprint 6 Phase 2 - Supabase Auth Integration
+ * @updated Sprint 9 - Enhanced user sync for all auth methods (Email, Google, Apple)
  */
 
 import prisma from '../../lib/prisma';
@@ -333,6 +334,49 @@ export class UserService {
     } catch (error) {
       console.error('Error upserting user:', error);
       throw new Error('Failed to get or create user');
+    }
+  }
+
+  /**
+   * Sync user from auth provider (Email, Google, Apple)
+   * Creates user if not exists, updates with latest provider info if exists
+   *
+   * This is the primary method called after any auth method login to ensure
+   * the user is saved to the database with all provider information.
+   *
+   * @param supabaseUserId - The Supabase user ID from auth
+   * @param email - User's email from auth provider
+   * @param displayName - Display name from auth provider (optional)
+   * @param imageUrl - Profile image URL from auth provider (optional, common with Google/Apple)
+   * @returns User with subscription data
+   * @since Sprint 9 - Unified user sync for all auth methods
+   */
+  static async syncUserFromAuth(
+    supabaseUserId: string,
+    email?: string,
+    displayName?: string,
+    imageUrl?: string
+  ): Promise<User> {
+    try {
+      // Build update data - only include fields that are provided
+      const updateData: UpdateUserInput = {};
+      if (email !== undefined) updateData.email = email;
+      if (displayName !== undefined) updateData.displayName = displayName;
+      if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+
+      return await prisma.user.upsert({
+        where: { supabaseUserId },
+        update: updateData,
+        create: {
+          supabaseUserId,
+          email,
+          displayName: displayName || email?.split('@')[0],
+          imageUrl,
+        },
+      });
+    } catch (error) {
+      console.error(`Error syncing user from auth for ${supabaseUserId}:`, error);
+      throw new Error('Failed to sync user from auth');
     }
   }
 }

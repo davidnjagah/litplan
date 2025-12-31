@@ -20,6 +20,15 @@ const router = Router();
 /**
  * POST /api/v2/auth/supabase/sync
  * Sync Supabase user to database (called after login)
+ *
+ * Works for all auth methods: Email, Google, Apple
+ * Creates user if not exists, updates with latest provider info if exists
+ *
+ * Request body (optional):
+ * - displayName: string - Display name from auth provider
+ * - imageUrl: string - Profile image URL from auth provider (Google/Apple)
+ *
+ * @since Sprint 9 - Enhanced for all auth methods
  */
 router.post(
   '/sync',
@@ -27,6 +36,36 @@ router.post(
   loadUser,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
+      // If client sends additional provider data (displayName, imageUrl), update the user
+      const { displayName, imageUrl } = req.body || {};
+
+      if (displayName || imageUrl) {
+        // Update user with additional provider data
+        const updateData: { displayName?: string; imageUrl?: string } = {};
+        if (displayName) updateData.displayName = displayName;
+        if (imageUrl) updateData.imageUrl = imageUrl;
+
+        await UserService.updateUser(req.user!.id, updateData);
+
+        // Reload user with updated data
+        const updatedUser = await UserService.getUserWithSubscription(req.user!.id);
+        if (updatedUser) {
+          req.user = {
+            id: updatedUser.id,
+            supabaseUserId: updatedUser.supabaseUserId,
+            email: updatedUser.email || undefined,
+            displayName: updatedUser.displayName || undefined,
+            subscription: updatedUser.subscription
+              ? {
+                  tier: updatedUser.subscription.tier,
+                  status: updatedUser.subscription.status,
+                  expiryDate: updatedUser.subscription.expiryDate || undefined,
+                }
+              : null,
+          };
+        }
+      }
+
       res.json({
         success: true,
         data: {

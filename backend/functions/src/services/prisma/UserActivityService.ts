@@ -2,28 +2,19 @@
  * User Activity Service
  *
  * Provides CRUD operations for user activity tracking.
- * Handles activity logging, viewed cities, saved cities, and user engagement metrics.
+ * Handles viewed cities, saved cities, and user engagement metrics.
  *
  * @module services/prisma/UserActivityService
  * @since Sprint 5 Phase 2 - Prisma Service Layer
+ * @updated Sprint 9 - Removed UserActivity model, using ViewedCity/SavedCity only
  */
 
 import prisma from '../../lib/prisma';
 import {
-  UserActivity,
-  ActivityType,
   SavedCity,
   ViewedCity,
   City,
 } from '@prisma/client';
-
-export interface LogActivityData {
-  cityId?: string;
-  planId?: string;
-  flowId?: string;
-  source?: string;
-  sessionId?: string;
-}
 
 export interface SavedCityWithDetails extends SavedCity {
   city: City;
@@ -34,36 +25,6 @@ export interface ViewedCityWithDetails extends ViewedCity {
 }
 
 export class UserActivityService {
-  /**
-   * Log a user activity
-   * @param userId - The user's primary ID
-   * @param type - The activity type
-   * @param data - Optional activity data
-   * @returns Created activity record
-   */
-  static async logActivity(
-    userId: string,
-    type: ActivityType,
-    data?: LogActivityData
-  ): Promise<UserActivity> {
-    try {
-      return await prisma.userActivity.create({
-        data: {
-          userId,
-          type,
-          cityId: data?.cityId,
-          planId: data?.planId,
-          flowId: data?.flowId,
-          source: data?.source,
-          sessionId: data?.sessionId,
-        },
-      });
-    } catch (error) {
-      console.error(`Error logging activity for user ${userId}:`, error);
-      throw new Error('Failed to log activity');
-    }
-  }
-
   /**
    * Get viewed cities for a user
    * @param userId - The user's primary ID
@@ -141,9 +102,6 @@ export class UserActivityService {
         },
       });
 
-      // Log the save activity
-      await this.logActivity(userId, ActivityType.SAVED_CITY, { cityId });
-
       return savedCity;
     } catch (error) {
       console.error(`Error saving city ${cityId} for user ${userId}:`, error);
@@ -166,13 +124,7 @@ export class UserActivityService {
         },
       });
 
-      if (result.count > 0) {
-        // Log the unsave activity
-        await this.logActivity(userId, ActivityType.UNSAVED_CITY, { cityId });
-        return true;
-      }
-
-      return false;
+      return result.count > 0;
     } catch (error) {
       console.error(`Error unsaving city ${cityId} for user ${userId}:`, error);
       throw new Error('Failed to unsave city');
@@ -208,80 +160,10 @@ export class UserActivityService {
         },
       });
 
-      // Log the view activity
-      await this.logActivity(userId, ActivityType.VIEWED_CITY, { cityId });
-
       return viewedCity;
     } catch (error) {
       console.error(`Error recording city view ${cityId} for user ${userId}:`, error);
       throw new Error('Failed to record city view');
-    }
-  }
-
-  /**
-   * Record a plan view for a user
-   * @param userId - The user's primary ID
-   * @param planId - The plan's primary ID
-   * @param cityId - The city's primary ID (optional)
-   * @param source - The source of the view (optional)
-   * @returns Created activity record
-   */
-  static async recordPlanView(
-    userId: string,
-    planId: string,
-    cityId?: string,
-    source?: string
-  ): Promise<UserActivity> {
-    try {
-      return await this.logActivity(userId, ActivityType.VIEWED_PLAN, {
-        planId,
-        cityId,
-        source,
-      });
-    } catch (error) {
-      console.error(`Error recording plan view ${planId} for user ${userId}:`, error);
-      throw new Error('Failed to record plan view');
-    }
-  }
-
-  /**
-   * Record a flow view for a user
-   * @param userId - The user's primary ID
-   * @param flowId - The flow's primary ID
-   * @param cityId - The city's primary ID (optional)
-   * @param source - The source of the view (optional)
-   * @returns Created activity record
-   */
-  static async recordFlowView(
-    userId: string,
-    flowId: string,
-    cityId?: string,
-    source?: string
-  ): Promise<UserActivity> {
-    try {
-      return await this.logActivity(userId, ActivityType.VIEWED_FLOW, {
-        flowId,
-        cityId,
-        source,
-      });
-    } catch (error) {
-      console.error(`Error recording flow view ${flowId} for user ${userId}:`, error);
-      throw new Error('Failed to record flow view');
-    }
-  }
-
-  /**
-   * Record a search activity
-   * @param userId - The user's primary ID
-   * @param source - Search source/query info
-   * @returns Created activity record
-   */
-  static async recordSearch(userId: string, source: string): Promise<UserActivity> {
-    try {
-      return await this.logActivity(userId, ActivityType.SEARCH, { source });
-    } catch (error) {
-      console.error(`Error recording search for user ${userId}:`, error);
-      throw new Error('Failed to record search');
     }
   }
 
@@ -306,55 +188,6 @@ export class UserActivityService {
     } catch (error) {
       console.error(`Error checking if city ${cityId} is saved for user ${userId}:`, error);
       throw new Error('Failed to check saved city status');
-    }
-  }
-
-  /**
-   * Get user's recent activity
-   * @param userId - The user's primary ID
-   * @param limit - Maximum number of activities to return
-   * @returns Array of recent activities
-   */
-  static async getRecentActivity(
-    userId: string,
-    limit?: number
-  ): Promise<UserActivity[]> {
-    try {
-      return await prisma.userActivity.findMany({
-        where: { userId },
-        take: limit || 50,
-        orderBy: { createdAt: 'desc' },
-      });
-    } catch (error) {
-      console.error(`Error fetching recent activity for user ${userId}:`, error);
-      throw new Error('Failed to fetch recent activity');
-    }
-  }
-
-  /**
-   * Get activity by type for a user
-   * @param userId - The user's primary ID
-   * @param type - The activity type to filter by
-   * @param limit - Maximum number of activities to return
-   * @returns Array of activities of the specified type
-   */
-  static async getActivityByType(
-    userId: string,
-    type: ActivityType,
-    limit?: number
-  ): Promise<UserActivity[]> {
-    try {
-      return await prisma.userActivity.findMany({
-        where: {
-          userId,
-          type,
-        },
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      });
-    } catch (error) {
-      console.error(`Error fetching ${type} activities for user ${userId}:`, error);
-      throw new Error(`Failed to fetch ${type} activities`);
     }
   }
 
@@ -401,6 +234,22 @@ export class UserActivityService {
     } catch (error) {
       console.error(`Error counting cities viewed this week for user ${userId}:`, error);
       throw new Error('Failed to count cities viewed this week');
+    }
+  }
+
+  /**
+   * Get viewed city count for a user
+   * @param userId - The user's primary ID
+   * @returns Number of viewed cities
+   */
+  static async getViewedCityCount(userId: string): Promise<number> {
+    try {
+      return await prisma.viewedCity.count({
+        where: { userId },
+      });
+    } catch (error) {
+      console.error(`Error counting viewed cities for user ${userId}:`, error);
+      throw new Error('Failed to count viewed cities');
     }
   }
 }

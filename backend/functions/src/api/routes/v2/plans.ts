@@ -6,6 +6,7 @@
  * @module api/routes/v2/plans
  * @since Sprint 5 Phase 4 - API Migration to Prisma + Clerk
  * @updated Sprint 6 Phase 2 - Supabase Auth Integration
+ * @updated Sprint 9 - Removed UserActivity tracking, using ViewedCity only
  */
 
 import { Router, Response } from 'express';
@@ -17,7 +18,6 @@ import {
   CityService,
   PlanService,
   SubscriptionService,
-  UserActivityService,
 } from '../../../services/prisma';
 
 const router = Router();
@@ -121,13 +121,7 @@ router.get(
         return;
       }
 
-      // Record plan view activity
-      await UserActivityService.recordPlanView(
-        req.user!.id,
-        plan.id,
-        plan.cityId,
-        'plan_detail'
-      );
+      // Sprint 9: Plan view activity removed - using ViewedCity tracking only
 
       // Get the plan with city information
       const planWithCity = await PlanService.getPlanWithCity(plan.id);
