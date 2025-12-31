@@ -10,6 +10,7 @@ import Foundation
 import SwiftUI
 import AuthenticationServices
 import Supabase
+import SafariServices
 
 /// Authentication state for the app
 enum AuthState {
@@ -205,30 +206,76 @@ class AuthenticationManager: NSObject, ObservableObject {
 
     // MARK: - Sign In with Google
 
-    /// Handle Sign in with Google using Supabase OAuth
+    /// Handle Sign in with Google using ASWebAuthenticationSession
+    /// This opens a secure in-app browser sheet that handles redirects automatically
     func signInWithGoogle() async {
         isLoading = true
         errorMessage = nil
 
         do {
+            // Use the bundle ID as the callback scheme (no registration needed for ASWebAuthenticationSession)
+            let callbackScheme = "com.litplan.app"
+            let redirectURL = URL(string: "\(callbackScheme)://oauth-callback")!
+
             // Get the OAuth sign in URL for Google provider
             let oauthURL = try supabaseManager.client.auth.getOAuthSignInURL(
                 provider: .google,
-                redirectTo: URL(string: "com.litplan.app://oauth-callback")
+                redirectTo: redirectURL
             )
 
-            // Open the OAuth URL in the system browser
-            if await UIApplication.shared.canOpenURL(oauthURL) {
-                await UIApplication.shared.open(oauthURL)
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Starting Google OAuth with URL: \(oauthURL)")
+            }
 
-                if Config.enableDebugLogging {
-                    print("[AuthenticationManager] Google OAuth URL opened: \(oauthURL)")
+            // Use ASWebAuthenticationSession for secure in-app OAuth
+            let callbackURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+                let session = ASWebAuthenticationSession(
+                    url: oauthURL,
+                    callbackURLScheme: callbackScheme
+                ) { callbackURL, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else if let callbackURL = callbackURL {
+                        continuation.resume(returning: callbackURL)
+                    } else {
+                        continuation.resume(throwing: AuthError.unknown("No callback URL received"))
+                    }
                 }
-            } else {
-                self.errorMessage = "Cannot open Google Sign In"
-                if Config.enableDebugLogging {
-                    print("[AuthenticationManager] Cannot open OAuth URL: \(oauthURL)")
+
+                session.presentationContextProvider = self
+                session.prefersEphemeralWebBrowserSession = false // Allow SSO
+
+                DispatchQueue.main.async {
+                    session.start()
                 }
+            }
+
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] OAuth callback received: \(callbackURL)")
+            }
+
+            // Extract the session from the callback URL
+            let session = try await supabaseManager.client.auth.session(from: callbackURL)
+
+            // Update session
+            supabaseManager.updateSession(Session(from: session))
+            supabaseManager.updateUser(SupabaseUser(from: session.user))
+
+            self.currentUser = SupabaseUser(from: session.user)
+            self.authState = .authenticated
+
+            // Sync with backend
+            await syncUserWithBackend()
+
+            UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
+
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Google Sign In successful for user: \(session.user.id)")
+            }
+        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+            // User cancelled - don't show error
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Google Sign In cancelled by user")
             }
         } catch {
             self.errorMessage = "Google Sign In failed: \(error.localizedDescription)"
@@ -499,6 +546,19 @@ extension AuthenticationManager: ASAuthorizationControllerDelegate {
 extension AuthenticationManager: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         // Get the key window for presenting the Apple Sign In sheet
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first else {
+            return UIWindow()
+        }
+        return window
+    }
+}
+
+// MARK: - ASWebAuthenticationPresentationContextProviding
+
+extension AuthenticationManager: ASWebAuthenticationPresentationContextProviding {
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        // Get the key window for presenting the web authentication sheet
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = scene.windows.first else {
             return UIWindow()

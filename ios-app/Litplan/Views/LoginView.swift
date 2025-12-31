@@ -105,30 +105,25 @@ struct LoginView: View {
             .frame(height: 50)
             .cornerRadius(Spacing.sm)
 
-            // Sign in with Google
+            // Sign in with Google (matches Apple button style)
             Button(action: {
                 Task {
                     await authManager.signInWithGoogle()
                 }
             }) {
-                HStack(spacing: Spacing.md) {
+                HStack(spacing: Spacing.sm) {
                     // Google "G" logo using custom view
                     GoogleLogoView()
-                        .frame(width: 20, height: 20)
+                        .frame(width: 16, height: 16)
 
                     Text("Sign in with Google")
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(.textPrimary)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.black)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .background(Color.white)
                 .cornerRadius(Spacing.sm)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Spacing.sm)
-                        .stroke(Color.surfaceSecondary, lineWidth: 1)
-                )
             }
 
             // Divider
