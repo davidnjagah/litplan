@@ -49,8 +49,10 @@ struct LoginView: View {
             // Loading overlay
             if authManager.isLoading {
                 loadingOverlay
+                    .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: authManager.isLoading)
         .alert("Error", isPresented: .constant(authManager.errorMessage != nil)) {
             Button("OK") {
                 authManager.clearError()

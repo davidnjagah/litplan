@@ -49,13 +49,17 @@ struct ViewedCitiesView: View {
 
                 if isLoading && viewedCities.isEmpty {
                     loadingView
+                        .transition(.opacity)
                 } else if viewedCities.isEmpty {
                     // Show recommended cities instead of error or empty state
                     recommendedCitiesView
+                        .transition(.opacity)
                 } else {
                     viewedCitiesList
+                        .transition(.opacity)
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: isLoading)
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $showCityDetails) {
                 if let city = selectedCity {

@@ -227,25 +227,31 @@ struct ProfileView: View {
                 // Pro users see their saved cities
                 if isLoadingSavedCities {
                     loadingStateCard
+                        .transition(.opacity)
                 } else if let error = savedCitiesError {
                     errorStateCard(message: error)
+                        .transition(.opacity)
                 } else if savedCities.isEmpty {
                     emptyStateCard(
                         icon: "bookmark",
                         title: "No saved cities yet",
                         description: "Cities you save will appear here"
                     )
+                    .transition(.opacity)
                 } else {
                     ForEach(savedCities) { city in
                         savedCityRow(city)
                     }
                     .padding(.horizontal, Spacing.md)
+                    .transition(.opacity)
                 }
             } else {
                 // Free users see upgrade prompt
                 upgradeToProCard
+                    .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: isLoadingSavedCities)
     }
 
     // MARK: - Loading State Card

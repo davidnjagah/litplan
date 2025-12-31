@@ -236,6 +236,7 @@ struct CityDetailsView: View {
                 .frame(height: 200)
                 .accessibilityLabel("Loading plans")
                 .accessibilityValue("Please wait")
+                .transition(.opacity)
             } else if plans.isEmpty {
                 // Empty state - shown if no plans available for this city
                 VStack(spacing: 12) {
@@ -252,16 +253,21 @@ struct CityDetailsView: View {
                 }
                 .frame(height: 200)
                 .padding(.horizontal, Spacing.lg)
+                .transition(.opacity)
             } else {
-                if selectedTab == .individual {
-                    individualPlansList
-                } else {
-                    groupPlansList
+                Group {
+                    if selectedTab == .individual {
+                        individualPlansList
+                    } else {
+                        groupPlansList
+                    }
                 }
+                .transition(.opacity)
             }
         }
         .padding(.horizontal, Spacing.md)
         .padding(.top, Spacing.md)
+        .animation(.easeInOut(duration: 0.2), value: isLoading)
     }
 
     // MARK: - Individual Plans List

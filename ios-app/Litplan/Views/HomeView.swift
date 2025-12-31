@@ -81,20 +81,24 @@ struct HomeView: View {
                 if isLoading {
                     // Loading state
                     LoadingStateView(message: "Loading plans...")
+                        .transition(.opacity)
                 } else if hasError {
                     // Error state with smart error parsing
-                    if let error = errorData {
-                        ErrorStateView(error: error) {
-                            loadPlans()
-                        }
-                    } else {
-                        ErrorStateView(
-                            title: "Connection Lost",
-                            message: "Unable to load plans. Please check your connection and try again."
-                        ) {
-                            loadPlans()
+                    Group {
+                        if let error = errorData {
+                            ErrorStateView(error: error) {
+                                loadPlans()
+                            }
+                        } else {
+                            ErrorStateView(
+                                title: "Connection Lost",
+                                message: "Unable to load plans. Please check your connection and try again."
+                            ) {
+                                loadPlans()
+                            }
                         }
                     }
+                    .transition(.opacity)
                 } else if cities.isEmpty {
                     // Empty state
                     VStack(spacing: 0) {
@@ -112,6 +116,7 @@ struct HomeView: View {
                             }
                         )
                     }
+                    .transition(.opacity)
                 } else {
                     // Content loaded successfully
                     ScrollView(.vertical, showsIndicators: false) {
@@ -168,8 +173,11 @@ struct HomeView: View {
                     .refreshable {
                         await refreshPlans()
                     }
+                    .transition(.opacity)
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: isLoading)
+            .animation(.easeInOut(duration: 0.2), value: hasError)
             .navigationBarHidden(true)
             .toast($toast)
             .sheet(item: $paywallTrigger) { trigger in
