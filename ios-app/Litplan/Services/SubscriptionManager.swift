@@ -24,6 +24,7 @@ class SubscriptionManager: ObservableObject {
     @Published var isProUser: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var isTestMode: Bool = false  // Indicates if Pro was granted via test mode
 
     // MARK: - Private Properties
 
@@ -44,6 +45,9 @@ class SubscriptionManager: ObservableObject {
     private init() {
         // Start listening for transaction updates in a detached task
         updateListenerTask = listenForTransactions()
+
+        // Check for persisted test access first
+        checkPersistedTestAccess()
 
         // Load products and check subscription status on init
         // Use Task with @MainActor to ensure proper actor context
@@ -432,6 +436,66 @@ class SubscriptionManager: ObservableObject {
     /// - Returns: True if the product is currently active
     func isPurchased(_ productID: String) -> Bool {
         return purchasedProductIDs.contains(productID)
+    }
+
+    // MARK: - Test Mode Methods
+
+    /// Check if the current user should have test Pro access
+    /// Call this after user signs in
+    func checkTestProAccess() {
+        guard Config.enableStoreKitTesting else { return }
+
+        // Get current user email from Supabase
+        let userEmail = SupabaseManager.shared.currentUser?.email?.lowercased()
+
+        // Check if user is in test Pro users list
+        if let email = userEmail, Config.testProUserEmails.map({ $0.lowercased() }).contains(email) {
+            grantTestProAccess()
+            print("[SubscriptionManager] Test Pro access granted for: \(email)")
+        }
+    }
+
+    /// Grant Pro access for testing (without payment)
+    func grantTestProAccess() {
+        guard Config.enableStoreKitTesting else {
+            print("[SubscriptionManager] Test mode is disabled in Config")
+            return
+        }
+
+        isProUser = true
+        isTestMode = true
+        purchasedProductIDs.insert("com.litplan.pro.monthly.test")
+
+        // Persist test mode
+        UserDefaults.standard.set(true, forKey: "testProAccess")
+
+        print("[SubscriptionManager] Test Pro access GRANTED - isProUser: \(isProUser)")
+    }
+
+    /// Revoke test Pro access
+    func revokeTestProAccess() {
+        isTestMode = false
+        purchasedProductIDs.remove("com.litplan.pro.monthly.test")
+        UserDefaults.standard.set(false, forKey: "testProAccess")
+
+        // Re-check actual subscription status
+        Task {
+            await checkSubscriptionStatus()
+        }
+
+        print("[SubscriptionManager] Test Pro access REVOKED")
+    }
+
+    /// Check if test mode was previously granted (on app launch)
+    private func checkPersistedTestAccess() {
+        guard Config.enableStoreKitTesting else { return }
+
+        if UserDefaults.standard.bool(forKey: "testProAccess") {
+            isProUser = true
+            isTestMode = true
+            purchasedProductIDs.insert("com.litplan.pro.monthly.test")
+            print("[SubscriptionManager] Restored persisted test Pro access")
+        }
     }
 }
 

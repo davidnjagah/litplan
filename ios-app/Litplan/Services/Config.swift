@@ -119,6 +119,17 @@ enum Config {
         #endif
     }
 
+    /// Enable StoreKit testing mode (bypasses real payments)
+    /// Set to true to test Pro features without actual payment
+    static let enableStoreKitTesting = true
+
+    /// Test user emails that should automatically get Pro access
+    static let testProUserEmails: [String] = [
+        "davidwoguya@gmail.com",
+        "test@litplan.app",
+        "demo@litplan.app"
+    ]
+
     // MARK: - Timeouts
 
     /// API request timeout in seconds

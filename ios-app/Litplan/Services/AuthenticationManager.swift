@@ -515,6 +515,9 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         // Store user ID locally for quick access
         UserDefaults.standard.set(user.id, forKey: Config.UserDefaultsKeys.cachedUserId)
+
+        // Check if user should have test Pro access (for testing without payment)
+        SubscriptionManager.shared.checkTestProAccess()
     }
 
     // MARK: - Helper Methods
