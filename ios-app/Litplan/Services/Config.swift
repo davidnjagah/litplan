@@ -85,6 +85,16 @@ enum Config {
         static var health: String {
             return "\(apiBaseURL)/health"
         }
+
+        /// Viewed cities endpoint
+        static var viewedCities: String {
+            return "\(apiBaseURL)/user/viewed-cities"
+        }
+
+        /// Record city view endpoint
+        static func recordCityView(cityId: String) -> String {
+            return "\(apiBaseURL)/user/viewed-cities/\(cityId)"
+        }
     }
 
     // MARK: - App Configuration

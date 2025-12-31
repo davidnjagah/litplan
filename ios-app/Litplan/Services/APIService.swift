@@ -323,6 +323,37 @@ class APIService: ObservableObject {
         return response.profile
     }
 
+    // MARK: - Viewed Cities API
+
+    /// Fetch user's viewed cities with pagination
+    /// - Parameters:
+    ///   - limit: Maximum number of cities to fetch (default: 20)
+    ///   - offset: Number of cities to skip for pagination (default: 0)
+    /// - Returns: ViewedCitiesResponse containing cities, total count, and hasMore flag
+    func fetchViewedCities(limit: Int = 20, offset: Int = 0) async throws -> ViewedCitiesResponse {
+        let endpoint = "\(Config.Endpoints.viewedCities)?limit=\(limit)&offset=\(offset)"
+        let response: ViewedCitiesResponse = try await request(
+            endpoint: endpoint,
+            method: .GET,
+            requiresAuth: true
+        )
+        return response
+    }
+
+    /// Record a city view - call this when user taps on a city
+    /// - Parameter cityId: The ID of the city being viewed
+    func recordCityView(cityId: String) async throws {
+        try await requestVoid(
+            endpoint: Config.Endpoints.recordCityView(cityId: cityId),
+            method: .POST,
+            requiresAuth: true
+        )
+
+        if Config.enableDebugLogging {
+            print("[APIService] Recorded city view for: \(cityId)")
+        }
+    }
+
     // MARK: - Config API
 
     /// Fetch app configuration
@@ -415,6 +446,25 @@ struct AppConfigResponse: Codable {
 struct HealthResponse: Codable {
     let status: String
     let timestamp: String?
+}
+
+// MARK: - Viewed Cities Response Models
+
+struct ViewedCitiesResponse: Codable {
+    let cities: [ViewedCityData]
+    let total: Int
+    let hasMore: Bool
+}
+
+struct ViewedCityData: Codable {
+    let cityId: String
+    let city: City
+    let viewCount: Int
+    let lastViewedAt: Date
+}
+
+struct RecordCityViewRequest: Codable {
+    let cityId: String
 }
 
 // MARK: - Fallback to Mock Data

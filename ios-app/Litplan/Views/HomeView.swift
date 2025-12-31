@@ -297,6 +297,17 @@ struct HomeView: View {
             }
         }
 
+        // Record city view to backend (fire and forget)
+        Task {
+            do {
+                try await APIService.shared.recordCityView(cityId: city.id)
+            } catch {
+                if Config.enableDebugLogging {
+                    print("[HomeView] Failed to record city view: \(error)")
+                }
+            }
+        }
+
         // Show city details
         selectedCity = city
         showCityDetails = true

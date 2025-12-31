@@ -4,17 +4,28 @@
 //
 //  Created by UI Designer Agent on 12/28/25.
 //  Sprint 2, Day 9 - Viewed Cities tab with history of cities user has explored
+//  Sprint 10 - Connected to real API data with pagination
 //
 
 import SwiftUI
 
 struct ViewedCitiesView: View {
+    // MARK: - State Properties
     @State private var viewedCities: [ViewedCity] = []
     @State private var isLoading: Bool = false
+    @State private var isLoadingMore: Bool = false
     @State private var isRefreshing: Bool = false
+    @State private var hasError: Bool = false
+    @State private var errorData: Error?
     @State private var selectedCity: City?
     @State private var showCityDetails: Bool = false
     @State private var paywallTrigger: PaywallTrigger? = nil
+
+    // Pagination state
+    @State private var currentOffset: Int = 0
+    @State private var hasMoreData: Bool = true
+    @State private var totalCount: Int = 0
+    private let pageSize: Int = 20
 
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
@@ -29,8 +40,10 @@ struct ViewedCitiesView: View {
                 Color.appBackground
                     .ignoresSafeArea()
 
-                if isLoading {
+                if isLoading && viewedCities.isEmpty {
                     loadingView
+                } else if hasError && viewedCities.isEmpty {
+                    errorView
                 } else if viewedCities.isEmpty {
                     emptyStateView
                 } else {
@@ -52,7 +65,9 @@ struct ViewedCitiesView: View {
                 .environmentObject(subscriptionManager)
             }
             .onAppear {
-                loadViewedCities()
+                if viewedCities.isEmpty {
+                    loadViewedCities()
+                }
             }
         }
     }
@@ -60,6 +75,24 @@ struct ViewedCitiesView: View {
     // MARK: - Loading View
     private var loadingView: some View {
         LoadingStateView(message: "Loading your cities...")
+    }
+
+    // MARK: - Error View
+    private var errorView: some View {
+        Group {
+            if let error = errorData {
+                ErrorStateView(error: error) {
+                    loadViewedCities()
+                }
+            } else {
+                ErrorStateView(
+                    title: "Unable to Load Cities",
+                    message: "We couldn't load your viewed cities. Please try again."
+                ) {
+                    loadViewedCities()
+                }
+            }
+        }
     }
 
     // MARK: - Empty State View
@@ -82,7 +115,7 @@ struct ViewedCitiesView: View {
                             .font(.displayLarge)
                             .foregroundColor(.textPrimary)
 
-                        Text("\(viewedCities.count) cit\(viewedCities.count == 1 ? "y" : "ies") viewed")
+                        Text("\(totalCount) cit\(totalCount == 1 ? "y" : "ies") viewed")
                             .font(.callout)
                             .foregroundColor(.textSecondary)
                     }
@@ -99,6 +132,24 @@ struct ViewedCitiesView: View {
                         ViewedCityCard(viewedCity: viewedCity) {
                             handleCityTap(viewedCity)
                         }
+                        .onAppear {
+                            // Load more when reaching near the end
+                            if viewedCity.id == viewedCities.last?.id && hasMoreData && !isLoadingMore {
+                                loadMoreCities()
+                            }
+                        }
+                    }
+
+                    // Loading more indicator
+                    if isLoadingMore {
+                        HStack {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .accentPrimary))
+                            Text("Loading more...")
+                                .font(.callout)
+                                .foregroundColor(.textSecondary)
+                        }
+                        .padding(.vertical, Spacing.md)
                     }
                 }
                 .padding(.horizontal, Spacing.md)
@@ -110,31 +161,133 @@ struct ViewedCitiesView: View {
         }
     }
 
-    // MARK: - Helper Functions
+    // MARK: - Data Loading Functions
 
     private func loadViewedCities() {
         isLoading = true
+        hasError = false
+        errorData = nil
+        currentOffset = 0
 
-        // Simulate API call delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // For Day 9, using mock data
-            // In production, this would call GET /user/viewedCities API
-            viewedCities = ViewedCity.samples
+        Task {
+            do {
+                let response = try await APIService.shared.fetchViewedCities(limit: pageSize, offset: 0)
 
-            isLoading = false
+                await MainActor.run {
+                    // Convert ViewedCityData to ViewedCity
+                    viewedCities = response.cities.map { convertToViewedCity($0) }
+                    totalCount = response.total
+                    hasMoreData = response.hasMore
+                    currentOffset = viewedCities.count
+                    isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    // Check if user is authenticated
+                    if case APIError.unauthorized = error {
+                        // Use fallback mock data for unauthenticated users
+                        viewedCities = ViewedCity.samples
+                        totalCount = viewedCities.count
+                        hasMoreData = false
+                        isLoading = false
+
+                        if Config.enableDebugLogging {
+                            print("[ViewedCitiesView] User not authenticated, using mock data")
+                        }
+                    } else {
+                        errorData = error
+                        hasError = true
+                        isLoading = false
+
+                        if Config.enableDebugLogging {
+                            print("[ViewedCitiesView] Failed to load viewed cities: \(error)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadMoreCities() {
+        guard !isLoadingMore && hasMoreData else { return }
+
+        isLoadingMore = true
+
+        Task {
+            do {
+                let response = try await APIService.shared.fetchViewedCities(limit: pageSize, offset: currentOffset)
+
+                await MainActor.run {
+                    let newCities = response.cities.map { convertToViewedCity($0) }
+                    viewedCities.append(contentsOf: newCities)
+                    hasMoreData = response.hasMore
+                    currentOffset += newCities.count
+                    isLoadingMore = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingMore = false
+
+                    if Config.enableDebugLogging {
+                        print("[ViewedCitiesView] Failed to load more cities: \(error)")
+                    }
+                }
+            }
         }
     }
 
     private func refreshViewedCities() async {
         isRefreshing = true
+        currentOffset = 0
 
-        // Simulate API refresh
-        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        do {
+            let response = try await APIService.shared.fetchViewedCities(limit: pageSize, offset: 0)
 
-        // Reload data
-        viewedCities = ViewedCity.samples
+            await MainActor.run {
+                viewedCities = response.cities.map { convertToViewedCity($0) }
+                totalCount = response.total
+                hasMoreData = response.hasMore
+                currentOffset = viewedCities.count
+                hasError = false
+                errorData = nil
+                isRefreshing = false
+            }
+        } catch {
+            await MainActor.run {
+                isRefreshing = false
 
-        isRefreshing = false
+                // Don't show error on refresh if we already have data
+                if viewedCities.isEmpty {
+                    errorData = error
+                    hasError = true
+                }
+
+                if Config.enableDebugLogging {
+                    print("[ViewedCitiesView] Failed to refresh viewed cities: \(error)")
+                }
+            }
+        }
+    }
+
+    // MARK: - Helper Functions
+
+    /// Convert ViewedCityData (API response) to ViewedCity (local model)
+    private func convertToViewedCity(_ data: ViewedCityData) -> ViewedCity {
+        return ViewedCity(
+            cityId: data.cityId,
+            name: data.city.name,
+            country: data.city.country,
+            viewedAt: ViewedCity.ViewedTimestamp(
+                seconds: Int64(data.lastViewedAt.timeIntervalSince1970),
+                nanoseconds: 0
+            ),
+            viewCount: data.viewCount,
+            displayAssets: ViewedCity.DisplayAssets(
+                heroImageUrl: data.city.displayAssets.heroImageUrl,
+                thumbnailUrl: data.city.displayAssets.thumbnailUrl,
+                countryFlag: data.city.displayAssets.countryFlag
+            )
+        )
     }
 
     private func handleCityTap(_ viewedCity: ViewedCity) {
@@ -172,8 +325,18 @@ struct ViewedCitiesView: View {
             }
         }
 
+        // Record city view to backend
+        Task {
+            do {
+                try await APIService.shared.recordCityView(cityId: viewedCity.cityId)
+            } catch {
+                if Config.enableDebugLogging {
+                    print("[ViewedCitiesView] Failed to record city view: \(error)")
+                }
+            }
+        }
+
         // Convert ViewedCity to City for navigation
-        // In production, this would fetch the full City object from the backend
         let city = convertViewedCityToCity(viewedCity)
 
         selectedCity = city
