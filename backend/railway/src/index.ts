@@ -522,7 +522,7 @@ async function callSupabaseFunction(
       return { success: false, error: `HTTP ${response.status}: ${errorText}` };
     }
 
-    const data = await response.json();
+    const data = await response.json() as { success?: boolean; data?: unknown; error?: string };
     console.log(`[supabase] ${functionPath} completed`);
     return { success: data.success !== false, data: data.data || data, error: data.error };
   } catch (error) {
