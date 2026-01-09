@@ -338,7 +338,7 @@ async function storePlansToDatabase(
     venueName: venue.venueName,
     description: venue.description,
     category: venue.category.toLowerCase().replace(/\s+/g, '_'),
-    type: 'VENUE',
+    type: 'EVENT', // Plan table uses EVENT for all nightlife plans
     cityId: cityId,
     date: weekStartDate,
     weekday: venue.schedule?.bestNights?.[0] || 'Saturday',
