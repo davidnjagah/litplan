@@ -303,7 +303,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Store venues and events to the Plan table
+ * Store venues and events to the Plan table using BATCH inserts for speed
  */
 async function storePlansToDatabase(
   cityId: string,
@@ -316,7 +316,7 @@ async function storePlansToDatabase(
   const supabase = createServiceClient();
   const timestamp = Date.now();
   const citySlug = cityName.toLowerCase().replace(/\s+/g, '-');
-  let storedCount = 0;
+  const now = new Date().toISOString();
 
   // Delete old AI-generated individual plans for this city (from search-agent)
   const { error: deleteError } = await supabase
@@ -330,99 +330,99 @@ async function storePlansToDatabase(
     console.error('[search-agent] Error deleting old plans:', deleteError);
   }
 
-  // Store venues
-  for (let i = 0; i < venues.length; i++) {
-    const venue = venues[i];
-    const planId = `plan-${citySlug}-claude-${timestamp}-v${i}`;
+  // Prepare venue records for batch insert
+  const venueRecords = venues.map((venue, i) => ({
+    id: `plan-${citySlug}-claude-${timestamp}-v${i}`,
+    planId: `plan-${citySlug}-claude-${timestamp}-v${i}`,
+    title: venue.title,
+    venueName: venue.venueName,
+    description: venue.description,
+    category: venue.category.toLowerCase().replace(/\s+/g, '_'),
+    type: 'VENUE',
+    cityId: cityId,
+    date: weekStartDate,
+    weekday: venue.schedule?.bestNights?.[0] || 'Saturday',
+    isWeekend: ['Friday', 'Saturday', 'Sunday'].some(d =>
+      venue.schedule?.bestNights?.includes(d)
+    ),
+    startTime: venue.schedule?.typicalHours?.split('-')[0]?.trim() || '20:00',
+    endTime: venue.schedule?.typicalHours?.split('-')[1]?.trim() || '02:00',
+    latitude: venue.location?.latitude || 0,
+    longitude: venue.location?.longitude || 0,
+    address: venue.location?.address || '',
+    neighborhood: venue.location?.neighborhood || '',
+    priceRange: venue.pricing?.priceRange || '$$',
+    entryFee: venue.pricing?.entryFee || 0,
+    freeEntry: (venue.pricing?.entryFee || 0) === 0,
+    currency: venue.pricing?.currency || 'USD',
+    rank: i + 1,
+    source: 'ai-agent-claude',
+    aiGenerated: true,
+    isIndividual: true,
+    isGroup: false,
+    createdAt: now,
+    updatedAt: now,
+  }));
 
-    try {
-      const { error } = await supabase.from('Plan').insert({
-        id: planId,
-        planId: planId,
-        title: venue.title,
-        venueName: venue.venueName,
-        description: venue.description,
-        category: venue.category.toLowerCase().replace(/\s+/g, '_'),
-        type: 'VENUE',
-        cityId: cityId,
-        date: weekStartDate,
-        weekday: venue.schedule?.bestNights?.[0] || 'Saturday',
-        isWeekend: ['Friday', 'Saturday', 'Sunday'].some(d =>
-          venue.schedule?.bestNights?.includes(d)
-        ),
-        startTime: venue.schedule?.typicalHours?.split('-')[0]?.trim() || '20:00',
-        endTime: venue.schedule?.typicalHours?.split('-')[1]?.trim() || '02:00',
-        latitude: venue.location?.latitude || 0,
-        longitude: venue.location?.longitude || 0,
-        address: venue.location?.address || '',
-        neighborhood: venue.location?.neighborhood || '',
-        priceRange: venue.pricing?.priceRange || '$$',
-        entryFee: venue.pricing?.entryFee || 0,
-        freeEntry: (venue.pricing?.entryFee || 0) === 0,
-        currency: venue.pricing?.currency || 'USD',
-        rank: i + 1,
-        source: 'ai-agent-claude',
-        aiGenerated: true,
-        isIndividual: true,
-        isGroup: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+  // Prepare event records for batch insert
+  const eventRecords = events.map((event, i) => ({
+    id: `plan-${citySlug}-claude-${timestamp}-e${i}`,
+    planId: `plan-${citySlug}-claude-${timestamp}-e${i}`,
+    title: event.title,
+    venueName: event.venueName,
+    description: event.description,
+    category: event.category.toLowerCase().replace(/\s+/g, '_'),
+    type: 'EVENT',
+    cityId: cityId,
+    date: event.eventDate || event.schedule?.date || weekStartDate,
+    weekday: event.schedule?.dayOfWeek || 'Saturday',
+    isWeekend: ['Friday', 'Saturday', 'Sunday'].includes(event.schedule?.dayOfWeek || ''),
+    startTime: event.schedule?.startTime || '21:00',
+    endTime: event.schedule?.endTime || '03:00',
+    latitude: event.location?.latitude || 0,
+    longitude: event.location?.longitude || 0,
+    address: event.location?.address || '',
+    neighborhood: event.location?.neighborhood || '',
+    priceRange: event.pricing?.priceRange || '$$',
+    entryFee: event.pricing?.ticketPrice || 0,
+    freeEntry: (event.pricing?.ticketPrice || 0) === 0,
+    currency: event.pricing?.currency || 'USD',
+    rank: venues.length + i + 1,
+    source: 'ai-agent-claude',
+    aiGenerated: true,
+    isIndividual: true,
+    isGroup: false,
+    createdAt: now,
+    updatedAt: now,
+  }));
 
-      if (error) {
-        console.error(`[search-agent] Error storing venue ${venue.venueName}:`, error);
-      } else {
-        storedCount++;
-      }
-    } catch (err) {
-      console.error(`[search-agent] Exception storing venue ${venue.venueName}:`, err);
+  let storedCount = 0;
+
+  // Batch insert venues (single DB call)
+  if (venueRecords.length > 0) {
+    const { error: venueError, data: venueData } = await supabase
+      .from('Plan')
+      .insert(venueRecords);
+
+    if (venueError) {
+      console.error('[search-agent] Error batch inserting venues:', venueError);
+    } else {
+      storedCount += venueRecords.length;
+      console.log(`[search-agent] Batch inserted ${venueRecords.length} venues`);
     }
   }
 
-  // Store events
-  for (let i = 0; i < events.length; i++) {
-    const event = events[i];
-    const planId = `plan-${citySlug}-claude-${timestamp}-e${i}`;
+  // Batch insert events (single DB call)
+  if (eventRecords.length > 0) {
+    const { error: eventError, data: eventData } = await supabase
+      .from('Plan')
+      .insert(eventRecords);
 
-    try {
-      const { error } = await supabase.from('Plan').insert({
-        id: planId,
-        planId: planId,
-        title: event.title,
-        venueName: event.venueName,
-        description: event.description,
-        category: event.category.toLowerCase().replace(/\s+/g, '_'),
-        type: 'EVENT',
-        cityId: cityId,
-        date: event.eventDate || event.schedule?.date || weekStartDate,
-        weekday: event.schedule?.dayOfWeek || 'Saturday',
-        isWeekend: ['Friday', 'Saturday', 'Sunday'].includes(event.schedule?.dayOfWeek || ''),
-        startTime: event.schedule?.startTime || '21:00',
-        endTime: event.schedule?.endTime || '03:00',
-        latitude: event.location?.latitude || 0,
-        longitude: event.location?.longitude || 0,
-        address: event.location?.address || '',
-        neighborhood: event.location?.neighborhood || '',
-        priceRange: event.pricing?.priceRange || '$$',
-        entryFee: event.pricing?.ticketPrice || 0,
-        freeEntry: (event.pricing?.ticketPrice || 0) === 0,
-        currency: event.pricing?.currency || 'USD',
-        rank: venues.length + i + 1,
-        source: 'ai-agent-claude',
-        aiGenerated: true,
-        isIndividual: true,
-        isGroup: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      if (error) {
-        console.error(`[search-agent] Error storing event ${event.eventName}:`, error);
-      } else {
-        storedCount++;
-      }
-    } catch (err) {
-      console.error(`[search-agent] Exception storing event ${event.eventName}:`, err);
+    if (eventError) {
+      console.error('[search-agent] Error batch inserting events:', eventError);
+    } else {
+      storedCount += eventRecords.length;
+      console.log(`[search-agent] Batch inserted ${eventRecords.length} events`);
     }
   }
 
