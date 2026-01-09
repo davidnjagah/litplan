@@ -67,6 +67,27 @@ const CITY_CONFIGS: Record<string, any> = {
 - La Bellevilloise: 19-21 Rue Boyer, 75020 - Cultural venue, concerts, art
 - Rex Club: 5 Boulevard Poissonnière, 75002 - Techno institution since 1988
 - Concrete: Port de la Rapée, 75012 - Boat club, techno, Seine views`
+  },
+  'Nairobi': {
+    cityName: 'Nairobi',
+    country: 'Kenya',
+    currency: 'KES',
+    identity: 'The Safari Capital - vibrant African metropolis, buzzing nightlife, rich culture, and gateway to the wild',
+    vibe: 'Energetic, cosmopolitan, culturally rich, warm hospitality, rhythmic Afrobeats',
+    neighborhoods: ['Westlands', 'Kilimani', 'Karen', 'Lavington', 'CBD', 'Gigiri', 'Langata'],
+    coordRange: { lat: [-1.35, -1.20], lon: [36.70, 36.90] },
+    legendaryVenues: 'Alchemist Bar, B Club, Kiza Lounge, J\'s Fresh Bar, Havana, K1 Klubhouse, Brew Bistro, Mercury Lounge, 1824, Sarabi Rooftop',
+    venueDetails: `
+- Alchemist Bar: Parklands Road, Westlands - Industrial chic, multiple bars, live acts, art installations
+- B Club: Galana Plaza, Kilimani - Upscale nightclub, VIP experience, international DJs
+- Kiza Lounge: Galana Plaza, Kilimani - Afrobeats heaven, African luxury, celebrity hotspot
+- J's Fresh Bar: Parklands Road, Westlands - Craft cocktails, rooftop vibes, live music
+- Havana: Woodvale Grove, Westlands - Latin vibes, salsa nights, Cuban atmosphere
+- K1 Klubhouse: Parklands Road, Westlands - High-energy club, hip-hop and Afrobeats
+- Brew Bistro: Piedmont Plaza, Ngong Road - Craft brewery, rooftop bar, casual vibes
+- Mercury Lounge: ABC Place, Waiyaki Way - Live music venue, jazz and soul nights
+- 1824: The Promenade, General Mathenge Road - Speakeasy style, craft cocktails
+- Sarabi Rooftop: Pan Africa Insurance House, Kenyatta Ave - Skyline views, sundowners, lounge`
   }
 };
 
