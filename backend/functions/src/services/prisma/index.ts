@@ -37,6 +37,9 @@ export {
   type TransactionData,
   type Entitlements,
   type SubscriptionWithUser,
+  type StoreKit2TransactionData,
+  type ProductId,
+  PRODUCT_IDS,
 } from './SubscriptionService';
 export {
   UserActivityService,

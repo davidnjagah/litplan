@@ -26,13 +26,44 @@ export interface SubscriptionCreateInput {
   transactionId?: string;
   productId?: string;
   originalTransactionId?: string;
+  purchaseDate?: Date;
+  expiresDate?: Date;
+  environment?: string;
 }
 
 export interface TransactionData {
   transactionId: string;
   productId: string;
   originalTransactionId?: string;
+  purchaseDate?: Date;
+  expiresDate?: Date;
+  environment?: string;
 }
+
+/**
+ * StoreKit 2 transaction verification data
+ * Matches the data structure sent from iOS client
+ */
+export interface StoreKit2TransactionData {
+  transactionId: string;
+  originalTransactionId: string;
+  productId: string;
+  purchaseDate: string | Date;
+  expiresDate?: string | Date;
+  environment: 'sandbox' | 'production';
+  ownershipType?: string;
+  signedTransactionInfo?: string;
+}
+
+/**
+ * Supported product IDs
+ */
+export const PRODUCT_IDS = {
+  MONTHLY: 'litplan_pro_monthly',
+  YEARLY: 'litplan_pro_yearly',
+} as const;
+
+export type ProductId = typeof PRODUCT_IDS[keyof typeof PRODUCT_IDS];
 
 export interface Entitlements {
   tier: SubscriptionTier;
@@ -147,6 +178,9 @@ export class SubscriptionService {
           transactionId: data.transactionId,
           productId: data.productId,
           originalTransactionId: data.originalTransactionId,
+          purchaseDate: data.purchaseDate,
+          expiresDate: data.expiresDate,
+          environment: data.environment || 'production',
           ...entitlements,
         },
       });
@@ -219,6 +253,9 @@ export class SubscriptionService {
           transactionId: transactionData.transactionId,
           productId: transactionData.productId,
           originalTransactionId: transactionData.originalTransactionId,
+          purchaseDate: transactionData.purchaseDate,
+          expiresDate: transactionData.expiresDate,
+          environment: transactionData.environment || 'production',
           ...PRO_TIER_ENTITLEMENTS,
         },
       });
@@ -419,6 +456,243 @@ export class SubscriptionService {
     } catch (error) {
       console.error(`Error getting or creating subscription for user ${userId}:`, error);
       throw new Error('Failed to get or create subscription');
+    }
+  }
+
+  /**
+   * Verify and upsert a StoreKit 2 transaction
+   * This method validates the transaction data and creates/updates the subscription record
+   *
+   * @param userId - The user's primary ID
+   * @param transactionData - StoreKit 2 transaction data from iOS client
+   * @returns Updated subscription with verification result
+   */
+  static async verifyAndUpsertTransaction(
+    userId: string,
+    transactionData: StoreKit2TransactionData
+  ): Promise<{ subscription: Subscription; isNew: boolean; message: string }> {
+    try {
+      // Validate product ID
+      const validProductIds = Object.values(PRODUCT_IDS);
+      if (!validProductIds.includes(transactionData.productId as ProductId)) {
+        throw new Error(`Invalid product ID: ${transactionData.productId}. Expected one of: ${validProductIds.join(', ')}`);
+      }
+
+      // Parse dates
+      const purchaseDate = transactionData.purchaseDate instanceof Date
+        ? transactionData.purchaseDate
+        : new Date(transactionData.purchaseDate);
+
+      const expiresDate = transactionData.expiresDate
+        ? (transactionData.expiresDate instanceof Date
+            ? transactionData.expiresDate
+            : new Date(transactionData.expiresDate))
+        : undefined;
+
+      // Check if subscription has expired
+      const now = new Date();
+      const isExpired = expiresDate && expiresDate < now;
+
+      // Determine subscription status
+      let status: SubscriptionStatus;
+      if (isExpired) {
+        status = SubscriptionStatus.EXPIRED;
+      } else {
+        status = SubscriptionStatus.PRO;
+      }
+
+      // Get existing subscription
+      const existingSubscription = await this.getSubscriptionByUserId(userId);
+
+      if (existingSubscription) {
+        // Update existing subscription
+        const updatedSubscription = await prisma.subscription.update({
+          where: { id: existingSubscription.id },
+          data: {
+            status,
+            tier: isExpired ? SubscriptionTier.FREE : SubscriptionTier.PRO,
+            transactionId: transactionData.transactionId,
+            originalTransactionId: transactionData.originalTransactionId,
+            productId: transactionData.productId,
+            purchaseDate,
+            expiresDate,
+            expiryDate: expiresDate, // Also update the legacy expiryDate field
+            environment: transactionData.environment,
+            autoRenew: !isExpired,
+            startDate: existingSubscription.startDate || purchaseDate,
+            ...(isExpired ? FREE_TIER_ENTITLEMENTS : PRO_TIER_ENTITLEMENTS),
+          },
+        });
+
+        return {
+          subscription: updatedSubscription,
+          isNew: false,
+          message: isExpired
+            ? 'Subscription verified but has expired'
+            : 'Subscription verified and updated successfully',
+        };
+      }
+
+      // Create new subscription
+      const newSubscription = await this.createSubscription(userId, {
+        status,
+        tier: isExpired ? SubscriptionTier.FREE : SubscriptionTier.PRO,
+        transactionId: transactionData.transactionId,
+        originalTransactionId: transactionData.originalTransactionId,
+        productId: transactionData.productId,
+        purchaseDate,
+        expiresDate,
+        expiryDate: expiresDate,
+        environment: transactionData.environment,
+        autoRenew: !isExpired,
+        startDate: purchaseDate,
+      });
+
+      return {
+        subscription: newSubscription,
+        isNew: true,
+        message: isExpired
+          ? 'Subscription created but has expired'
+          : 'Subscription verified and created successfully',
+      };
+    } catch (error) {
+      console.error(`Error verifying transaction for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get subscription by original transaction ID
+   * Used for finding existing subscriptions during restore
+   *
+   * @param originalTransactionId - The original transaction ID from Apple
+   * @returns Subscription or null
+   */
+  static async getSubscriptionByOriginalTransactionId(
+    originalTransactionId: string
+  ): Promise<SubscriptionWithUser | null> {
+    try {
+      return await prisma.subscription.findFirst({
+        where: { originalTransactionId },
+        include: { user: true },
+      });
+    } catch (error) {
+      console.error(`Error fetching subscription by original transaction ID ${originalTransactionId}:`, error);
+      throw new Error('Failed to fetch subscription by original transaction ID');
+    }
+  }
+
+  /**
+   * Update subscription status (for webhook handlers)
+   *
+   * @param subscriptionId - The subscription's primary ID
+   * @param status - New subscription status
+   * @param additionalData - Optional additional data to update
+   * @returns Updated subscription
+   */
+  static async updateSubscriptionStatus(
+    subscriptionId: string,
+    status: SubscriptionStatus,
+    additionalData?: Partial<{
+      expiresDate: Date;
+      autoRenew: boolean;
+      transactionId: string;
+    }>
+  ): Promise<Subscription> {
+    try {
+      // Determine if we need to update entitlements based on status
+      const isActive = status === SubscriptionStatus.PRO || status === SubscriptionStatus.TRIAL;
+      const entitlements = isActive ? PRO_TIER_ENTITLEMENTS : FREE_TIER_ENTITLEMENTS;
+      const tier = isActive ? SubscriptionTier.PRO : SubscriptionTier.FREE;
+
+      return await prisma.subscription.update({
+        where: { id: subscriptionId },
+        data: {
+          status,
+          tier,
+          ...entitlements,
+          ...(additionalData?.expiresDate && {
+            expiresDate: additionalData.expiresDate,
+            expiryDate: additionalData.expiresDate,
+          }),
+          ...(additionalData?.autoRenew !== undefined && { autoRenew: additionalData.autoRenew }),
+          ...(additionalData?.transactionId && { transactionId: additionalData.transactionId }),
+        },
+      });
+    } catch (error) {
+      console.error(`Error updating subscription status for ${subscriptionId}:`, error);
+      throw new Error('Failed to update subscription status');
+    }
+  }
+
+  /**
+   * Get detailed subscription status for API response
+   *
+   * @param userId - The user's primary ID
+   * @returns Detailed subscription status
+   */
+  static async getDetailedSubscriptionStatus(userId: string): Promise<{
+    hasSubscription: boolean;
+    isActive: boolean;
+    tier: SubscriptionTier;
+    status: SubscriptionStatus;
+    productId: string | null;
+    purchaseDate: Date | null;
+    expiresDate: Date | null;
+    environment: string | null;
+    autoRenew: boolean;
+    daysUntilExpiry: number | null;
+  }> {
+    try {
+      const subscription = await this.getSubscriptionByUserId(userId);
+
+      if (!subscription) {
+        return {
+          hasSubscription: false,
+          isActive: true, // Free tier is always "active"
+          tier: SubscriptionTier.FREE,
+          status: SubscriptionStatus.FREE,
+          productId: null,
+          purchaseDate: null,
+          expiresDate: null,
+          environment: null,
+          autoRenew: false,
+          daysUntilExpiry: null,
+        };
+      }
+
+      const now = new Date();
+      const expiresDate = subscription.expiresDate;
+      const isExpired = expiresDate && new Date(expiresDate) < now;
+
+      // Calculate days until expiry
+      let daysUntilExpiry: number | null = null;
+      if (expiresDate && !isExpired) {
+        const diffTime = new Date(expiresDate).getTime() - now.getTime();
+        daysUntilExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+
+      const isActive = !isExpired && (
+        subscription.status === SubscriptionStatus.PRO ||
+        subscription.status === SubscriptionStatus.TRIAL ||
+        subscription.status === SubscriptionStatus.GRACE_PERIOD
+      );
+
+      return {
+        hasSubscription: true,
+        isActive,
+        tier: subscription.tier,
+        status: subscription.status,
+        productId: subscription.productId,
+        purchaseDate: subscription.purchaseDate,
+        expiresDate: subscription.expiresDate,
+        environment: subscription.environment,
+        autoRenew: subscription.autoRenew,
+        daysUntilExpiry,
+      };
+    } catch (error) {
+      console.error(`Error getting detailed subscription status for user ${userId}:`, error);
+      throw new Error('Failed to get subscription status');
     }
   }
 }

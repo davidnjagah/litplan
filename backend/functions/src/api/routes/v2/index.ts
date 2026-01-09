@@ -72,9 +72,12 @@ router.get('/', (req, res) => {
         },
         subscription: {
           status: 'GET /api/v2/subscription (auth required)',
+          detailedStatus: 'GET /api/v2/subscription/status (auth required)',
           entitlements: 'GET /api/v2/subscription/entitlements (auth required)',
           validate: 'POST /api/v2/subscription/validate (auth required)',
+          verify: 'POST /api/v2/subscription/verify (auth required, StoreKit 2)',
           restore: 'POST /api/v2/subscription/restore (auth required)',
+          webhook: 'POST /api/v2/subscription/webhook (App Store Server Notifications)',
         },
         config: {
           appConfig: 'GET /api/v2/config',
