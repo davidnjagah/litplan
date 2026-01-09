@@ -18,21 +18,20 @@ struct LitplanApp: App {
     @StateObject private var supabaseManager = SupabaseManager.shared
 
     init() {
-        // Force synchronous pre-initialization on background thread during app launch
-        // This ensures MockDataService.allPlans is ready before any view accesses it
-        let initQueue = DispatchQueue.global(qos: .userInitiated)
-        initQueue.sync {
-            let planCount = MockDataService.shared.allPlans.count
-            DispatchQueue.main.async {
-                print("[LitplanApp] MockDataService pre-initialized with \(planCount) cities")
-            }
-        }
-
-        // Log environment info
+        // Log environment info synchronously (safe)
         if Config.enableDebugLogging {
             print("[LitplanApp] Environment: \(Config.environment)")
             print("[LitplanApp] API Base URL: \(Config.apiBaseURL)")
             print("[LitplanApp] App Version: \(Config.appVersion) (\(Config.buildNumber))")
+        }
+
+        // Pre-warm MockDataService asynchronously to avoid potential deadlock
+        // The sync call was causing issues on physical devices
+        DispatchQueue.global(qos: .userInitiated).async {
+            let planCount = MockDataService.shared.allPlans.count
+            if Config.enableDebugLogging {
+                print("[LitplanApp] MockDataService pre-initialized with \(planCount) cities")
+            }
         }
     }
 
@@ -44,11 +43,18 @@ struct LitplanApp: App {
                 .environmentObject(authManager)
                 .environmentObject(supabaseManager)
                 .task {
+                    // Pre-load subscription products early for fast paywall loading
+                    await subscriptionManager.loadProducts()
+
                     // Check auth state on app launch
                     await authManager.checkAuthState()
 
                     // Start listening for auth state changes
                     supabaseManager.listenForAuthChanges()
+
+                    // Preload cities in background AFTER critical UI is ready
+                    // This ensures search has cities available without blocking initial load
+                    CityPreloadService.shared.preloadCities()
                 }
                 .onOpenURL { url in
                     // Handle OAuth callback URLs from Google Sign In

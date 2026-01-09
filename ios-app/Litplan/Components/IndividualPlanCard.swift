@@ -20,7 +20,7 @@ struct IndividualPlanCard: View {
 
             // Right: Content
             VStack(alignment: .leading, spacing: Spacing.xs) {
-                // Title with ranking badge
+                // Title with ranking badge and event tag
                 HStack(alignment: .top, spacing: Spacing.xs) {
                     if rank <= 3 {
                         Text("Top \(rank)")
@@ -32,6 +32,23 @@ struct IndividualPlanCard: View {
                                 Capsule()
                                     .fill(Color.accentPrimary)
                             )
+                    }
+
+                    // EVENT tag for event-type plans (Sprint 14)
+                    if plan.isEvent {
+                        HStack(spacing: 3) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 8))
+                            Text("EVENT")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundColor(.warning)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(Color.warning.opacity(0.15))
+                        )
                     }
 
                     Text(plan.title)

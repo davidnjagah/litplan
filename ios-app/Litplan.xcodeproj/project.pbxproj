@@ -40,22 +40,31 @@
 		032 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 132 /* APIService.swift */; };
 		033 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133 /* LoginView.swift */; };
 		034 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134 /* LaunchScreenView.swift */; };
+		16C962A7DE3804F453C51A9E /* DayGroupedPlansSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16DC0A7DEAC333438920E42E /* DayGroupedPlansSection.swift */; };
+		1DECED6E5624F94D601F7903 /* WeekendPlansSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F942FE57C3D9148D5F4AE14 /* WeekendPlansSection.swift */; };
 		21A83C7A2F047AE00093A0B3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 211DED512F02E98C00532BB1 /* Supabase */; };
 		2E44806F926C4DB197321DEA /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A79DBEF7822148A4A78F0907 /* HapticManager.swift */; };
 		55FA7A24C5F9440FB527E3C3 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA6A160B87640F8AF932512 /* AsyncImageView.swift */; };
+		609FC81F746E49CB21A636E6 /* PlanListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32ABBF512970389B671E2F1F /* PlanListItem.swift */; };
 		7523AACB826003E039BF4125 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */; };
+		7A9295786E53FDF606D37F31 /* SavedItemsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */; };
 		A1A4FAC30BF3E48C2743C6D8 /* PaywallTrigger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88BF7F37FA4D5EC2FEA959DC /* PaywallTrigger.swift */; };
 		A22CEDE3588BB8854586ED97 /* GroupFlowCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EFBF955DD16CBF0D543890A /* GroupFlowCard.swift */; };
 		AF6D7AB0D079B453C649E464 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */; };
+		AFEE0E9793F2246584F8D92C /* RouteMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E38C8E260589EB82F2623F /* RouteMapView.swift */; };
 		BC4834BA979EA17C75FEDCEB /* HelpSupportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8AF7F53B688C23623B2B84 /* HelpSupportView.swift */; };
 		BE2B8A3C96A3A3120BE6A1CD /* ErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */; };
+		CP01001 /* CopyableAddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CP01002 /* CopyableAddressView.swift */; };
 		D57E718C03564816A6D908AA /* NotificationsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B25A9CE26813A1F1C6E048 /* NotificationsSettingsView.swift */; };
 		DD99AFFD452ED2C3DA626451 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5309BDE2320E0532A23CED3C /* EmptyStateView.swift */; };
 		E9A9E6C58B38DF7A69D0F579 /* DetailedGroupFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */; };
+		F556E3FEBDF38C02C780C820 /* PlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49329656D85F82B7ABE55280 /* PlanDetailView.swift */; };
 		F7EB5BA37FED0DC4739E5379 /* GroupFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C94516B2740331C2C25E62F /* GroupFlow.swift */; };
 		F856FD405E7DF693348E896A /* LoadingStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */; };
-		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
 		SP13001 /* MyPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP13002 /* MyPlansView.swift */; };
+		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
+		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
+		CPS002 /* CityPreloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CPS001 /* CityPreloadService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -79,6 +88,7 @@
 		116 /* Plan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plan.swift; sourceTree = "<group>"; };
 		117 /* MockDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDataService.swift; sourceTree = "<group>"; };
 		119 /* CityDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityDetailsView.swift; sourceTree = "<group>"; };
+		11E38C8E260589EB82F2623F /* RouteMapView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RouteMapView.swift; sourceTree = "<group>"; };
 		120 /* ViewedCity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewedCity.swift; sourceTree = "<group>"; };
 		121 /* ViewedCityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewedCityCard.swift; sourceTree = "<group>"; };
 		122 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
@@ -94,21 +104,29 @@
 		132 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		133 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		134 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
+		16DC0A7DEAC333438920E42E /* DayGroupedPlansSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DayGroupedPlansSection.swift; sourceTree = "<group>"; };
 		21A83C7B2F0542D50093A0B3 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
+		32ABBF512970389B671E2F1F /* PlanListItem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanListItem.swift; sourceTree = "<group>"; };
 		39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DetailedGroupFlowView.swift; sourceTree = "<group>"; };
+		49329656D85F82B7ABE55280 /* PlanDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanDetailView.swift; sourceTree = "<group>"; };
 		4C94516B2740331C2C25E62F /* GroupFlow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupFlow.swift; sourceTree = "<group>"; };
+		4F942FE57C3D9148D5F4AE14 /* WeekendPlansSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeekendPlansSection.swift; sourceTree = "<group>"; };
 		5309BDE2320E0532A23CED3C /* EmptyStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		6A8AF7F53B688C23623B2B84 /* HelpSupportView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelpSupportView.swift; sourceTree = "<group>"; };
 		88BF7F37FA4D5EC2FEA959DC /* PaywallTrigger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PaywallTrigger.swift; sourceTree = "<group>"; };
+		A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SavedItemsManager.swift; sourceTree = "<group>"; };
 		A79DBEF7822148A4A78F0907 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
+		CP01002 /* CopyableAddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyableAddressView.swift; sourceTree = "<group>"; };
 		D0B25A9CE26813A1F1C6E048 /* NotificationsSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationsSettingsView.swift; sourceTree = "<group>"; };
 		D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ErrorStateView.swift; sourceTree = "<group>"; };
 		E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingStateView.swift; sourceTree = "<group>"; };
 		F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		FDA6A160B87640F8AF932512 /* AsyncImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
-		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
 		SP13002 /* MyPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPlansView.swift; sourceTree = "<group>"; };
+		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
+		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
+		CPS001 /* CityPreloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPreloadService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +191,7 @@
 				D0B25A9CE26813A1F1C6E048 /* NotificationsSettingsView.swift */,
 				6A8AF7F53B688C23623B2B84 /* HelpSupportView.swift */,
 				F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */,
+				49329656D85F82B7ABE55280 /* PlanDetailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -194,6 +213,12 @@
 				5309BDE2320E0532A23CED3C /* EmptyStateView.swift */,
 				D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */,
 				126 /* ToastView.swift */,
+				32ABBF512970389B671E2F1F /* PlanListItem.swift */,
+				4F942FE57C3D9148D5F4AE14 /* WeekendPlansSection.swift */,
+				16DC0A7DEAC333438920E42E /* DayGroupedPlansSection.swift */,
+				11E38C8E260589EB82F2623F /* RouteMapView.swift */,
+				SP24002 /* WeekSelectorView.swift */,
+				CP01002 /* CopyableAddressView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -221,6 +246,8 @@
 				130 /* SupabaseManager.swift */,
 				131 /* AuthenticationManager.swift */,
 				132 /* APIService.swift */,
+				A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */,
+				CPS001 /* CityPreloadService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -373,6 +400,15 @@
 				AF6D7AB0D079B453C649E464 /* AboutView.swift in Sources */,
 				SP14001 /* BlurredPremiumOverlay.swift in Sources */,
 				SP13001 /* MyPlansView.swift in Sources */,
+				F556E3FEBDF38C02C780C820 /* PlanDetailView.swift in Sources */,
+				609FC81F746E49CB21A636E6 /* PlanListItem.swift in Sources */,
+				1DECED6E5624F94D601F7903 /* WeekendPlansSection.swift in Sources */,
+				16C962A7DE3804F453C51A9E /* DayGroupedPlansSection.swift in Sources */,
+				AFEE0E9793F2246584F8D92C /* RouteMapView.swift in Sources */,
+				SP24001 /* WeekSelectorView.swift in Sources */,
+				7A9295786E53FDF606D37F31 /* SavedItemsManager.swift in Sources */,
+				CP01001 /* CopyableAddressView.swift in Sources */,
+				CPS002 /* CityPreloadService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

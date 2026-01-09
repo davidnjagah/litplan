@@ -1,0 +1,133 @@
+{
+  "identifier" : "F8A9B2C1-3D4E-5F6A-7B8C-9D0E1F2A3B4C",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "1234567890",
+    "_developerTeamID" : "4885SH3U5Y",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 756432000,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "litplan_pro_group",
+      "localizations" : [
+
+      ],
+      "name" : "Litplan Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "monthly_sub_001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited access to all cities and plans",
+              "displayName" : "Litplan Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.litplan.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Litplan Pro Monthly",
+          "subscriptionGroupID" : "litplan_pro_group",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "yearly_sub_001",
+          "introductoryOffer" : {
+            "internalID" : "free_trial_001",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "Unlimited access to all cities and plans - Best Value!",
+              "displayName" : "Litplan Pro Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.litplan.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Litplan Pro Yearly",
+          "subscriptionGroupID" : "litplan_pro_group",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

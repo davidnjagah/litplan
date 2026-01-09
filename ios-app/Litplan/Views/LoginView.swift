@@ -3,11 +3,10 @@
 //  Litplan
 //
 //  Created for Sprint 6 - Supabase Integration
-//  Authentication view with Sign in with Apple, email/password, and guest mode
+//  Authentication view with Google sign in, email/password, and guest mode
 //
 
 import SwiftUI
-import AuthenticationServices
 
 struct LoginView: View {
     @EnvironmentObject var authManager: AuthenticationManager
@@ -95,19 +94,7 @@ struct LoginView: View {
 
     private var mainAuthSection: some View {
         VStack(spacing: Spacing.lg) {
-            // Sign in with Apple
-            SignInWithAppleButton(.signIn) { request in
-                authManager.handleSignInWithAppleRequest(request)
-            } onCompletion: { result in
-                Task {
-                    await authManager.handleSignInWithAppleCompletion(result)
-                }
-            }
-            .signInWithAppleButtonStyle(.white)
-            .frame(height: 50)
-            .cornerRadius(Spacing.sm)
-
-            // Sign in with Google (matches Apple button style)
+            // Sign in with Google
             Button(action: {
                 Task {
                     await authManager.signInWithGoogle()

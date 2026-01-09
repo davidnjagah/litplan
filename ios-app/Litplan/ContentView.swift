@@ -74,7 +74,7 @@ struct ContentView: View {
             // Saved / My Plans Tab
             MyPlansView()
                 .tabItem {
-                    Image(systemName: selectedTab == 2 ? "bookmark.fill" : "bookmark")
+                    Image(systemName: selectedTab == 2 ? "heart.fill" : "heart")
                     Text("Saved")
                 }
                 .tag(2)

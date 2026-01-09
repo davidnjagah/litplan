@@ -464,9 +464,17 @@ class AuthenticationManager: NSObject, ObservableObject {
     }
 
     /// Exit guest mode
+    /// Note: Does NOT clear Pro cache since StoreKit subscriptions are tied to Apple ID,
+    /// not authentication state. Users can have valid subscriptions while in guest mode.
     func exitGuestMode() {
         UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
         authState = .unauthenticated
+
+        // Refresh Pro status to check for valid StoreKit entitlements
+        // This ensures Pro access is preserved for users with valid Apple ID subscriptions
+        Task {
+            await SubscriptionManager.shared.refreshProStatus()
+        }
 
         if Config.enableDebugLogging {
             print("[AuthenticationManager] Exited guest mode")
@@ -487,6 +495,9 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
         UserDefaults.standard.removeObject(forKey: Config.UserDefaultsKeys.cachedUserId)
+
+        // Clear Pro features cache to revert to free account settings
+        SubscriptionManager.shared.clearProCache()
 
         if Config.enableDebugLogging {
             print("[AuthenticationManager] User signed out")
@@ -547,7 +558,8 @@ extension AuthenticationManager: ASAuthorizationControllerDelegate {
 // MARK: - ASAuthorizationControllerPresentationContextProviding
 
 extension AuthenticationManager: ASAuthorizationControllerPresentationContextProviding {
-    nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+    @MainActor
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         // Get the key window for presenting the Apple Sign In sheet
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = scene.windows.first else {
@@ -560,7 +572,8 @@ extension AuthenticationManager: ASAuthorizationControllerPresentationContextPro
 // MARK: - ASWebAuthenticationPresentationContextProviding
 
 extension AuthenticationManager: ASWebAuthenticationPresentationContextProviding {
-    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+    @MainActor
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         // Get the key window for presenting the web authentication sheet
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = scene.windows.first else {

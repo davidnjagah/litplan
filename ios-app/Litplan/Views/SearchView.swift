@@ -18,28 +18,27 @@ struct SearchView: View {
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
+    // City preload service for background-loaded cities (used for search)
+    @ObservedObject private var cityPreloadService = CityPreloadService.shared
+
     private var isProUser: Bool {
         subscriptionManager.isProUser
     }
 
-    // Cities loaded from API (with fallback to MockDataService when offline)
-    @State private var allCities: [City] = []
-    @State private var isLoadingCities: Bool = false
+    // Hardcoded trending cities - always available instantly (no API call needed)
+    private let trendingCities: [City] = City.trendingCities
 
-    // Trending cities (top 6 featured cities)
-    private var trendingCities: [City] {
-        allCities.filter { $0.metadata.featured }.prefix(6).map { $0 }
-    }
-
-    // Search results - filter cities by name or country (case-insensitive)
+    // Search results - uses background-loaded cities from preload service
     private var searchResults: [City] {
         if searchQuery.isEmpty {
             return []
         }
-        return allCities.filter { city in
-            city.name.localizedCaseInsensitiveContains(searchQuery) ||
-            city.country.localizedCaseInsensitiveContains(searchQuery)
-        }
+        return cityPreloadService.searchCities(query: searchQuery)
+    }
+
+    // Show loading indicator only when searching and cities haven't loaded yet
+    private var isSearchLoading: Bool {
+        !searchQuery.isEmpty && cityPreloadService.isLoading && !cityPreloadService.hasLoaded
     }
 
     var body: some View {
@@ -91,24 +90,10 @@ struct SearchView: View {
                 .environmentObject(subscriptionManager)
             }
             .onAppear {
-                if allCities.isEmpty && !isLoadingCities {
-                    loadCities()
+                // Check pro status for all users (including guests)
+                Task {
+                    await subscriptionManager.refreshProStatus()
                 }
-            }
-        }
-    }
-
-    // MARK: - Load Cities
-    private func loadCities() {
-        isLoadingCities = true
-
-        Task {
-            // Use API with fallback to mock data for content
-            let fetchedCities = await APIService.shared.fetchCitiesWithFallback()
-
-            await MainActor.run {
-                allCities = fetchedCities
-                isLoadingCities = false
             }
         }
     }
@@ -158,7 +143,19 @@ struct SearchView: View {
                 .padding(.horizontal, Spacing.md)
                 .accessibilityAddTraits(.isHeader)
 
-            if searchResults.isEmpty {
+            if isSearchLoading {
+                // Loading state - cities still loading in background
+                VStack(spacing: Spacing.md) {
+                    ProgressView()
+                        .tint(.accentPrimary)
+
+                    Text("Loading cities...")
+                        .font(.callout)
+                        .foregroundColor(.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Spacing.xl)
+            } else if searchResults.isEmpty {
                 // No results found
                 VStack(spacing: Spacing.md) {
                     Image(systemName: "magnifyingglass")
@@ -212,9 +209,10 @@ struct SearchView: View {
                             .font(.callout)
                     }
 
-                    Text("\(city.metadata.planCount) plans this week")
+                    Text("50 plans available")
                         .font(.callout)
                         .foregroundColor(.textSecondary)
+                    // Original: Text("\(city.metadata.displayPlanCount) plans this week")
                 }
 
                 Spacer()
@@ -231,7 +229,7 @@ struct SearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(city.name), \(city.country)")
-        .accessibilityHint("Double tap to explore \(city.metadata.planCount) nightlife plans")
+        .accessibilityHint("Double tap to explore 50 nightlife plans")
     }
 
     // MARK: - Recent Searches Section
@@ -330,11 +328,11 @@ struct SearchView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Spacing.sm)
 
-                // Plan count badge (top-right)
+                // Plan count badge (top-right) - hardcoded for performance
                 VStack {
                     HStack {
                         Spacer()
-                        Text("\(city.metadata.planCount)")
+                        Text("50")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
@@ -343,6 +341,7 @@ struct SearchView: View {
                             .background(Color.accentPrimary)
                             .cornerRadius(8)
                             .padding([.top, .trailing], Spacing.xs)
+                        // Original: Text("\(city.metadata.displayPlanCount)")
                     }
                     Spacer()
                 }
@@ -357,7 +356,7 @@ struct SearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(city.name), \(city.country)")
-        .accessibilityHint("Trending city. Double tap to explore \(city.metadata.planCount) nightlife plans")
+        .accessibilityHint("Trending city. Double tap to explore 50 nightlife plans")
     }
 
     // MARK: - Action Handlers
@@ -381,8 +380,8 @@ struct SearchView: View {
 
             // If this city hasn't been viewed yet
             if !currentViewedCities.contains(city.id) {
-                // Check if they've already viewed 1 city this week
-                if currentViewedCities.count >= 1 {
+                // Check if they've already viewed 10 cities this week (Sprint 14: increased from 1)
+                if currentViewedCities.count >= 10 {
                     HapticManager.shared.warning()
                     paywallTrigger = .cityLimit
                     return

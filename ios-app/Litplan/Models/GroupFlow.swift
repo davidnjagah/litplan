@@ -19,6 +19,7 @@ struct GroupFlow: Identifiable, Codable {
     let difficulty: String // "easy", "moderate", "intense"
     let bestFor: [String] // ["groups", "couples", "solo"]
     let aiTags: [String]
+    var isLocked: Bool? = nil // Optional - from API, indicates if premium-locked
 
     // Computed property for convenience
     var groupFlowId: String { id }
@@ -34,6 +35,18 @@ struct GroupFlow: Identifiable, Codable {
 
         // Computed property for convenience
         var activityId: String { id }
+
+        // CodingKeys MUST be inside the struct for Codable synthesis to work
+        // (not in an extension)
+        enum CodingKeys: String, CodingKey {
+            case id = "activityId"
+            case venueName
+            case location
+            case startTime
+            case duration
+            case description
+            case order
+        }
 
         struct Location: Codable {
             let address: String
@@ -64,6 +77,7 @@ struct GroupFlow: Identifiable, Codable {
         case difficulty
         case bestFor
         case aiTags
+        case isLocked
     }
 
     // Computed properties for UI convenience
@@ -148,7 +162,8 @@ extension GroupFlow {
         estimatedCost: EstimatedCost(min: 80, max: 120, currency: "USD"),
         difficulty: "moderate",
         bestFor: ["groups", "solo"],
-        aiTags: ["Live Music", "Jazz", "Craft Beer", "Nightclub", "Dancing"]
+        aiTags: ["Live Music", "Jazz", "Craft Beer", "Nightclub", "Dancing"],
+        isLocked: false
     )
 
     static let sampleLAFlow = GroupFlow(
@@ -186,19 +201,10 @@ extension GroupFlow {
         estimatedCost: EstimatedCost(min: 60, max: 90, currency: "USD"),
         difficulty: "easy",
         bestFor: ["groups", "couples"],
-        aiTags: ["Rooftop", "Live Music", "Cocktails", "Sunset"]
+        aiTags: ["Rooftop", "Live Music", "Cocktails", "Sunset"],
+        isLocked: false
     )
 }
 
-// MARK: - Activity CodingKeys
-extension GroupFlow.Activity {
-    enum CodingKeys: String, CodingKey {
-        case id = "activityId"
-        case venueName
-        case location
-        case startTime
-        case duration
-        case description
-        case order
-    }
-}
+// Note: Activity.CodingKeys is now defined inside the Activity struct
+// (Swift's Codable synthesizer requires CodingKeys inside the struct, not in an extension)

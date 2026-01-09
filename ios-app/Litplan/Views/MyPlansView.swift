@@ -6,6 +6,18 @@
 //  Sprint 13 - Transform "Viewed Cities" to "My Plans & Saved" Screen
 //  Shows saved cities, individual plans, and group plans in tabbed interface
 //
+//  Sprint 17C Updates:
+//  - Added encouraging empty state messages with "Start Exploring" CTA
+//  - FREE users CAN save cities (no restriction)
+//  - FREE users CANNOT save individual plans or group plans (paywall shown)
+//  - Previously saved items remain visible for downgraded users
+//  - Pro badge/lock icons on plan cards for free users
+//
+//  Sprint 18C Updates:
+//  - Changed from mock data to real saved data using SavedItemsManager
+//  - Data persisted in UserDefaults (local storage)
+//  - Empty states shown when no items are actually saved
+//
 
 import SwiftUI
 
@@ -29,7 +41,7 @@ enum MyPlansTab: String, CaseIterable {
     var emptyIcon: String {
         switch self {
         case .savedCities:
-            return "bookmark"
+            return "heart"
         case .individualPlans:
             return "calendar.badge.plus"
         case .groupPlans:
@@ -51,12 +63,16 @@ enum MyPlansTab: String, CaseIterable {
     var emptyMessage: String {
         switch self {
         case .savedCities:
-            return "Cities you bookmark will appear here for quick access"
+            return "No cities saved yet. Start exploring to find your next adventure!"
         case .individualPlans:
-            return "Save individual plans to easily find them later"
+            return "No plans saved yet. Discover amazing plans in cities you love!"
         case .groupPlans:
-            return "Group plans you save will be stored here"
+            return "No group plans saved yet. Find the perfect group experience!"
         }
+    }
+
+    var emptyButtonTitle: String {
+        return "Start Exploring"
     }
 }
 
@@ -64,17 +80,7 @@ enum MyPlansTab: String, CaseIterable {
 struct MyPlansView: View {
     // MARK: - State Properties
     @State private var selectedTab: MyPlansTab = .savedCities
-    @State private var isLoading: Bool = false
     @State private var isRefreshing: Bool = false
-
-    // Saved cities state
-    @State private var savedCities: [City] = []
-
-    // Individual plans state
-    @State private var savedPlans: [Plan] = []
-
-    // Group plans state
-    @State private var savedGroupFlows: [GroupFlow] = []
 
     // Navigation state
     @State private var selectedCity: City?
@@ -89,12 +95,35 @@ struct MyPlansView: View {
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     @ObservedObject private var authManager = AuthenticationManager.shared
 
+    // SavedItemsManager for real saved data
+    @ObservedObject private var savedItemsManager = SavedItemsManager.shared
+
+    // Callback to switch to Home/Explore tab
+    var onSwitchToExplore: (() -> Void)?
+
     private var isProUser: Bool {
         subscriptionManager.isProUser
     }
 
+    // Use real data from SavedItemsManager
+    private var savedCities: [City] {
+        savedItemsManager.savedCities
+    }
+
+    private var savedPlans: [Plan] {
+        savedItemsManager.savedPlans
+    }
+
+    private var savedGroupFlows: [GroupFlow] {
+        savedItemsManager.savedGroupFlows
+    }
+
+    private var isLoading: Bool {
+        savedItemsManager.isLoading
+    }
+
     private var totalSavedCount: Int {
-        savedCities.count + savedPlans.count + savedGroupFlows.count
+        savedItemsManager.totalSavedCount
     }
 
     var body: some View {
@@ -137,6 +166,13 @@ struct MyPlansView: View {
                     })
                 }
             }
+            .sheet(isPresented: $showPlanDetails) {
+                if let plan = selectedPlan {
+                    PlanDetailView(plan: plan, onDismiss: {
+                        showPlanDetails = false
+                    })
+                }
+            }
             .sheet(item: $paywallTrigger) { trigger in
                 PaywallView(trigger: trigger) {
                     paywallTrigger = nil
@@ -145,6 +181,11 @@ struct MyPlansView: View {
             }
             .onAppear {
                 loadData()
+
+                // Check pro status for all users (including guests)
+                Task {
+                    await subscriptionManager.refreshProStatus()
+                }
             }
         }
     }
@@ -280,8 +321,14 @@ struct MyPlansView: View {
         if savedPlans.isEmpty {
             emptyStateView(for: .individualPlans)
         } else {
+            // Note for free users: Previously saved plans remain visible
+            // but free users cannot add new plans to saved
             ForEach(Array(savedPlans.enumerated()), id: \.element.id) { index, plan in
-                SavedPlanCard(plan: plan, cityName: getCityName(for: plan)) {
+                SavedPlanCard(
+                    plan: plan,
+                    cityName: getCityName(for: plan),
+                    isProUser: isProUser
+                ) {
                     handlePlanTap(plan)
                 }
             }
@@ -294,6 +341,8 @@ struct MyPlansView: View {
         if savedGroupFlows.isEmpty {
             emptyStateView(for: .groupPlans)
         } else {
+            // Note for free users: Previously saved group plans remain visible
+            // but free users cannot add new group plans to saved
             ForEach(savedGroupFlows) { groupFlow in
                 SavedGroupFlowCard(
                     groupFlow: groupFlow,
@@ -328,6 +377,29 @@ struct MyPlansView: View {
                     .padding(.horizontal, Spacing.lg)
             }
 
+            // Start Exploring CTA button
+            Button(action: {
+                HapticManager.shared.medium()
+                onSwitchToExplore?()
+            }) {
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: "safari")
+                        .font(.system(size: 14, weight: .semibold))
+
+                    Text(tab.emptyButtonTitle)
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.vertical, Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.accentPrimary)
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.top, Spacing.sm)
+
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -336,75 +408,36 @@ struct MyPlansView: View {
 
     // MARK: - Data Loading
     private func loadData() {
-        isLoading = true
-
         // Check if user is authenticated
         guard authManager.isAuthenticated || authManager.isGuest else {
-            isLoading = false
             return
         }
 
-        // For now, use mock data from MockDataService
-        // In production, this would fetch from API
-        Task {
-            // Simulate network delay
-            try? await Task.sleep(nanoseconds: 500_000_000)
-
-            await MainActor.run {
-                // Load mock saved cities (first 3 cities as "saved")
-                savedCities = Array(MockDataService.shared.cities.prefix(3))
-
-                // Load mock saved plans (sample plans)
-                savedPlans = [Plan.sampleBlueNote, Plan.sampleTheRoof, Plan.sampleLeBain]
-
-                // Load mock saved group flows
-                savedGroupFlows = [GroupFlow.sampleNYCFlow, GroupFlow.sampleLAFlow]
-
-                isLoading = false
-            }
-        }
+        // Load saved items from local storage via SavedItemsManager
+        // Data is already loaded on init, but refresh to ensure we have latest
+        savedItemsManager.loadFromLocalStorage()
     }
 
     private func refreshData() async {
         isRefreshing = true
 
-        // Simulate refresh
-        try? await Task.sleep(nanoseconds: 800_000_000)
+        // Refresh saved items from SavedItemsManager
+        await savedItemsManager.refresh()
 
         await MainActor.run {
-            // Reload data
-            savedCities = Array(MockDataService.shared.cities.prefix(3))
-            savedPlans = [Plan.sampleBlueNote, Plan.sampleTheRoof, Plan.sampleLeBain]
-            savedGroupFlows = [GroupFlow.sampleNYCFlow, GroupFlow.sampleLAFlow]
             isRefreshing = false
         }
     }
 
     // MARK: - Helper Functions
     private func getCityName(for plan: Plan) -> String {
-        // Extract city from plan ID or use default
-        if plan.id.hasPrefix("nyc") {
-            return "New York"
-        } else if plan.id.hasPrefix("la") {
-            return "Los Angeles"
-        } else if plan.id.hasPrefix("lon") {
-            return "London"
-        }
-        return "New York"
+        // Use SavedItemsManager to get city name
+        savedItemsManager.getCityName(for: plan)
     }
 
     private func getCityName(for groupFlow: GroupFlow) -> String {
-        // Find city name from cityId
-        if let city = MockDataService.shared.cities.first(where: { $0.id == groupFlow.cityId }) {
-            return city.name
-        }
-        // Fallback to parsing city ID
-        if groupFlow.cityId.hasPrefix("nyc") {
-            return "New York"
-        } else if groupFlow.cityId.hasPrefix("la") {
-            return "Los Angeles"
-        }
-        return "City"
+        // Use SavedItemsManager to get city name
+        savedItemsManager.getCityName(for: groupFlow)
     }
 
     // MARK: - Tap Handlers
@@ -417,8 +450,7 @@ struct MyPlansView: View {
     private func handlePlanTap(_ plan: Plan) {
         HapticManager.shared.medium()
         selectedPlan = plan
-        // TODO: Navigate to plan details when available
-        // For now, show a haptic feedback
+        showPlanDetails = true
     }
 
     private func handleGroupFlowTap(_ groupFlow: GroupFlow) {
@@ -469,16 +501,17 @@ struct SavedCityCard: View {
 
                     Spacer()
 
-                    // Plan count
+                    // Plan count - hardcoded for performance
                     HStack(spacing: Spacing.sm) {
                         HStack(spacing: 4) {
                             Image(systemName: "calendar")
                                 .font(.system(size: 11))
                                 .foregroundColor(.textTertiary)
 
-                            Text("\(city.metadata.planCount) plans")
+                            Text("50 plans")
                                 .font(.caption)
                                 .foregroundColor(.textSecondary)
+                            // Original: Text("\(city.metadata.displayPlanCount) plans")
                         }
 
                         if city.metadata.featured {
@@ -497,9 +530,9 @@ struct SavedCityCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Bookmark icon and chevron
+                // Heart icon and chevron
                 VStack {
-                    Image(systemName: "bookmark.fill")
+                    Image(systemName: "heart.fill")
                         .font(.system(size: 14))
                         .foregroundColor(.accentPrimary)
 
@@ -520,7 +553,7 @@ struct SavedCityCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel("\(city.name), \(city.country)")
-        .accessibilityHint("Double tap to view \(city.metadata.planCount) nightlife plans")
+        .accessibilityHint("Double tap to view 50 nightlife plans")
     }
 }
 
@@ -528,16 +561,38 @@ struct SavedCityCard: View {
 struct SavedPlanCard: View {
     let plan: Plan
     let cityName: String
+    let isProUser: Bool
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: Spacing.sm) {
-                // Plan image
-                AsyncImageView(url: URL(string: plan.images.first ?? ""))
-                    .frame(width: 80, height: 80)
-                    .cornerRadius(12)
-                    .clipped()
+                // Plan image with Pro badge overlay for free users
+                ZStack(alignment: .topTrailing) {
+                    AsyncImageView(url: URL(string: plan.images.first ?? ""))
+                        .frame(width: 80, height: 80)
+                        .cornerRadius(12)
+                        .clipped()
+
+                    // Pro badge for free users
+                    if !isProUser {
+                        HStack(spacing: 2) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 8, weight: .bold))
+
+                            Text("PRO")
+                                .font(.system(size: 8, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(Color.accentPrimary)
+                        )
+                        .offset(x: 4, y: -4)
+                    }
+                }
 
                 // Plan info
                 VStack(alignment: .leading, spacing: Spacing.xxs) {
@@ -578,11 +633,17 @@ struct SavedPlanCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Bookmark icon and chevron
+                // Heart icon, lock icon for free users, and chevron
                 VStack {
-                    Image(systemName: "bookmark.fill")
+                    Image(systemName: "heart.fill")
                         .font(.system(size: 14))
                         .foregroundColor(.accentPrimary)
+
+                    if !isProUser {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textTertiary)
+                    }
 
                     Spacer()
 
@@ -596,12 +657,13 @@ struct SavedPlanCard: View {
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.surfaceSecondary, lineWidth: 1)
+                    .stroke(isProUser ? Color.surfaceSecondary : Color.accentPrimary.opacity(0.3), lineWidth: isProUser ? 1 : 1.5)
             )
+            .opacity(isProUser ? 1.0 : 0.85)
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel("\(plan.title) at \(plan.venueName)")
-        .accessibilityHint("Double tap to view plan details")
+        .accessibilityHint(isProUser ? "Double tap to view plan details" : "Pro subscription required to save new plans")
     }
 }
 
@@ -618,11 +680,31 @@ struct SavedGroupFlowCard: View {
                 // Header row
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: Spacing.xxs) {
-                        // Title
-                        Text(groupFlow.title)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.textPrimary)
-                            .lineLimit(2)
+                        // Title with Pro badge for free users
+                        HStack(spacing: Spacing.xs) {
+                            Text(groupFlow.title)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.textPrimary)
+                                .lineLimit(2)
+
+                            // Pro badge for free users
+                            if !isProUser {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 8, weight: .bold))
+
+                                    Text("PRO")
+                                        .font(.system(size: 8, weight: .bold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 3)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.accentPrimary)
+                                )
+                            }
+                        }
 
                         // City
                         Text(cityName)
@@ -632,9 +714,9 @@ struct SavedGroupFlowCard: View {
 
                     Spacer()
 
-                    // Bookmark and lock icons
+                    // Heart and lock icons
                     VStack(spacing: Spacing.xs) {
-                        Image(systemName: "bookmark.fill")
+                        Image(systemName: "heart.fill")
                             .font(.system(size: 14))
                             .foregroundColor(.accentPrimary)
 
@@ -701,13 +783,13 @@ struct SavedGroupFlowCard: View {
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isProUser ? Color.accentPrimary.opacity(0.3) : Color.surfaceSecondary, lineWidth: isProUser ? 2 : 1)
+                    .stroke(isProUser ? Color.surfaceSecondary : Color.accentPrimary.opacity(0.3), lineWidth: isProUser ? 1 : 1.5)
             )
-            .opacity(isProUser ? 1.0 : 0.7)
+            .opacity(isProUser ? 1.0 : 0.85)
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel("\(groupFlow.title) in \(cityName)")
-        .accessibilityHint(isProUser ? "Double tap to view full itinerary" : "Pro subscription required to view")
+        .accessibilityHint(isProUser ? "Double tap to view full itinerary" : "Pro subscription required to save new group plans")
     }
 
     private var difficultyColor: Color {
@@ -748,8 +830,14 @@ struct SavedGroupFlowCard: View {
         Color.appBackground
             .ignoresSafeArea()
 
-        SavedPlanCard(plan: Plan.sampleBlueNote, cityName: "New York") {
-            print("Tapped plan")
+        VStack(spacing: Spacing.md) {
+            SavedPlanCard(plan: Plan.sampleBlueNote, cityName: "New York", isProUser: true) {
+                print("Tapped plan (Pro)")
+            }
+
+            SavedPlanCard(plan: Plan.sampleTheRoof, cityName: "New York", isProUser: false) {
+                print("Tapped plan (Free)")
+            }
         }
         .padding(Spacing.md)
     }

@@ -25,6 +25,11 @@ struct HomeView: View {
     @State private var selectedGroupFlow: GroupFlow? = nil
     @State private var showGroupFlowDetails = false
 
+    // Sprint 18A: Weekend Plans from various cities
+    @State private var weekendPlans: [Plan] = []
+    @State private var selectedPlan: Plan? = nil
+    @State private var showPlanDetails = false
+
     // Network monitoring
     @EnvironmentObject private var networkMonitor: NetworkMonitor
 
@@ -142,6 +147,11 @@ struct HomeView: View {
                                 recommendedGroupPlansSection
                             }
 
+                            // Sprint 18A: Weekend Plans section
+                            if !weekendPlans.isEmpty {
+                                weekendPlansSection
+                            }
+
                             // Top US Cities section
                             if !topUSCities.isEmpty {
                                 citySection(
@@ -218,10 +228,23 @@ struct HomeView: View {
                     )
                 }
             }
+            .fullScreenCover(isPresented: $showPlanDetails) {
+                if let plan = selectedPlan {
+                    PlanDetailView(plan: plan) {
+                        showPlanDetails = false
+                        selectedPlan = nil
+                    }
+                }
+            }
             .onAppear {
                 resetWeeklyLimitIfNeeded()
                 if cities.isEmpty && !isLoading {
                     loadPlans()
+                }
+
+                // Check pro status for all users (including guests)
+                Task {
+                    await subscriptionManager.refreshProStatus()
                 }
             }
             .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
@@ -313,8 +336,8 @@ struct HomeView: View {
 
             // If this city hasn't been viewed yet
             if !currentViewedCities.contains(city.id) {
-                // Check if they've already viewed 1 city this week
-                if currentViewedCities.count >= 1 {
+                // Check if they've already viewed 10 cities this week (Sprint 14: increased from 1)
+                if currentViewedCities.count >= 10 {
                     paywallTrigger = .cityLimit
                     return
                 }
@@ -394,6 +417,8 @@ struct HomeView: View {
             cities = allCities
             // Sprint 15: Load recommended group flows offline
             loadRecommendedGroupFlows()
+            // Sprint 18A: Load weekend plans offline
+            loadWeekendPlans()
             isLoading = false
             hasError = false
 
@@ -419,6 +444,8 @@ struct HomeView: View {
                     cities = fetchedCities
                     // Sprint 15: Load recommended group flows
                     loadRecommendedGroupFlows()
+                    // Sprint 18A: Load weekend plans
+                    loadWeekendPlans()
                     isLoading = false
                     hasError = false
                     loadingStartTime = nil
@@ -459,21 +486,64 @@ struct HomeView: View {
 
     /// Load recommended group flows from all available cities
     private func loadRecommendedGroupFlows() {
-        // Gather group flows from all cities that have them
+        Task {
+            await loadRecommendedGroupFlowsAsync()
+        }
+    }
+
+    /// Async function to load group flows from API
+    private func loadRecommendedGroupFlowsAsync() async {
         var allFlows: [GroupFlow] = []
 
-        // Get group flows from cities that have them in MockDataService
-        let cityIdsWithFlows = ["nyc-001", "la-001", "mad-001"]
-        for cityId in cityIdsWithFlows {
-            let flows = MockDataService.shared.getGroupFlows(for: cityId)
-            allFlows.append(contentsOf: flows)
+        // Get group flows from featured cities using the API
+        let featuredCities = cities.filter { $0.metadata.featured }.prefix(5)
+
+        if Config.enableDebugLogging {
+            print("[HomeView] Loading group flows for \(featuredCities.count) featured cities")
+        }
+
+        // Fetch group flows from each featured city concurrently
+        await withTaskGroup(of: [GroupFlow].self) { group in
+            for city in featuredCities {
+                group.addTask {
+                    return await APIService.shared.fetchGroupFlowsWithFallback(cityId: city.id)
+                }
+            }
+
+            for await flows in group {
+                allFlows.append(contentsOf: flows)
+            }
         }
 
         // Shuffle and take up to 6 for display
-        recommendedGroupFlows = Array(allFlows.shuffled().prefix(6))
+        let shuffledFlows = Array(allFlows.shuffled().prefix(6))
+
+        await MainActor.run {
+            recommendedGroupFlows = shuffledFlows
+            if Config.enableDebugLogging {
+                print("[HomeView] Loaded \(recommendedGroupFlows.count) recommended group flows from API")
+            }
+        }
+    }
+
+    // MARK: - Sprint 18A: Weekend Plans
+
+    /// Load weekend plans from all available cities
+    private func loadWeekendPlans() {
+        var allWeekendPlans: [Plan] = []
+
+        // Get weekend plans from multiple cities
+        for city in cities {
+            let cityPlans = MockDataService.shared.getPlans(for: city.id)
+            let weekendOnly = cityPlans.filter { $0.flags.isWeekendPlan || $0.schedule.isWeekend }
+            allWeekendPlans.append(contentsOf: weekendOnly)
+        }
+
+        // Shuffle and take up to 8 for display
+        weekendPlans = Array(allWeekendPlans.shuffled().prefix(8))
 
         if Config.enableDebugLogging {
-            print("[HomeView] Loaded \(recommendedGroupFlows.count) recommended group flows")
+            print("[HomeView] Loaded \(weekendPlans.count) weekend plans")
         }
     }
 
@@ -505,7 +575,7 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Recommended Group Plans Section
+    // MARK: - Recommended Group Plans Section (Sprint 18A: Updated to match CityDetailsView style)
     private var recommendedGroupPlansSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             // Section header
@@ -516,31 +586,158 @@ struct HomeView: View {
                     .foregroundColor(.textPrimary)
 
                 Spacer()
+
+                if !isProUser {
+                    // PRO badge for free users
+                    Text("PRO")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.accentPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentPrimary.opacity(0.15))
+                        .cornerRadius(4)
+                }
             }
             .padding(.horizontal, Spacing.md)
             .accessibilityAddTraits(.isHeader)
 
-            // Horizontal scroll of group plan cards
+            // Horizontal scroll of GroupFlowCards (same style as CityDetailsView)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Spacing.md) {
                     Spacer().frame(width: Spacing.xxs)
 
-                    ForEach(recommendedGroupFlows) { groupFlow in
-                        RecommendedGroupPlanCard(
-                            groupFlow: groupFlow,
-                            cityName: getCityName(for: groupFlow),
-                            isProUser: isProUser
-                        ) {
-                            handleGroupPlanTap(groupFlow)
-                        } onUpgrade: {
-                            let cityName = getCityName(for: groupFlow)
-                            paywallTrigger = .groupFlow(cityName: cityName)
+                    if isProUser {
+                        // Pro users see all plans
+                        ForEach(recommendedGroupFlows) { groupFlow in
+                            GroupFlowCard(
+                                groupFlow: groupFlow,
+                                isProUser: true,
+                                onTapViewItinerary: {
+                                    handleGroupPlanTap(groupFlow)
+                                },
+                                onTapUnlock: nil,
+                                cityName: getCityName(for: groupFlow)
+                            )
+                            .frame(width: 320)
+                        }
+                    } else {
+                        // Free users: Show first 2 plans visible, rest hidden behind "Explore More"
+                        ForEach(Array(recommendedGroupFlows.prefix(2).enumerated()), id: \.element.id) { _, groupFlow in
+                            GroupFlowCard(
+                                groupFlow: groupFlow,
+                                isProUser: false,
+                                onTapViewItinerary: {
+                                    // Free users tapping shows paywall
+                                    HapticManager.shared.warning()
+                                    let cityName = getCityName(for: groupFlow)
+                                    paywallTrigger = .groupFlow(cityName: cityName)
+                                },
+                                onTapUnlock: {
+                                    let cityName = getCityName(for: groupFlow)
+                                    paywallTrigger = .groupFlow(cityName: cityName)
+                                },
+                                cityName: getCityName(for: groupFlow)
+                            )
+                            .frame(width: 320)
+                        }
+
+                        // "Explore More" overlay card for free users
+                        if recommendedGroupFlows.count > 2 {
+                            ExploreMoreOverlayCard {
+                                HapticManager.shared.medium()
+                                paywallTrigger = .groupFlow(cityName: "Premium")
+                            }
                         }
                     }
 
                     Spacer().frame(width: Spacing.xxs)
                 }
             }
+        }
+    }
+
+    // MARK: - Sprint 18A: Weekend Plans Section (Horizontal Scroll)
+    private var weekendPlansSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            // Section header
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.accentPrimary)
+                    .accessibilityHidden(true)
+
+                Text("Weekend Plans")
+                    .font(.displayMedium)
+                    .fontWeight(.bold)
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                if !isProUser {
+                    // PRO badge for free users
+                    Text("PRO")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.accentPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentPrimary.opacity(0.15))
+                        .cornerRadius(4)
+                }
+
+                Text("\(weekendPlans.count) plans")
+                    .font(.system(size: 13))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(.horizontal, Spacing.md)
+            .accessibilityAddTraits(.isHeader)
+
+            // Horizontal scroll of weekend plan cards
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.md) {
+                    Spacer().frame(width: Spacing.xxs)
+
+                    if isProUser {
+                        // Pro users see all weekend plans
+                        ForEach(weekendPlans) { plan in
+                            WeekendPlanCard(plan: plan, isBlurred: false) {
+                                handleWeekendPlanTap(plan)
+                            }
+                        }
+                    } else {
+                        // Free users: First 2 visible, rest blurred with unlock overlay
+                        ForEach(Array(weekendPlans.prefix(2).enumerated()), id: \.element.id) { _, plan in
+                            WeekendPlanCard(plan: plan, isBlurred: false) {
+                                // Tapping shows paywall for free users
+                                HapticManager.shared.warning()
+                                paywallTrigger = .weekendPlan(cityName: plan.cityName)
+                            }
+                        }
+
+                        // Blurred cards for remaining plans
+                        if weekendPlans.count > 2 {
+                            WeekendPlanUnlockCard(remainingCount: weekendPlans.count - 2) {
+                                HapticManager.shared.medium()
+                                paywallTrigger = .weekendPlan(cityName: "Premium")
+                            }
+                        }
+                    }
+
+                    Spacer().frame(width: Spacing.xxs)
+                }
+            }
+        }
+    }
+
+    // MARK: - Weekend Plan Tap Handler
+    private func handleWeekendPlanTap(_ plan: Plan) {
+        HapticManager.shared.medium()
+
+        if isProUser {
+            selectedPlan = plan
+            showPlanDetails = true
+        } else {
+            HapticManager.shared.warning()
+            paywallTrigger = .weekendPlan(cityName: plan.cityName)
         }
     }
 }
@@ -550,6 +747,7 @@ struct RecommendedGroupPlanCard: View {
     let groupFlow: GroupFlow
     let cityName: String
     let isProUser: Bool
+    let isFreePreview: Bool  // True for the 2 free plans shown to free users
     var onTap: () -> Void
     var onUpgrade: () -> Void
 
@@ -558,9 +756,14 @@ struct RecommendedGroupPlanCard: View {
         groupFlow.totalDuration / 60
     }
 
+    /// Show full details if pro user OR if this is a free preview card
+    private var showFullDetails: Bool {
+        isProUser || isFreePreview
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            // Image placeholder with lock overlay for free users
+            // Image placeholder with crown overlay for premium content
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.surfaceSecondary)
@@ -575,20 +778,20 @@ struct RecommendedGroupPlanCard: View {
                 .cornerRadius(12)
                 .frame(width: 200, height: 120)
 
-                // Group icon in center
-                Image(systemName: "person.3.fill")
+                // Crown icon in center (indicates premium content)
+                Image(systemName: "crown.fill")
                     .font(.system(size: 32))
                     .foregroundColor(.white.opacity(0.6))
 
-                // Lock overlay for free users
-                if !isProUser {
+                // Crown badge overlay for premium/locked content (non-free preview plans for free users)
+                if !isProUser && !isFreePreview {
                     VStack {
                         Spacer()
                         HStack {
                             Spacer()
-                            Image(systemName: "lock.fill")
+                            Image(systemName: "crown.fill")
                                 .font(.caption)
-                                .foregroundColor(.white)
+                                .foregroundColor(.yellow)
                                 .padding(6)
                                 .background(Color.black.opacity(0.6))
                                 .cornerRadius(4)
@@ -612,7 +815,7 @@ struct RecommendedGroupPlanCard: View {
                 .foregroundColor(.textPrimary)
                 .lineLimit(2)
 
-            // Summary info
+            // Summary info - always show for free preview or pro users
             HStack(spacing: Spacing.sm) {
                 Label("\(groupFlow.activities.count) venues", systemImage: "mappin.and.ellipse")
                 Label("\(totalHours)h", systemImage: "clock")
@@ -625,6 +828,7 @@ struct RecommendedGroupPlanCard: View {
             if isProUser {
                 onTap()
             } else {
+                // Free users: tapping shows paywall (even for free preview cards)
                 HapticManager.shared.warning()
                 onUpgrade()
             }
@@ -632,6 +836,214 @@ struct RecommendedGroupPlanCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(cityName), \(groupFlow.title), \(groupFlow.activities.count) venues, \(totalHours) hours")
         .accessibilityHint(isProUser ? "Double tap to view full itinerary" : "Double tap to unlock with Pro")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - Explore More Overlay Card
+struct ExploreMoreOverlayCard: View {
+    var onTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: Spacing.md) {
+            Spacer()
+
+            // Crown icon
+            Image(systemName: "crown.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.accentPrimary)
+
+            // Arrow in circle icon
+            Image(systemName: "arrow.right.circle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.accentPrimary)
+
+            // Text
+            VStack(spacing: Spacing.xs) {
+                Text("Explore More")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.textPrimary)
+
+                Text("Unlock All Group Plans")
+                    .font(.caption)
+                    .foregroundColor(.textSecondary)
+            }
+
+            Spacer()
+        }
+        .frame(width: 320, height: 350)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.surfacePrimary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.accentPrimary.opacity(0.3), lineWidth: 2)
+                )
+        )
+        .onTapGesture {
+            onTap()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Explore more group plans")
+        .accessibilityHint("Double tap to unlock all premium plans")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - Sprint 18A: Weekend Plan Card (Horizontal Scroll Version)
+struct WeekendPlanCard: View {
+    let plan: Plan
+    let isBlurred: Bool
+    var onTap: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Plan image
+            ZStack {
+                AsyncImageView(url: URL(string: plan.images.first ?? ""))
+                    .frame(width: 200, height: 120)
+                    .cornerRadius(12)
+                    .blur(radius: isBlurred ? 6 : 0)
+
+                // Gradient overlay for text readability
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.clear, Color.black.opacity(0.6)]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .cornerRadius(12)
+                .frame(width: 200, height: 120)
+
+                // Weekend badge
+                VStack {
+                    HStack {
+                        Text(plan.schedule.dayOfWeek)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.accentPrimary)
+                            .cornerRadius(4)
+
+                        Spacer()
+                    }
+                    .padding(8)
+
+                    Spacer()
+                }
+                .frame(width: 200, height: 120)
+            }
+
+            // City name
+            Text(plan.cityName)
+                .font(.caption)
+                .foregroundColor(.accentPrimary)
+                .fontWeight(.medium)
+
+            // Plan title
+            Text(plan.title)
+                .font(.callout)
+                .fontWeight(.semibold)
+                .foregroundColor(.textPrimary)
+                .lineLimit(2)
+
+            // Venue and time info
+            HStack(spacing: Spacing.sm) {
+                Label(plan.venueName, systemImage: "mappin.and.ellipse")
+                    .lineLimit(1)
+                Label(plan.formattedTimeRange, systemImage: "clock")
+            }
+            .font(.caption)
+            .foregroundColor(.textSecondary)
+
+            // Price tag
+            HStack {
+                Text(plan.pricing.priceRange)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.textSecondary)
+
+                Spacer()
+
+                if let rank = plan.flags.rank, rank <= 3 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                        Text("Top \(rank)")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .foregroundColor(.accentPrimary)
+                }
+            }
+        }
+        .frame(width: 200)
+        .padding(Spacing.sm)
+        .background(Color.surfacePrimary)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.surfaceSecondary, lineWidth: 1)
+        )
+        .onTapGesture {
+            onTap()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(plan.cityName), \(plan.title), \(plan.venueName), \(plan.schedule.dayOfWeek)")
+        .accessibilityHint("Double tap to view plan details")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - Sprint 18A: Weekend Plan Unlock Card
+struct WeekendPlanUnlockCard: View {
+    let remainingCount: Int
+    var onTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: Spacing.md) {
+            // Arrow down icon in circle
+            ZStack {
+                Circle()
+                    .fill(Color.accentPrimary)
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(.textPrimary)
+            }
+            .shadow(color: Color.accentPrimary.opacity(0.4), radius: 8, x: 0, y: 4)
+
+            VStack(spacing: Spacing.xxs) {
+                Text("Unlock \(remainingCount) More")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Text("Weekend Plans")
+                    .font(.system(size: 13))
+                    .foregroundColor(.textSecondary)
+            }
+
+            // Crown icon for premium
+            Image(systemName: "crown.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.accentPrimary)
+        }
+        .frame(width: 200, height: 220)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.surfaceSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.accentPrimary.opacity(0.3), lineWidth: 2)
+                )
+        )
+        .onTapGesture {
+            onTap()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Unlock \(remainingCount) more weekend plans")
+        .accessibilityHint("Double tap to upgrade to Pro")
         .accessibilityAddTraits(.isButton)
     }
 }

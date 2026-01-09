@@ -24,6 +24,7 @@ struct ProfileView: View {
     @State private var showHelpSupport = false
     @State private var showAbout = false
     @State private var showSubscriptionManagement = false
+    @State private var showViewedCitiesHistory = false
 
     // Computed properties for user data
     private var userName: String {
@@ -95,6 +96,9 @@ struct ProfileView: View {
             .sheet(isPresented: $showSubscriptionManagement) {
                 PaywallView(trigger: .profile)
             }
+            .sheet(isPresented: $showViewedCitiesHistory) {
+                ViewedCitiesView()
+            }
             .alert("Sign Out", isPresented: $showSignOutConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Sign Out", role: .destructive) {
@@ -105,6 +109,12 @@ struct ProfileView: View {
             }
             .refreshable {
                 await refreshData()
+            }
+            .onAppear {
+                // Check pro status for all users (including guests)
+                Task {
+                    await subscriptionManager.refreshProStatus()
+                }
             }
         }
     }
@@ -166,30 +176,70 @@ struct ProfileView: View {
 
     // MARK: - Subscription Badge
     private var subscriptionBadge: some View {
-        HStack(spacing: Spacing.xs) {
-            Image(systemName: subscriptionTier.badgeIcon)
-                .font(.system(size: 14))
-                .foregroundColor(subscriptionTier.badgeColor)
-                .accessibilityHidden(true)
+        VStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: subscriptionTier.badgeIcon)
+                    .font(.system(size: 14))
+                    .foregroundColor(subscriptionTier.badgeColor)
+                    .accessibilityHidden(true)
 
-            Text(subscriptionTier.displayName)
-                .font(.callout)
-                .fontWeight(.semibold)
-                .foregroundColor(subscriptionTier.badgeColor)
+                Text(subscriptionTier.displayName)
+                    .font(.callout)
+                    .fontWeight(.semibold)
+                    .foregroundColor(subscriptionTier.badgeColor)
+            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.xs)
+            .background(
+                subscriptionTier == .pro
+                    ? Color.accentPrimary.opacity(0.15)
+                    : Color.surfaceSecondary
+            )
+            .cornerRadius(20)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(subscriptionTier.badgeColor.opacity(0.3), lineWidth: 1)
+            )
+            .accessibilityLabel("Subscription: \(subscriptionTier.displayName)")
+
+            // Upgrade to Pro button - only shown for free tier users
+            if subscriptionTier == .free {
+                upgradeToProButton
+            }
         }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.xs)
-        .background(
-            subscriptionTier == .pro
-                ? Color.accentPrimary.opacity(0.15)
-                : Color.surfaceSecondary
-        )
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(subscriptionTier.badgeColor.opacity(0.3), lineWidth: 1)
-        )
-        .accessibilityLabel("Subscription: \(subscriptionTier.displayName)")
+    }
+
+    // MARK: - Upgrade to Pro Button
+    private var upgradeToProButton: some View {
+        Button(action: {
+            HapticManager.shared.light()
+            showSubscriptionManagement = true
+        }) {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.textPrimary)
+
+                Text("Upgrade to Pro")
+                    .font(.callout)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.textPrimary)
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.sm)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.accentPrimary, Color.accentSecondary]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(20)
+            .shadow(color: Color.accentPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("Upgrade to Pro")
+        .accessibilityHint("Opens subscription options to upgrade your account")
     }
 
     // MARK: - Settings Section
@@ -209,6 +259,14 @@ struct ProfileView: View {
                     iconColor: .accentPrimary
                 ) {
                     showAccountSettings = true
+                }
+
+                settingsRow(
+                    icon: "clock.arrow.circlepath",
+                    title: "Viewed Cities History",
+                    iconColor: .textSecondary
+                ) {
+                    showViewedCitiesHistory = true
                 }
 
                 settingsRow(
@@ -334,7 +392,7 @@ struct ProfileView: View {
                         showSubscriptionManagement = true
                     }
 
-                    Text("$9.99/month after trial")
+                    Text("$4.99/month or $39.99/year")
                         .font(.caption)
                         .foregroundColor(.textTertiary)
                 }

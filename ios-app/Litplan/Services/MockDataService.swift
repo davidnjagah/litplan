@@ -18,7 +18,7 @@ class MockDataService {
     let cities: [City] = [
         // New York City
         City(
-            id: "nyc-001",
+            id: "cmjrcg43r0000wbxrw025frc8",
             name: "New York",
             country: "United States",
             displayAssets: City.DisplayAssets(
@@ -37,7 +37,7 @@ class MockDataService {
 
         // Los Angeles
         City(
-            id: "la-001",
+            id: "cmjrcg4di0001wbxr2lumn70c",
             name: "Los Angeles",
             country: "United States",
             displayAssets: City.DisplayAssets(
@@ -56,7 +56,7 @@ class MockDataService {
 
         // Miami
         City(
-            id: "mia-001",
+            id: "cmjrcg4ib0002wbxr7jc51zza",
             name: "Miami",
             country: "United States",
             displayAssets: City.DisplayAssets(
@@ -75,7 +75,7 @@ class MockDataService {
 
         // London
         City(
-            id: "lon-001",
+            id: "cmjrcg4na0003wbxrwuohp2pc",
             name: "London",
             country: "United Kingdom",
             displayAssets: City.DisplayAssets(
@@ -94,7 +94,7 @@ class MockDataService {
 
         // Paris
         City(
-            id: "par-001",
+            id: "cmjrcg4s50004wbxrpzps2dkw",
             name: "Paris",
             country: "France",
             displayAssets: City.DisplayAssets(
@@ -113,7 +113,7 @@ class MockDataService {
 
         // Tokyo
         City(
-            id: "tyo-001",
+            id: "cmjrcg4wy0005wbxrx6vgdmf0",
             name: "Tokyo",
             country: "Japan",
             displayAssets: City.DisplayAssets(
@@ -132,7 +132,7 @@ class MockDataService {
 
         // Berlin
         City(
-            id: "ber-001",
+            id: "cmjrcg51s0006wbxr9pbvocrd",
             name: "Berlin",
             country: "Germany",
             displayAssets: City.DisplayAssets(
@@ -151,7 +151,7 @@ class MockDataService {
 
         // Barcelona
         City(
-            id: "bcn-001",
+            id: "cmjrcg56o0007wbxrxvvkvm1u",
             name: "Barcelona",
             country: "Spain",
             displayAssets: City.DisplayAssets(
@@ -170,7 +170,7 @@ class MockDataService {
 
         // Madrid
         City(
-            id: "mad-001",
+            id: "cmjmk146cwb87qncw",
             name: "Madrid",
             country: "Spain",
             displayAssets: City.DisplayAssets(
@@ -189,7 +189,7 @@ class MockDataService {
 
         // Amsterdam
         City(
-            id: "ams-001",
+            id: "cmjrcg5bj0008wbxrnivnx05x",
             name: "Amsterdam",
             country: "Netherlands",
             displayAssets: City.DisplayAssets(
@@ -208,7 +208,7 @@ class MockDataService {
 
         // Dubai
         City(
-            id: "dxb-001",
+            id: "cmjrcg5gc0009wbxrlhu4vdqe",
             name: "Dubai",
             country: "United Arab Emirates",
             displayAssets: City.DisplayAssets(
@@ -232,37 +232,37 @@ class MockDataService {
         var plansDict: [String: [Plan]] = [:]
 
         // New York City Plans
-        plansDict["nyc-001"] = createNYCPlans()
+        plansDict["cmjrcg43r0000wbxrw025frc8"] = createNYCPlans()
 
         // Los Angeles Plans
-        plansDict["la-001"] = createLAPlans()
+        plansDict["cmjrcg4di0001wbxr2lumn70c"] = createLAPlans()
 
         // Miami Plans
-        plansDict["mia-001"] = createMiamiPlans()
+        plansDict["cmjrcg4ib0002wbxr7jc51zza"] = createMiamiPlans()
 
         // London Plans
-        plansDict["lon-001"] = createLondonPlans()
+        plansDict["cmjrcg4na0003wbxrwuohp2pc"] = createLondonPlans()
 
         // Paris Plans
-        plansDict["par-001"] = createParisPlans()
+        plansDict["cmjrcg4s50004wbxrpzps2dkw"] = createParisPlans()
 
         // Tokyo Plans
-        plansDict["tyo-001"] = createTokyoPlans()
+        plansDict["cmjrcg4wy0005wbxrx6vgdmf0"] = createTokyoPlans()
 
         // Berlin Plans
-        plansDict["ber-001"] = createBerlinPlans()
+        plansDict["cmjrcg51s0006wbxr9pbvocrd"] = createBerlinPlans()
 
         // Barcelona Plans
-        plansDict["bcn-001"] = createBarcelonaPlans()
+        plansDict["cmjrcg56o0007wbxrxvvkvm1u"] = createBarcelonaPlans()
 
         // Amsterdam Plans
-        plansDict["ams-001"] = createAmsterdamPlans()
+        plansDict["cmjrcg5bj0008wbxrnivnx05x"] = createAmsterdamPlans()
 
         // Dubai Plans
-        plansDict["dxb-001"] = createDubaiPlans()
+        plansDict["cmjrcg5gc0009wbxrlhu4vdqe"] = createDubaiPlans()
 
         // Madrid Plans
-        plansDict["mad-001"] = createMadridPlans()
+        plansDict["cmjmk146cwb87qncw"] = createMadridPlans()
 
         return plansDict
     }()
@@ -286,11 +286,11 @@ class MockDataService {
         // For now, return 2-3 sample group flows per city
         // This will be replaced with real API data in future sprints
         switch cityId {
-        case "nyc-001":
+        case "cmjrcg43r0000wbxrw025frc8":  // NYC
             return createNYCGroupFlows()
-        case "la-001":
+        case "cmjrcg4di0001wbxr2lumn70c":  // LA
             return createLAGroupFlows()
-        case "mad-001":
+        case "cmjmk146cwb87qncw":  // Madrid
             return createMadridGroupFlows()
         default:
             return [] // Other cities will have group flows added later
@@ -301,7 +301,7 @@ class MockDataService {
         [
             GroupFlow(
                 id: "nyc-flow-001",
-                cityId: "nyc-001",
+                cityId: "cmjrcg43r0000wbxrw025frc8",
                 title: "Ultimate NYC Night Out",
                 description: "Brooklyn Brewery → Blue Note Jazz Club → Le Bain at The Standard. A moderate 5-hour experience through NYC's best nightlife.",
                 activities: [
@@ -346,11 +346,12 @@ class MockDataService {
                 estimatedCost: GroupFlow.EstimatedCost(min: 80, max: 120, currency: "USD"),
                 difficulty: "moderate",
                 bestFor: ["groups", "solo"],
-                aiTags: ["Live Music", "Jazz", "Craft Beer", "Nightclub", "Dancing"]
+                aiTags: ["Live Music", "Jazz", "Craft Beer", "Nightclub", "Dancing"],
+                isLocked: nil
             ),
             GroupFlow(
                 id: "nyc-flow-002",
-                cityId: "nyc-001",
+                cityId: "cmjrcg43r0000wbxrw025frc8",
                 title: "Comedy & Cocktails",
                 description: "The Dead Rabbit → Comedy Cellar. An easy 3.5-hour experience through NYC's best nightlife.",
                 activities: [
@@ -383,7 +384,8 @@ class MockDataService {
                 estimatedCost: GroupFlow.EstimatedCost(min: 60, max: 90, currency: "USD"),
                 difficulty: "easy",
                 bestFor: ["groups", "couples"],
-                aiTags: ["Comedy", "Cocktails", "Upscale", "Classic Venue"]
+                aiTags: ["Comedy", "Cocktails", "Upscale", "Classic Venue"],
+                isLocked: nil
             )
         ]
     }
@@ -392,7 +394,7 @@ class MockDataService {
         [
             GroupFlow(
                 id: "la-flow-001",
-                cityId: "la-001",
+                cityId: "cmjrcg4di0001wbxr2lumn70c",
                 title: "West Hollywood Vibes",
                 description: "Skybar → The Troubadour. An easy 3-hour experience through LA's best nightlife.",
                 activities: [
@@ -425,7 +427,8 @@ class MockDataService {
                 estimatedCost: GroupFlow.EstimatedCost(min: 60, max: 90, currency: "USD"),
                 difficulty: "easy",
                 bestFor: ["groups", "couples"],
-                aiTags: ["Rooftop", "Live Music", "Cocktails", "Sunset"]
+                aiTags: ["Rooftop", "Live Music", "Cocktails", "Sunset"],
+                isLocked: nil
             )
         ]
     }
@@ -434,7 +437,7 @@ class MockDataService {
         [
             GroupFlow(
                 id: "mad-flow-001",
-                cityId: "mad-001",
+                cityId: "cmjmk146cwb87qncw",
                 title: "Authentic Madrid Night",
                 description: "La Latina Tapas → Corral de la Morería Flamenco → Kapital Nightclub. A challenging 6-hour experience through Madrid's best nightlife.",
                 activities: [
@@ -479,7 +482,8 @@ class MockDataService {
                 estimatedCost: GroupFlow.EstimatedCost(min: 100, max: 150, currency: "EUR"),
                 difficulty: "challenging",
                 bestFor: ["groups", "solo"],
-                aiTags: ["Flamenco", "Tapas", "Nightclub", "Cultural", "Late Night"]
+                aiTags: ["Flamenco", "Tapas", "Nightclub", "Cultural", "Late Night"],
+                isLocked: nil
             ),
             GroupFlow(
                 id: "mad-flow-002",
@@ -516,7 +520,8 @@ class MockDataService {
                 estimatedCost: GroupFlow.EstimatedCost(min: 70, max: 100, currency: "EUR"),
                 difficulty: "moderate",
                 bestFor: ["couples", "groups"],
-                aiTags: ["Rooftop", "Flamenco", "Cultural", "Sunset", "Traditional"]
+                aiTags: ["Rooftop", "Flamenco", "Cultural", "Sunset", "Traditional"],
+                isLocked: nil
             ),
             GroupFlow(
                 id: "mad-flow-003",
@@ -553,7 +558,8 @@ class MockDataService {
                 estimatedCost: GroupFlow.EstimatedCost(min: 40, max: 60, currency: "EUR"),
                 difficulty: "easy",
                 bestFor: ["groups", "solo"],
-                aiTags: ["Alternative", "Indie", "Cocktails", "Underground", "Hipster"]
+                aiTags: ["Alternative", "Indie", "Cocktails", "Underground", "Hipster"],
+                isLocked: nil
             )
         ]
     }
@@ -1396,11 +1402,19 @@ extension MockDataService {
         let dayOfWeek = isWeekend ? "Saturday" : "Friday"
         let date = isWeekend ? "2025-12-28T22:00:00Z" : "2025-12-27T20:00:00Z"
 
+        // Generate a description based on the venue and category
+        let description = generateDescription(venueName: venueName, category: category, neighborhood: neighborhood, tags: tags)
+
+        // Map cityId to city name
+        let cityName = mapCityIdToName(cityId)
+
         return Plan(
             id: id,
             title: title,
             venueName: venueName,
             category: category,
+            description: description,
+            cityName: cityName,
             images: imageUrls,
             location: Plan.Location(
                 address: "\(neighborhood), \(cityId)",
@@ -1427,5 +1441,46 @@ extension MockDataService {
                 rank: rank
             )
         )
+    }
+
+    private func generateDescription(venueName: String, category: String, neighborhood: String, tags: [String]) -> String {
+        let tagsList = tags.prefix(3).joined(separator: ", ")
+        switch category.lowercased() {
+        case "live music", "jazz club":
+            return "Experience incredible live performances at \(venueName) in \(neighborhood). Known for \(tagsList), this venue offers an unforgettable night of music and atmosphere."
+        case "rooftop bar", "rooftop":
+            return "Enjoy stunning views and expertly crafted cocktails at \(venueName). Located in \(neighborhood), this rooftop venue is perfect for \(tagsList)."
+        case "nightclub", "club":
+            return "Dance the night away at \(venueName) in \(neighborhood). This hotspot is known for \(tagsList) and keeps the energy going until the early hours."
+        case "cocktail bar", "bar":
+            return "Discover craft cocktails and a sophisticated atmosphere at \(venueName) in \(neighborhood). Perfect for \(tagsList)."
+        case "speakeasy":
+            return "Step back in time at \(venueName), a hidden gem in \(neighborhood). Experience the thrill of \(tagsList) in an intimate setting."
+        default:
+            return "Explore \(venueName) in \(neighborhood) for an unforgettable experience. Known for \(tagsList), this is a must-visit destination."
+        }
+    }
+
+    private func mapCityIdToName(_ cityId: String) -> String {
+        switch cityId.lowercased() {
+        case "nyc", "nyc-001":
+            return "New York"
+        case "la", "la-001":
+            return "Los Angeles"
+        case "mia", "mia-001":
+            return "Miami"
+        case "chi", "chi-001":
+            return "Chicago"
+        case "lon", "lon-001":
+            return "London"
+        case "tyo", "tyo-001":
+            return "Tokyo"
+        case "par", "par-001":
+            return "Paris"
+        case "ber", "ber-001":
+            return "Berlin"
+        default:
+            return cityId.capitalized
+        }
     }
 }

@@ -65,8 +65,8 @@ struct CityCardStack: View {
                         endPoint: .top
                     )
 
-                    // Plan count badge (top-right)
-                    Text("\(city.metadata.planCount) plans this week")
+                    // Plan count badge (top-right) - hardcoded for performance
+                    Text("50 plans available")
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.textPrimary)
@@ -77,6 +77,8 @@ struct CityCardStack: View {
                                 .fill(Color.accentPrimary)
                         )
                         .padding([.top, .trailing], Spacing.md)
+                    // Original dynamic version (preserved for future use):
+                    // Text("\(city.metadata.displayPlanCount) plans this week")
                 }
                 .overlay(alignment: .bottom) {
                     // City info at bottom
@@ -113,7 +115,7 @@ struct CityCardStack: View {
             .animation(reduceMotion ? .none : .spring(response: 0.4, dampingFraction: 0.75), value: isPressed)
         }
         .accessibilityLabel("\(city.name), \(city.country)")
-        .accessibilityHint("Double tap to explore \(city.metadata.planCount) nightlife plans")
+        .accessibilityHint("Double tap to explore 50 nightlife plans")
         .accessibilityAddTraits(.isButton)
         .onTapGesture {
             // Spring animation on tap

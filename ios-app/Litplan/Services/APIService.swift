@@ -79,11 +79,12 @@ class APIService: ObservableObject {
 
         self.decoder = JSONDecoder()
         self.decoder.dateDecodingStrategy = .iso8601
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // Note: Backend sends camelCase keys (venueName, cityName, etc.)
+        // so we don't use .convertFromSnakeCase - keys match Swift properties directly
 
         self.encoder = JSONEncoder()
         self.encoder.dateEncodingStrategy = .iso8601
-        self.encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Note: Backend expects camelCase keys, so we don't convert to snake_case
     }
 
     // MARK: - Generic Request
@@ -94,39 +95,66 @@ class APIService: ObservableObject {
     ///   - method: HTTP method
     ///   - body: Optional request body (Encodable)
     ///   - requiresAuth: Whether to include auth header
+    ///   - retryWithAnonKey: Internal flag to retry with anon key on 401
     /// - Returns: Decoded response
     func request<T: Decodable>(
         endpoint: String,
         method: HTTPMethod = .GET,
         body: (any Encodable)? = nil,
-        requiresAuth: Bool = false
+        requiresAuth: Bool = false,
+        retryWithAnonKey: Bool = false
     ) async throws -> T {
         guard let url = URL(string: endpoint) else {
             throw APIError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = method.rawValue
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue(Config.appVersion, forHTTPHeaderField: "X-App-Version")
-        request.setValue("iOS", forHTTPHeaderField: "X-Platform")
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = method.rawValue
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue(Config.appVersion, forHTTPHeaderField: "X-App-Version")
+        urlRequest.setValue("iOS", forHTTPHeaderField: "X-Platform")
 
-        // Add auth header if required
+        // Always include Supabase API key for edge functions
+        urlRequest.setValue(Config.supabaseAnonKey, forHTTPHeaderField: "apikey")
+
+        // Add auth header - use user token if available, otherwise use anon key
+        // Some edge functions (like group-flows) require Authorization header even for public access
         if requiresAuth {
             if let token = await SupabaseManager.shared.getAccessToken() {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             } else if AuthenticationManager.shared.isGuest {
                 // Guest mode - some endpoints may allow limited access
-                request.setValue("guest", forHTTPHeaderField: "X-Auth-Mode")
+                urlRequest.setValue("guest", forHTTPHeaderField: "X-Auth-Mode")
+                // Also set Authorization with anon key for edge functions that require it
+                urlRequest.setValue("Bearer \(Config.supabaseAnonKey)", forHTTPHeaderField: "Authorization")
             } else {
                 throw APIError.unauthorized
+            }
+        } else {
+            // For non-auth endpoints, still send Authorization header
+            // Use anon key if retrying or if no user token available
+            if retryWithAnonKey {
+                if Config.enableDebugLogging {
+                    print("[APIService] Retrying with anon key after 401")
+                }
+                urlRequest.setValue("Bearer \(Config.supabaseAnonKey)", forHTTPHeaderField: "Authorization")
+            } else if let token = await SupabaseManager.shared.getAccessToken() {
+                if Config.enableDebugLogging {
+                    print("[APIService] Using user token for non-auth endpoint (token length: \(token.count))")
+                }
+                urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            } else {
+                if Config.enableDebugLogging {
+                    print("[APIService] Using anon key for non-auth endpoint (no user token available)")
+                }
+                urlRequest.setValue("Bearer \(Config.supabaseAnonKey)", forHTTPHeaderField: "Authorization")
             }
         }
 
         // Add body if present
         if let body = body {
-            request.httpBody = try encoder.encode(body)
+            urlRequest.httpBody = try encoder.encode(body)
         }
 
         if Config.enableDebugLogging {
@@ -134,7 +162,7 @@ class APIService: ObservableObject {
         }
 
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await session.data(for: urlRequest)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw APIError.unknown("Invalid response type")
@@ -161,6 +189,20 @@ class APIService: ObservableObject {
                 }
 
             case 401:
+                // For non-auth endpoints, retry with anon key if user token failed
+                // This handles expired/invalid user tokens gracefully
+                if !requiresAuth && !retryWithAnonKey {
+                    if Config.enableDebugLogging {
+                        print("[APIService] Got 401 on non-auth endpoint, retrying with anon key")
+                    }
+                    return try await self.request(
+                        endpoint: endpoint,
+                        method: method,
+                        body: body,
+                        requiresAuth: false,
+                        retryWithAnonKey: true
+                    )
+                }
                 throw APIError.unauthorized
 
             case 404:
@@ -255,24 +297,74 @@ class APIService: ObservableObject {
 
     // MARK: - Plans API
 
-    /// Fetch plans for a city (requires authentication)
+    /// Fetch plans for a city (public access - no auth required)
     func fetchPlans(cityId: String) async throws -> [Plan] {
         let response: PlansResponse = try await request(
             endpoint: "\(Config.Endpoints.plans)?cityId=\(cityId)",
             method: .GET,
-            requiresAuth: true
+            requiresAuth: false  // Plans are public data
         )
         return response.plans
     }
 
-    /// Fetch a single plan by ID
+    /// Fetch a single plan by ID (public access)
     func fetchPlan(id: String) async throws -> Plan {
         let response: PlanResponse = try await request(
             endpoint: "\(Config.Endpoints.plans)/\(id)",
             method: .GET,
-            requiresAuth: true
+            requiresAuth: false  // Plans are public data
         )
         return response.plan
+    }
+
+    // MARK: - Group Flows API
+
+    /// Fetch group flows for a city (public access)
+    func fetchGroupFlows(cityId: String) async throws -> [GroupFlow] {
+        let response: GroupFlowsResponse = try await request(
+            endpoint: "\(Config.Endpoints.groupFlows)?cityId=\(cityId)",
+            method: .GET,
+            requiresAuth: false  // Group flows are public data
+        )
+        return response.groupFlows
+    }
+
+    /// Fetch group flows with fallback to mock data
+    func fetchGroupFlowsWithFallback(cityId: String) async -> [GroupFlow] {
+        let authState = AuthenticationManager.shared.authState
+        let isGuest = AuthenticationManager.shared.isGuest
+        print("[APIService] fetchGroupFlowsWithFallback called for cityId: \(cityId)")
+        print("[APIService] Auth state: \(authState), isGuest: \(isGuest)")
+        print("[APIService] Network connected: \(NetworkMonitor.shared.isConnected)")
+
+        guard NetworkMonitor.shared.isConnected else {
+            print("[APIService] No network - using mock data for group flows")
+            let mockFlows = MockDataService.shared.getGroupFlows(for: cityId)
+            print("[APIService] Mock data returned \(mockFlows.count) group flows")
+            return mockFlows
+        }
+
+        do {
+            print("[APIService] Calling fetchGroupFlows API...")
+            let flows = try await fetchGroupFlows(cityId: cityId)
+            print("[APIService] SUCCESS: Fetched \(flows.count) group flows from API for \(cityId)")
+            for (index, flow) in flows.prefix(3).enumerated() {
+                print("[APIService]   [\(index)] \(flow.title) - \(flow.activities.count) activities")
+            }
+            return flows
+        } catch let error as APIError {
+            print("[APIService] APIError fetching group flows: \(error.localizedDescription)")
+            print("[APIService] Auth state when error occurred: \(authState)")
+            let mockFlows = MockDataService.shared.getGroupFlows(for: cityId)
+            print("[APIService] Falling back to mock data: \(mockFlows.count) group flows")
+            return mockFlows
+        } catch {
+            print("[APIService] FAILED to fetch group flows: \(error)")
+            print("[APIService] Error type: \(type(of: error))")
+            let mockFlows = MockDataService.shared.getGroupFlows(for: cityId)
+            print("[APIService] Falling back to mock data: \(mockFlows.count) group flows")
+            return mockFlows
+        }
     }
 
     // MARK: - User API
@@ -382,6 +474,66 @@ class APIService: ObservableObject {
             return false
         }
     }
+
+    // MARK: - Subscription API
+
+    /// Get current subscription status from the backend
+    /// - Returns: SubscriptionStatusResponse with current subscription state
+    func getSubscriptionStatus() async throws -> SubscriptionStatusResponse {
+        // The backend returns a nested response with { success, data }
+        let apiResponse: SubscriptionStatusAPIResponse = try await request(
+            endpoint: Config.Endpoints.subscriptionStatus,
+            method: .GET,
+            requiresAuth: true
+        )
+
+        guard apiResponse.success, let data = apiResponse.data else {
+            let message = apiResponse.error?.message ?? "Failed to get subscription status"
+            throw APIError.serverError(500, message)
+        }
+
+        return SubscriptionStatusResponse(from: data)
+    }
+
+    /// Verify subscription with backend using StoreKit 2 transaction data
+    /// - Parameter verifyRequest: SubscriptionVerifyRequest with transaction details
+    /// - Returns: SubscriptionVerifyAPIResponse with verification result
+    func verifySubscription(_ verifyRequest: SubscriptionVerifyRequest) async throws -> SubscriptionVerifyAPIResponse {
+        let response: SubscriptionVerifyAPIResponse = try await request(
+            endpoint: Config.Endpoints.subscriptionVerify,
+            method: .POST,
+            body: verifyRequest,
+            requiresAuth: true
+        )
+        return response
+    }
+}
+
+// MARK: - Subscription Verify Response
+
+/// Response from POST /api/v2/subscription/verify
+struct SubscriptionVerifyAPIResponse: Codable {
+    let success: Bool
+    let data: SubscriptionVerifyData?
+    let error: APIErrorData?
+}
+
+struct SubscriptionVerifyData: Codable {
+    let subscription: SubscriptionInfo?
+    let entitlements: SubscriptionEntitlements?
+    let isNew: Bool?
+    let message: String?
+}
+
+struct SubscriptionInfo: Codable {
+    let id: String
+    let tier: String
+    let status: String
+    let productId: String?
+    let purchaseDate: Date?
+    let expiresDate: Date?
+    let environment: String?
+    let autoRenew: Bool
 }
 
 // MARK: - API Response Models
@@ -402,6 +554,11 @@ struct PlansResponse: Codable {
 
 struct PlanResponse: Codable {
     let plan: Plan
+}
+
+struct GroupFlowsResponse: Codable {
+    let groupFlows: [GroupFlow]
+    let total: Int?
 }
 
 struct UserSyncRequest: Codable {
@@ -448,11 +605,69 @@ struct HealthResponse: Codable {
     let timestamp: String?
 }
 
+// MARK: - Subscription Response Models
+
+/// Wrapper for API responses with nested data
+struct SubscriptionStatusAPIResponse: Codable {
+    let success: Bool
+    let data: SubscriptionStatusData?
+    let error: APIErrorData?
+}
+
+struct APIErrorData: Codable {
+    let code: String?
+    let message: String?
+}
+
+/// Data structure from GET /api/v2/subscription/status
+struct SubscriptionStatusData: Codable {
+    let hasSubscription: Bool
+    let isActive: Bool
+    let tier: String
+    let status: String
+    let productId: String?
+    let purchaseDate: Date?
+    let expiresDate: Date?
+    let environment: String?
+    let autoRenew: Bool
+    let daysUntilExpiry: Int?
+    let entitlements: SubscriptionEntitlements?
+}
+
+struct SubscriptionEntitlements: Codable {
+    let isPro: Bool
+    let maxCitiesPerWeek: Int
+    let canAccessPremiumContent: Bool
+    let canSaveUnlimited: Bool
+}
+
+/// Simplified response for backward compatibility
+struct SubscriptionStatusResponse {
+    let hasActiveSubscription: Bool
+    let subscriptionState: String
+    let productId: String?
+    let expiresAt: Date?
+    let willRenew: Bool?
+    let daysUntilExpiry: Int?
+
+    /// Create from API response data
+    init(from data: SubscriptionStatusData) {
+        self.hasActiveSubscription = data.isActive
+        self.subscriptionState = data.status
+        self.productId = data.productId
+        self.expiresAt = data.expiresDate
+        self.willRenew = data.autoRenew
+        self.daysUntilExpiry = data.daysUntilExpiry
+    }
+}
+
 // MARK: - Viewed Cities Response Models
 
 struct ViewedCitiesResponse: Codable {
     let cities: [ViewedCityData]
     let total: Int
+    let limit: Int?
+    let offset: Int?
     let hasMore: Bool
 }
 
@@ -461,6 +676,30 @@ struct ViewedCityData: Codable {
     let city: City
     let viewCount: Int
     let lastViewedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case cityId
+        case city
+        case viewCount
+        case lastViewedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Handle cityId - may come from the nested city object or directly
+        if let directCityId = try? container.decode(String.self, forKey: .cityId) {
+            cityId = directCityId
+        } else {
+            // Fall back to getting it from the nested city object
+            let cityData = try container.decode(City.self, forKey: .city)
+            cityId = cityData.id
+        }
+
+        city = try container.decode(City.self, forKey: .city)
+        viewCount = try container.decode(Int.self, forKey: .viewCount)
+        lastViewedAt = try container.decode(Date.self, forKey: .lastViewedAt)
+    }
 }
 
 struct RecordCityViewRequest: Codable {
@@ -492,19 +731,28 @@ extension APIService {
 
     /// Fetch plans with fallback to mock data
     func fetchPlansWithFallback(cityId: String) async -> [Plan] {
+        print("[APIService] fetchPlansWithFallback called for cityId: \(cityId)")
+        print("[APIService] Network connected: \(NetworkMonitor.shared.isConnected)")
+
         guard NetworkMonitor.shared.isConnected else {
-            if Config.enableDebugLogging {
-                print("[APIService] No network - using mock data for plans")
-            }
+            print("[APIService] No network - using mock data for plans")
             return MockDataService.shared.plans(for: cityId)
         }
 
         do {
-            return try await fetchPlans(cityId: cityId)
+            print("[APIService] Calling fetchPlans API...")
+            let plans = try await fetchPlans(cityId: cityId)
+            print("[APIService] SUCCESS: Fetched \(plans.count) plans from API for city: \(cityId)")
+            return plans
+        } catch let error as APIError {
+            print("[APIService] APIError fetching plans: \(error.localizedDescription)")
+            print("[APIService] Falling back to mock data")
+            return MockDataService.shared.plans(for: cityId)
         } catch {
-            if Config.enableDebugLogging {
-                print("[APIService] Failed to fetch plans, using mock data: \(error)")
-            }
+            print("[APIService] Unknown error fetching plans: \(error)")
+            print("[APIService] Error type: \(type(of: error))")
+            print("[APIService] Error details: \(String(describing: error))")
+            print("[APIService] Falling back to mock data")
             return MockDataService.shared.plans(for: cityId)
         }
     }

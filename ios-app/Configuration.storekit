@@ -88,7 +88,7 @@
             "internalID" : "monthly_trial",
             "numberOfPeriods" : 1,
             "paymentMode" : "free",
-            "subscriptionPeriod" : "P1W"
+            "subscriptionPeriod" : "P3D"
           },
           "localizations" : [
             {
@@ -119,7 +119,7 @@
             "internalID" : "yearly_trial",
             "numberOfPeriods" : 1,
             "paymentMode" : "free",
-            "subscriptionPeriod" : "P1W"
+            "subscriptionPeriod" : "P3D"
           },
           "localizations" : [
             {

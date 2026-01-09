@@ -25,15 +25,36 @@ class SubscriptionManager: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var isTestMode: Bool = false  // Indicates if Pro was granted via test mode
+    @Published var productsLoadedAt: Date?  // Track when products were last loaded
+
+    // MARK: - Subscription State
+
+    @Published var subscriptionState: SubscriptionState = .none
+    @Published var currentSubscriptionType: SubscriptionType?
+    @Published var subscriptionExpirationDate: Date?
 
     // MARK: - Private Properties
 
+    /// StoreKit 2 product identifiers
+    /// These must match the product IDs configured in App Store Connect and StoreKit Configuration
     private let productIDs = [
         "com.litplan.pro.monthly",
         "com.litplan.pro.yearly"
     ]
 
+    /// Product ID constants for easy reference
+    enum ProductID {
+        static let monthly = "com.litplan.pro.monthly"
+        static let yearly = "com.litplan.pro.yearly"
+    }
+
     private var updateListenerTask: Task<Void, Error>?
+
+    /// Cache duration for products (1 hour)
+    private let productsCacheValidityDuration: TimeInterval = 3600
+
+    /// Whether products are currently being loaded (prevents duplicate requests)
+    private var isLoadingProducts: Bool = false
 
     // Backend API configuration - now using Config
     private var backendURL: String {
@@ -49,7 +70,7 @@ class SubscriptionManager: ObservableObject {
         // Check for persisted test access first
         checkPersistedTestAccess()
 
-        // Load products and check subscription status on init
+        // Load products and check subscription status on init (fire-and-forget)
         // Use Task with @MainActor to ensure proper actor context
         Task { @MainActor [weak self] in
             guard let self = self else { return }
@@ -64,25 +85,76 @@ class SubscriptionManager: ObservableObject {
 
     // MARK: - Product Loading
 
+    /// Check if cached products are still valid
+    var areProductsCached: Bool {
+        guard !availableProducts.isEmpty,
+              let loadedAt = productsLoadedAt else {
+            return false
+        }
+        let elapsed = Date().timeIntervalSince(loadedAt)
+        return elapsed < productsCacheValidityDuration
+    }
+
     /// Load available subscription products from App Store
-    func loadProducts() async {
+    /// Products are cached and will not re-fetch unless cache is invalid or force is true
+    /// - Parameter force: If true, forces a refresh even if products are cached
+    func loadProducts(force: Bool = false) async {
+        // Check if products are already cached and valid
+        if !force && areProductsCached {
+            print("[SubscriptionManager] Products already cached (\(availableProducts.count) products), skipping fetch")
+            return
+        }
+
+        // Prevent duplicate simultaneous requests
+        guard !isLoadingProducts else {
+            print("[SubscriptionManager] Product load already in progress, skipping duplicate request")
+            return
+        }
+
+        isLoadingProducts = true
         isLoading = true
         errorMessage = nil
 
+        let startTime = Date()
+        print("[SubscriptionManager] Starting product load...")
+
         do {
             // Fetch products from App Store using StoreKit 2
+            print("[SubscriptionManager] Requesting products with IDs: \(productIDs)")
             let products = try await Product.products(for: productIDs)
+
+            if products.isEmpty {
+                print("[SubscriptionManager] WARNING: No products returned. Check that:")
+                print("[SubscriptionManager]   1. Product IDs match App Store Connect / StoreKit Config")
+                print("[SubscriptionManager]   2. StoreKit Configuration file is set in scheme")
+                print("[SubscriptionManager]   3. Products are approved in App Store Connect (for production)")
+            }
 
             // Sort products by price (ascending)
             self.availableProducts = products.sorted { $0.price < $1.price }
+            self.productsLoadedAt = Date()
 
-            print("Successfully loaded \(products.count) products")
+            let duration = Date().timeIntervalSince(startTime)
+            print("[SubscriptionManager] Successfully loaded \(products.count) products in \(String(format: "%.2f", duration))s")
+            for product in availableProducts {
+                print("[SubscriptionManager]   - \(product.id): \(product.displayPrice)")
+            }
         } catch {
-            print("Failed to load products: \(error.localizedDescription)")
+            print("[SubscriptionManager] Failed to load products: \(error)")
+            print("[SubscriptionManager] Error type: \(type(of: error))")
             errorMessage = "Failed to load subscription options. Please try again."
         }
 
         isLoading = false
+        isLoadingProducts = false
+    }
+
+    /// Pre-load products on app launch - call this early to ensure products are cached
+    func preloadProducts() {
+        print("[SubscriptionManager] Pre-loading products on app launch...")
+        Task { @MainActor in
+            await loadProducts()
+        }
     }
 
     // MARK: - Purchase Flow
@@ -228,9 +300,101 @@ class SubscriptionManager: ObservableObject {
 
     // MARK: - Subscription Status
 
+    /// Refresh Pro status by checking StoreKit 2 entitlements
+    /// Works for ALL users (authenticated, guest, or unauthenticated) since StoreKit entitlements
+    /// are tied to the Apple ID, not the app's authentication state.
+    /// Call this from views on `.onAppear` to ensure Pro status is accurate.
+    /// - Returns: The current Pro status after checking entitlements
+    @discardableResult
+    func refreshProStatus() async -> Bool {
+        if Config.enableDebugLogging {
+            print("[SubscriptionManager] refreshProStatus() called - checking StoreKit entitlements for all users")
+        }
+
+        // Check if test mode is active (takes precedence)
+        if isTestMode {
+            if Config.enableDebugLogging {
+                print("[SubscriptionManager] Test mode active - isProUser: true")
+            }
+            return true
+        }
+
+        var hasActiveSubscription = false
+        var detectedState: SubscriptionState = .none
+        var latestExpirationDate: Date?
+        var detectedType: SubscriptionType?
+
+        // Check all current entitlements from StoreKit 2
+        // This works regardless of authentication state since entitlements are tied to Apple ID
+        for await result in Transaction.currentEntitlements {
+            do {
+                let transaction = try checkVerified(result)
+
+                // Check if transaction is for one of our products
+                if productIDs.contains(transaction.productID) {
+                    if Config.enableDebugLogging {
+                        print("[SubscriptionManager] Found entitlement for product: \(transaction.productID)")
+                    }
+
+                    // Check if subscription is still valid
+                    if let expirationDate = transaction.expirationDate {
+                        if expirationDate > Date() {
+                            hasActiveSubscription = true
+                            latestExpirationDate = expirationDate
+
+                            // Determine state based on transaction details
+                            if transaction.revocationDate != nil {
+                                detectedState = .cancelledButValid
+                            } else {
+                                detectedState = .active
+                            }
+
+                            // Determine subscription type
+                            detectedType = SubscriptionType(productID: transaction.productID)
+
+                            if Config.enableDebugLogging {
+                                print("[SubscriptionManager] Active subscription found - expires: \(expirationDate), state: \(detectedState)")
+                            }
+                        } else {
+                            if Config.enableDebugLogging {
+                                print("[SubscriptionManager] Found expired subscription for product: \(transaction.productID)")
+                            }
+                        }
+                    }
+                }
+            } catch {
+                if Config.enableDebugLogging {
+                    print("[SubscriptionManager] Failed to verify transaction: \(error.localizedDescription)")
+                }
+            }
+        }
+
+        // Update published properties
+        self.isProUser = hasActiveSubscription || isTestMode
+        if hasActiveSubscription {
+            self.subscriptionState = detectedState
+            self.subscriptionExpirationDate = latestExpirationDate
+            self.currentSubscriptionType = detectedType
+        } else if !isTestMode {
+            // Only reset state if not in test mode and no active subscription
+            self.subscriptionState = .none
+            self.subscriptionExpirationDate = nil
+            self.currentSubscriptionType = nil
+        }
+
+        if Config.enableDebugLogging {
+            print("[SubscriptionManager] refreshProStatus() complete - isProUser: \(isProUser), state: \(subscriptionState)")
+        }
+
+        return isProUser
+    }
+
     /// Check current subscription status from App Store
     func checkSubscriptionStatus() async {
         var activeProductIDs: Set<String> = []
+        var latestTransaction: Transaction?
+        var latestExpirationDate: Date?
+        var detectedState: SubscriptionState = .none
 
         // Check all current entitlements
         for await result in Transaction.currentEntitlements {
@@ -240,17 +404,67 @@ class SubscriptionManager: ObservableObject {
                 // Check if transaction is for one of our products
                 if productIDs.contains(transaction.productID) {
                     activeProductIDs.insert(transaction.productID)
+
+                    // Track the latest transaction
+                    if latestTransaction == nil || transaction.purchaseDate > latestTransaction!.purchaseDate {
+                        latestTransaction = transaction
+                        latestExpirationDate = transaction.expirationDate
+                    }
+
+                    // Determine subscription state based on transaction details
+                    if let expirationDate = transaction.expirationDate {
+                        if expirationDate > Date() {
+                            // Check if subscription is revoked/cancelled but still valid
+                            if transaction.revocationDate != nil {
+                                detectedState = .cancelledButValid
+                            } else if transaction.isUpgraded {
+                                // Upgraded to a different subscription
+                                detectedState = .active
+                            } else {
+                                detectedState = .active
+                            }
+                        } else {
+                            detectedState = .expired
+                        }
+                    }
                 }
             } catch {
-                print("Failed to verify transaction: \(error.localizedDescription)")
+                print("[SubscriptionManager] Failed to verify transaction: \(error.localizedDescription)")
             }
+        }
+
+        // Determine subscription type from the latest transaction
+        var detectedType: SubscriptionType? = nil
+        if let productID = latestTransaction?.productID {
+            detectedType = SubscriptionType(productID: productID)
         }
 
         // Update state
         self.purchasedProductIDs = activeProductIDs
-        self.isProUser = !activeProductIDs.isEmpty
+        self.subscriptionState = detectedState
+        self.currentSubscriptionType = detectedType
+        self.subscriptionExpirationDate = latestExpirationDate
+        self.isProUser = detectedState.grantsAccess
 
-        print("Subscription status - isProUser: \(isProUser), active products: \(activeProductIDs)")
+        print("[SubscriptionManager] Status - state: \(detectedState), type: \(detectedType?.rawValue ?? "none"), isProUser: \(isProUser), expires: \(latestExpirationDate?.description ?? "N/A")")
+    }
+
+    /// Check subscription status with optional backend verification
+    /// Call this on app launch for comprehensive validation
+    func verifySubscriptionOnLaunch() async {
+        // First check local StoreKit entitlements
+        await checkSubscriptionStatus()
+
+        // If we have an active subscription, optionally sync with backend
+        if isProUser, let transaction = await getCurrentSubscriptionTransaction() {
+            do {
+                try await syncTransactionWithBackend(transaction: transaction)
+                print("[SubscriptionManager] Backend sync successful on launch")
+            } catch {
+                // Don't fail if backend sync fails - local entitlements are the source of truth
+                print("[SubscriptionManager] Backend sync failed on launch (non-fatal): \(error)")
+            }
+        }
     }
 
     /// Update subscription status (internal helper)
@@ -295,64 +509,60 @@ class SubscriptionManager: ObservableObject {
 
     // MARK: - Backend Validation
 
-    /// Validate transaction with backend server
-    /// - Parameter transaction: The transaction to validate
-    private func validateWithBackend(transaction: Transaction) async throws {
-        // Get the auth token (in production, this would come from Firebase Auth)
-        guard let authToken = getAuthToken() else {
-            print("Warning: No auth token available, skipping backend validation")
+    /// Sync transaction with backend server using POST /api/v2/subscription/verify
+    /// - Parameter transaction: The transaction to sync
+    private func syncTransactionWithBackend(transaction: Transaction) async throws {
+        // Check if user is authenticated
+        guard await getAuthTokenAsync() != nil else {
+            print("[SubscriptionManager] Warning: No auth token available, skipping backend sync")
             return
         }
 
-        // Prepare receipt data (for StoreKit 2, we send transaction details)
-        let receiptData = try await getReceiptData(for: transaction)
+        // Determine environment
+        let environment = transaction.environment == .sandbox ? "sandbox" : "production"
 
-        // Prepare request body
-        let requestBody: [String: Any] = [
-            "transactionId": String(transaction.id),
-            "productId": transaction.productID,
-            "receiptData": receiptData
-        ]
+        // Prepare request body with transaction details
+        // Auto-renewable subscriptions always auto-renew by default
+        let requestBody = SubscriptionVerifyRequest(
+            transactionId: String(transaction.id),
+            productId: transaction.productID,
+            purchaseDate: transaction.purchaseDate,
+            expiresDate: transaction.expirationDate,
+            originalTransactionId: String(transaction.originalID),
+            environment: environment,
+            autoRenewStatus: true
+        )
 
-        // Create request
-        guard let url = URL(string: "\(backendURL)/subscription/validate") else {
-            throw SubscriptionError.invalidURL
-        }
+        // Use APIService for the request
+        let response = try await APIService.shared.verifySubscription(requestBody)
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        if response.success, let data = response.data {
+            // Update local state from backend response
+            if let subscription = data.subscription {
+                if let backendState = SubscriptionState(rawValue: subscription.status.lowercased()) {
+                    self.subscriptionState = backendState
+                    self.isProUser = backendState.grantsAccess
+                }
 
-        // Send request
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        // Check response status
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw SubscriptionError.invalidResponse
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            // Parse error message from response
-            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let errorMsg = errorJson["error"] as? String {
-                throw SubscriptionError.backendError(errorMsg)
+                if let expiresDate = subscription.expiresDate {
+                    self.subscriptionExpirationDate = expiresDate
+                }
             }
-            throw SubscriptionError.backendError("Validation failed with status \(httpResponse.statusCode)")
-        }
 
-        // Parse success response
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let success = json["success"] as? Bool,
-              success else {
-            throw SubscriptionError.invalidResponse
+            print("[SubscriptionManager] Backend sync successful for transaction \(transaction.id)")
+        } else {
+            let message = response.error?.message ?? "Verification failed"
+            throw SubscriptionError.backendError(message)
         }
-
-        print("Backend validation successful for transaction \(transaction.id)")
     }
 
-    /// Get receipt data for backend validation
+    /// Validate transaction with backend server (legacy method, calls new sync method)
+    /// - Parameter transaction: The transaction to validate
+    private func validateWithBackend(transaction: Transaction) async throws {
+        try await syncTransactionWithBackend(transaction: transaction)
+    }
+
+    /// Get receipt data for backend validation (if needed for legacy endpoints)
     /// - Parameter transaction: The transaction to get receipt data for
     /// - Returns: Base64-encoded receipt data
     private func getReceiptData(for transaction: Transaction) async throws -> String {
@@ -370,20 +580,23 @@ class SubscriptionManager: ObservableObject {
         return String(transaction.id)
     }
 
-    /// Get authentication token from SupabaseManager
+    /// Get authentication token synchronously from SupabaseManager
     /// - Returns: The auth token if available
     private func getAuthToken() -> String? {
-        // Get token from Supabase session
-        // Note: Using synchronous access since we're in a sync context
-        // For async context, use: await SupabaseManager.shared.getAccessToken()
         return SupabaseManager.shared.currentSession?.accessToken
+    }
+
+    /// Get authentication token asynchronously from SupabaseManager
+    /// - Returns: The auth token if available
+    private func getAuthTokenAsync() async -> String? {
+        return await SupabaseManager.shared.getAccessToken()
     }
 
     // MARK: - Transaction Listener
 
     /// Listen for transaction updates (auto-renewals, etc.)
     private func listenForTransactions() -> Task<Void, Error> {
-        return Task.detached {
+        return Task.detached { [weak self] in
             // Iterate through any transactions that don't come from a direct call to purchase()
             for await result in Transaction.updates {
                 do {
@@ -396,19 +609,31 @@ class SubscriptionManager: ObservableObject {
                         transaction = safe
                     }
 
+                    print("[SubscriptionManager] Received transaction update for product: \(transaction.productID)")
+
                     // Update subscription status on main actor
-                    await MainActor.run {
-                        Task {
-                            await self.updateSubscriptionStatus()
-                        }
-                    }
+                    await self?.handleTransactionUpdate(transaction: transaction)
 
                     // Finish the transaction
                     await transaction.finish()
                 } catch {
-                    print("Transaction verification failed: \(error.localizedDescription)")
+                    print("[SubscriptionManager] Transaction verification failed: \(error.localizedDescription)")
                 }
             }
+        }
+    }
+
+    /// Handle transaction update on MainActor
+    private func handleTransactionUpdate(transaction: Transaction) async {
+        // Update subscription status
+        await updateSubscriptionStatus()
+
+        // Sync with backend for auto-renewals and other updates
+        do {
+            try await syncTransactionWithBackend(transaction: transaction)
+            print("[SubscriptionManager] Transaction update synced with backend")
+        } catch {
+            print("[SubscriptionManager] Failed to sync transaction update with backend: \(error)")
         }
     }
 
@@ -423,12 +648,12 @@ class SubscriptionManager: ObservableObject {
 
     /// Get monthly product
     var monthlyProduct: Product? {
-        return getProduct(for: "com.litplan.pro.monthly")
+        return getProduct(for: ProductID.monthly)
     }
 
     /// Get yearly product
     var yearlyProduct: Product? {
-        return getProduct(for: "com.litplan.pro.yearly")
+        return getProduct(for: ProductID.yearly)
     }
 
     /// Check if a specific product is purchased
@@ -436,6 +661,49 @@ class SubscriptionManager: ObservableObject {
     /// - Returns: True if the product is currently active
     func isPurchased(_ productID: String) -> Bool {
         return purchasedProductIDs.contains(productID)
+    }
+
+    /// Get subscription status from the backend
+    /// - Returns: SubscriptionStatusResponse with current status
+    func fetchBackendSubscriptionStatus() async throws -> SubscriptionStatusResponse {
+        return try await APIService.shared.getSubscriptionStatus()
+    }
+
+    /// Formatted expiration date string for display
+    var formattedExpirationDate: String? {
+        guard let date = subscriptionExpirationDate else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    /// Days until subscription expires
+    var daysUntilExpiration: Int? {
+        guard let date = subscriptionExpirationDate else { return nil }
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.day], from: Date(), to: date)
+        return components.day
+    }
+
+    /// Check if subscription is expiring soon (within 7 days)
+    var isExpiringSoon: Bool {
+        guard let days = daysUntilExpiration else { return false }
+        return days > 0 && days <= 7
+    }
+
+    /// Get detailed subscription info for display
+    var subscriptionDisplayInfo: SubscriptionDisplayInfo {
+        return SubscriptionDisplayInfo(
+            isActive: isProUser,
+            state: subscriptionState,
+            type: currentSubscriptionType,
+            expirationDate: subscriptionExpirationDate,
+            formattedExpiration: formattedExpirationDate,
+            daysRemaining: daysUntilExpiration,
+            isExpiringSoon: isExpiringSoon,
+            isTestMode: isTestMode
+        )
     }
 
     // MARK: - Test Mode Methods
@@ -464,7 +732,9 @@ class SubscriptionManager: ObservableObject {
 
         isProUser = true
         isTestMode = true
-        purchasedProductIDs.insert("com.litplan.pro.monthly.test")
+        subscriptionState = .active
+        currentSubscriptionType = .monthly
+        purchasedProductIDs.insert("\(ProductID.monthly).test")
 
         // Persist test mode
         UserDefaults.standard.set(true, forKey: "testProAccess")
@@ -475,10 +745,10 @@ class SubscriptionManager: ObservableObject {
     /// Revoke test Pro access
     func revokeTestProAccess() {
         isTestMode = false
-        purchasedProductIDs.remove("com.litplan.pro.monthly.test")
+        purchasedProductIDs.remove("\(ProductID.monthly).test")
         UserDefaults.standard.set(false, forKey: "testProAccess")
 
-        // Re-check actual subscription status
+        // Re-check actual subscription status (fire-and-forget)
         Task {
             await checkSubscriptionStatus()
         }
@@ -493,9 +763,32 @@ class SubscriptionManager: ObservableObject {
         if UserDefaults.standard.bool(forKey: "testProAccess") {
             isProUser = true
             isTestMode = true
-            purchasedProductIDs.insert("com.litplan.pro.monthly.test")
+            subscriptionState = .active
+            currentSubscriptionType = .monthly
+            purchasedProductIDs.insert("\(ProductID.monthly).test")
             print("[SubscriptionManager] Restored persisted test Pro access")
         }
+    }
+
+    // MARK: - Logout Cleanup
+
+    /// Clear all Pro features cache on logout
+    /// Call this when user signs out to ensure Pro features are reverted to free account settings
+    func clearProCache() {
+        // Reset subscription state
+        isProUser = false
+        isTestMode = false
+        purchasedProductIDs.removeAll()
+        subscriptionState = .none
+        subscriptionExpirationDate = nil
+        currentSubscriptionType = nil
+
+        // Clear persisted data
+        UserDefaults.standard.removeObject(forKey: "testProAccess")
+        UserDefaults.standard.removeObject(forKey: "subscriptionStatus")
+        UserDefaults.standard.removeObject(forKey: "cachedProAccess")
+
+        print("[SubscriptionManager] Pro cache cleared on logout")
     }
 }
 
@@ -568,6 +861,170 @@ enum SubscriptionError: LocalizedError {
             return "Receipt is invalid. Please contact support."
         case .subscriptionAlreadyActive:
             return "You're already a Pro member!"
+        }
+    }
+}
+
+// MARK: - Subscription State
+
+/// Represents the current state of a user's subscription
+enum SubscriptionState: String, Codable {
+    /// No subscription
+    case none = "none"
+    /// Active and valid subscription
+    case active = "active"
+    /// Subscription has expired
+    case expired = "expired"
+    /// In billing grace period (payment failed but still has access)
+    case gracePeriod = "grace_period"
+    /// Cancelled but still valid until expiration date
+    case cancelledButValid = "cancelled_but_valid"
+    /// Subscription is pending (awaiting approval)
+    case pending = "pending"
+
+    /// Whether this state grants Pro access
+    var grantsAccess: Bool {
+        switch self {
+        case .active, .gracePeriod, .cancelledButValid:
+            return true
+        case .none, .expired, .pending:
+            return false
+        }
+    }
+
+    /// User-friendly description of the state
+    var description: String {
+        switch self {
+        case .none:
+            return "No subscription"
+        case .active:
+            return "Active"
+        case .expired:
+            return "Expired"
+        case .gracePeriod:
+            return "Grace Period"
+        case .cancelledButValid:
+            return "Cancelled (valid until expiry)"
+        case .pending:
+            return "Pending"
+        }
+    }
+}
+
+// MARK: - Subscription Type
+
+/// Represents the type/tier of subscription
+enum SubscriptionType: String, Codable {
+    case monthly = "monthly"
+    case yearly = "yearly"
+
+    /// The corresponding StoreKit product ID
+    var productID: String {
+        switch self {
+        case .monthly:
+            return SubscriptionManager.ProductID.monthly
+        case .yearly:
+            return SubscriptionManager.ProductID.yearly
+        }
+    }
+
+    /// Create from a product ID
+    init?(productID: String) {
+        switch productID {
+        case SubscriptionManager.ProductID.monthly:
+            self = .monthly
+        case SubscriptionManager.ProductID.yearly:
+            self = .yearly
+        default:
+            return nil
+        }
+    }
+
+    /// User-friendly display name
+    var displayName: String {
+        switch self {
+        case .monthly:
+            return "Monthly"
+        case .yearly:
+            return "Yearly"
+        }
+    }
+}
+
+// MARK: - Subscription Verification Request
+
+/// Request body for subscription verification
+struct SubscriptionVerifyRequest: Codable {
+    let transactionId: String
+    let productId: String
+    let purchaseDate: Date
+    let expiresDate: Date?
+    let originalTransactionId: String?
+    let environment: String
+    let autoRenewStatus: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case transactionId = "transaction_id"
+        case productId = "product_id"
+        case purchaseDate = "purchase_date"
+        case expiresDate = "expires_date"
+        case originalTransactionId = "original_transaction_id"
+        case environment
+        case autoRenewStatus = "autoRenewStatus"
+    }
+}
+
+// MARK: - Subscription Display Info
+
+/// Consolidated subscription information for UI display
+struct SubscriptionDisplayInfo {
+    let isActive: Bool
+    let state: SubscriptionState
+    let type: SubscriptionType?
+    let expirationDate: Date?
+    let formattedExpiration: String?
+    let daysRemaining: Int?
+    let isExpiringSoon: Bool
+    let isTestMode: Bool
+
+    /// Status message for display in UI
+    var statusMessage: String {
+        if isTestMode {
+            return "Test Mode Active"
+        }
+
+        switch state {
+        case .none:
+            return "No subscription"
+        case .active:
+            if let days = daysRemaining, days > 0 {
+                return "Active - \(days) days remaining"
+            }
+            return "Active"
+        case .expired:
+            return "Subscription expired"
+        case .gracePeriod:
+            return "Payment issue - please update payment method"
+        case .cancelledButValid:
+            if let expiration = formattedExpiration {
+                return "Cancelled - expires \(expiration)"
+            }
+            return "Cancelled - access until expiry"
+        case .pending:
+            return "Subscription pending"
+        }
+    }
+
+    /// Short status for compact display
+    var shortStatus: String {
+        if isTestMode { return "Test" }
+        switch state {
+        case .none: return "Free"
+        case .active: return "Pro"
+        case .expired: return "Expired"
+        case .gracePeriod: return "Grace Period"
+        case .cancelledButValid: return "Ending Soon"
+        case .pending: return "Pending"
         }
     }
 }

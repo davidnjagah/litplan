@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import MapKit
 
 struct DetailedGroupFlowView: View {
     let groupFlow: GroupFlow
@@ -17,9 +18,14 @@ struct DetailedGroupFlowView: View {
     @State private var scrollOffset: CGFloat = 0
     @State private var isContentReady: Bool = false
     @State private var showPaywall: Bool = false
+    @State private var isSaved: Bool = false
+    @State private var showingShareSheet: Bool = false
 
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+
+    // Saved items manager for save functionality
+    @ObservedObject private var savedItemsManager = SavedItemsManager.shared
 
     private var isProUser: Bool {
         subscriptionManager.isProUser
@@ -75,6 +81,13 @@ struct DetailedGroupFlowView: View {
                             costSection
                         }
 
+                        // Route map section - only for pro users
+                        if isProUser {
+                            routeMapSection
+                        } else {
+                            restrictedRouteMapSection
+                        }
+
                         // Bottom padding
                         Color.clear.frame(height: Spacing.xl)
                     }
@@ -93,8 +106,8 @@ struct DetailedGroupFlowView: View {
                 }
             }
 
-            // Close button (always visible)
-            closeButton
+            // Top buttons row (Save on left, Close on right)
+            topButtonsRow
         }
         .background(Color.appBackground.ignoresSafeArea())
         .sheet(isPresented: $showPaywall) {
@@ -102,7 +115,13 @@ struct DetailedGroupFlowView: View {
                 showPaywall = false
             }
         }
+        .sheet(isPresented: $showingShareSheet) {
+            ShareSheet(items: [shareText])
+        }
         .onAppear {
+            // Check if already saved
+            isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation(.easeIn(duration: 0.2)) {
                     isContentReady = true
@@ -258,21 +277,43 @@ struct DetailedGroupFlowView: View {
                 }
             }
 
-            // Best For tags - always visible
-            HStack(spacing: Spacing.xxs) {
-                Text("Best for:")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.textSecondary)
+            // Best For tags with share button - always visible
+            HStack(alignment: .top, spacing: Spacing.sm) {
+                // Tags section (scrollable if too many)
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text("Best for:")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.textSecondary)
 
-                ForEach(groupFlow.bestFor, id: \.self) { tag in
-                    Text(tag.capitalized)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.textPrimary)
-                        .padding(.horizontal, Spacing.sm)
-                        .padding(.vertical, 6)
-                        .background(Color.surfaceSecondary)
+                    // Scrollable tags row
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: Spacing.xxs) {
+                            ForEach(groupFlow.bestFor, id: \.self) { tag in
+                                Text(tag.capitalized)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.textPrimary)
+                                    .padding(.horizontal, Spacing.sm)
+                                    .padding(.vertical, 6)
+                                    .background(Color.surfaceSecondary)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Share button (fixed position, far right)
+                Button(action: {
+                    showingShareSheet = true
+                }) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.accentPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(Color.surfacePrimary)
                         .cornerRadius(8)
                 }
+                .accessibilityLabel("Share group plan")
             }
         }
     }
@@ -379,16 +420,13 @@ struct DetailedGroupFlowView: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.textPrimary)
 
-                HStack(spacing: 4) {
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 13))
-                        .foregroundColor(.textTertiary)
-
-                    Text(activity.location.address)
-                        .font(.system(size: 14))
-                        .foregroundColor(.textSecondary)
-                        .lineLimit(2)
-                }
+                // Copyable address with Maps integration
+                CopyableAddressView(
+                    address: activity.location.address,
+                    latitude: activity.location.coordinates.latitude,
+                    longitude: activity.location.coordinates.longitude,
+                    venueName: activity.venueName
+                )
 
                 Text(activity.description)
                     .font(.system(size: 15))
@@ -491,9 +529,107 @@ struct DetailedGroupFlowView: View {
         }
     }
 
-    // MARK: - Close Button
-    private var closeButton: some View {
+    // MARK: - Route Map Section (Pro Users)
+    private var routeMapSection: some View {
+        RouteMapView(venues: venueLocations, planTitle: groupFlow.title)
+    }
+
+    // MARK: - Restricted Route Map Section (Free Users)
+    private var restrictedRouteMapSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            Text("Route Map")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.textPrimary)
+
+            ZStack {
+                // Blurred placeholder map
+                ZStack {
+                    Rectangle()
+                        .fill(Color.surfaceSecondary)
+                        .frame(height: 200)
+
+                    // Fake map elements
+                    VStack(spacing: Spacing.md) {
+                        HStack(spacing: Spacing.lg) {
+                            ForEach(1...3, id: \.self) { index in
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.accentPrimary.opacity(0.4))
+                                        .frame(width: 30, height: 30)
+
+                                    Text("\(index)")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                            }
+                        }
+
+                        // Fake route line
+                        Rectangle()
+                            .fill(Color.accentPrimary.opacity(0.3))
+                            .frame(height: 4)
+                            .cornerRadius(2)
+                            .frame(maxWidth: 200)
+                    }
+                }
+                .blur(radius: 6)
+                .cornerRadius(12)
+
+                // Premium overlay
+                BlurredPremiumOverlay {
+                    HapticManager.shared.medium()
+                    if let onUpgrade = onUpgrade {
+                        onUpgrade()
+                    } else {
+                        showPaywall = true
+                    }
+                }
+                .cornerRadius(12)
+            }
+            .frame(height: 200)
+        }
+    }
+
+    /// Convert group flow activities to venue locations for the map
+    private var venueLocations: [VenueLocation] {
+        groupFlow.sortedActivities.map { activity in
+            VenueLocation(
+                id: activity.id,
+                name: activity.venueName,
+                coordinate: CLLocationCoordinate2D(
+                    latitude: activity.location.coordinates.latitude,
+                    longitude: activity.location.coordinates.longitude
+                ),
+                order: activity.order,
+                address: activity.location.address
+            )
+        }
+    }
+
+    // MARK: - Top Buttons Row (Save + Close on right)
+    private var topButtonsRow: some View {
         HStack {
+            Spacer()
+
+            // Save button (heart icon, next to close)
+            Button(action: {
+                HapticManager.shared.light()
+                savedItemsManager.toggleGroupFlowSave(groupFlow)
+                isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.surfacePrimary.opacity(0.9))
+                        .frame(width: 44, height: 44)
+                        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+
+                    Image(systemName: isSaved ? "heart.fill" : "heart")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(isSaved ? .accentPrimary : .textPrimary)
+                }
+            }
+
+            // Close button (far right)
             Button(action: onDismiss) {
                 ZStack {
                     Circle()
@@ -506,11 +642,26 @@ struct DetailedGroupFlowView: View {
                         .foregroundColor(.textPrimary)
                 }
             }
-            .padding(.top, 50)
-            .padding(.leading, Spacing.md)
-
-            Spacer()
         }
+        .padding(.top, 50)
+        .padding(.horizontal, Spacing.md)
+    }
+
+    // MARK: - Share Text
+    private var shareText: String {
+        var text = "\u{1F389} \(groupFlow.title)\n\n"
+        text += "Duration: \(groupFlow.formattedDuration)\n"
+        text += "Cost: \(groupFlow.formattedCost)\n\n"
+        text += "Itinerary:\n"
+
+        for activity in groupFlow.sortedActivities {
+            text += "\(activity.order). \(activity.venueName)\n"
+            text += "   \u{1F4CD} \(activity.location.address)\n"
+            text += "   \u{23F0} \(formatTime(activity.startTime)) (\(activity.duration) min)\n\n"
+        }
+
+        text += "---\nShared via Litplan"
+        return text
     }
 
     // MARK: - Helper Functions

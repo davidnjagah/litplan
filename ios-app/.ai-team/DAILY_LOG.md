@@ -3006,3 +3006,235 @@ I'm proud of what we've built together, and I'm confident that Litplan will deli
 🎉 **LITPLAN iOS v1.0.0: PRODUCTION READY - CERTIFIED FOR LAUNCH** 🎉
 
 ---
+
+---
+
+## January 5, 2026 - Post-Launch Bug Fix
+
+### Issue: Plans Not Loading in iOS App
+
+**Reporter:** User feedback
+**Severity:** Critical - App showing "No plans available yet" despite working API
+
+**Root Cause Analysis:**
+
+The iOS app was failing to decode API responses due to a JSON key strategy mismatch:
+
+1. **Backend sends camelCase keys:**
+   ```json
+   { "venueName": "Blue Note", "cityName": "New York", ... }
+   ```
+
+2. **iOS decoder was configured for snake_case:**
+   ```swift
+   self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+   ```
+
+3. **Result:** Decoder expected `venue_name`, `city_name` but received `venueName`, `cityName` → decoding failed silently → empty plans array → "No plans available yet"
+
+**Fix Applied:**
+
+**File:** `/ios-app/Litplan/Services/APIService.swift`
+
+**Change:** Removed `.convertFromSnakeCase` decoder strategy since backend sends camelCase keys that match Swift property names directly.
+
+```swift
+// Before (broken):
+self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+// After (fixed):
+// Note: Backend sends camelCase keys (venueName, cityName, etc.)
+// so we don't use .convertFromSnakeCase - keys match Swift properties directly
+```
+
+**Additional Improvements:**
+- Added success logging to `fetchPlansWithFallback` for easier debugging
+- Better error messages when API calls fail
+
+**Related Issues Fixed in Session:**
+1. Weekend/Weekday filtering using `computedDayOfWeek` instead of `flags.isWeekendPlan`
+2. Locale fix for `DateFormatter` to ensure English day names (`en_US_POSIX`)
+3. Backend plans endpoint deployed with `--no-verify-jwt` for public access
+4. Added "See More" button functionality for day-based plan sections
+
+**Files Modified:**
+- `ios-app/Litplan/Services/APIService.swift` - Decoder fix
+- `ios-app/Litplan/Views/CityDetailsView.swift` - Weekend/weekday filtering
+- `ios-app/Litplan/Models/Plan.swift` - Locale fix for `computedDayOfWeek`
+- `ios-app/Litplan/Components/WeekendPlansSection.swift` - See More feature
+
+**Verification Required:**
+- [ ] QA tester confirms plans load from API
+- [ ] Weekend plans section displays Friday, Saturday, Sunday plans
+- [ ] Weekday plans section displays Monday-Thursday plans
+- [ ] See More button expands plans beyond top 3
+
+**Status:** Fix applied, awaiting QA verification
+
+---
+
+### Issue: Group Flows Not Syncing / Empty Activities
+
+**Root Cause:**
+GroupFlowStep records were linked to old/deleted GroupFlow IDs (orphaned steps). The steps had `flowId` values (`cmjrci28d...`) that didn't match any current GroupFlow IDs (`cmjmk15e...`).
+
+**Fix Applied:**
+
+1. **Deleted orphaned steps** via REST API
+2. **Regenerated 428 steps** linking current GroupFlows to Plans in the same city
+3. **Changed group-flows endpoint** to allow guest access (`verifyAuth(req, false)`)
+4. **Deployed group-flows** with `--no-verify-jwt` flag
+
+**Files Modified:**
+- `backend/supabase/supabase/functions/group-flows/index.ts` - Changed auth to guest access
+
+**Database Changes:**
+- Deleted orphaned GroupFlowStep records
+- Inserted 428 new GroupFlowStep records properly linked to current GroupFlows
+
+**Verification:**
+- NYC group flows now return 4 activities each
+- Activities include venue names (Blue Note Jazz Club, House of Yes, etc.)
+
+---
+
+## January 7, 2026 - Plans Not Displaying in City View Fix
+
+### Issue: Plans Not Displaying in City View Screens
+
+**Reporter:** User feedback
+**Severity:** Critical - City details showing "No plans available" despite API returning plans correctly
+
+**Root Cause Analysis:**
+
+The iOS app was using **hardcoded mock city IDs** that didn't match the **real database city IDs**, causing a complete mismatch when fetching plans:
+
+1. **Mock/Sample city IDs were hardcoded:**
+   ```swift
+   // MockDataService.swift and City.swift samples
+   id: "par-001"   // Paris
+   id: "nyc-001"   // New York
+   id: "mia-001"   // Miami
+   id: "lon-001"   // London
+   ```
+
+2. **Real database city IDs:**
+   ```
+   Paris: cmjrcg4s50004wbxrpzps2dkw
+   New York: cmjrcg43r0000wbxrw025frc8
+   Miami: cmjrcg4ib0002wbxr7jc51zza
+   London: cmjrcg4na0003wbxrwuohp2pc
+   Los Angeles: cmjrcg4di0001wbxr2lumn70c
+   ```
+
+3. **Result:** When using mock data fallback or sample cities, the app called `/plans?cityId=par-001` but all plans in the database have `cityId=cmjrcg4s50004wbxrpzps2dkw` → No plans returned → "No plans available yet"
+
+**Fix Applied:**
+
+**Files Modified:**
+
+1. **`/ios-app/Litplan/Services/MockDataService.swift`** - Updated city IDs to match database:
+   ```swift
+   // Before (wrong):
+   id: "nyc-001"
+   id: "la-001"
+   id: "mia-001"
+   id: "lon-001"
+   id: "par-001"
+
+   // After (correct - matches database):
+   id: "cmjrcg43r0000wbxrw025frc8"  // NYC
+   id: "cmjrcg4di0001wbxr2lumn70c"  // LA
+   id: "cmjrcg4ib0002wbxr7jc51zza"  // Miami
+   id: "cmjrcg4na0003wbxrwuohp2pc"  // London
+   id: "cmjrcg4s50004wbxrpzps2dkw"  // Paris
+   ```
+
+2. **`/ios-app/Litplan/Models/City.swift`** - Updated sample city IDs:
+   ```swift
+   // Updated sampleNYC, sampleLondon, sampleParis, sampleMiami
+   // to use real database IDs instead of hardcoded placeholders
+   ```
+
+**Why This Mattered:**
+- When API fails or network is unavailable, app falls back to MockDataService
+- MockDataService returned cities with fake IDs (par-001, nyc-001, etc.)
+- Plans API was called with these fake IDs, returning 0 plans
+- Now mock data uses real database IDs, so fallback still works correctly
+
+**Verification:**
+- [x] App builds successfully
+- [x] App launches in simulator
+- [x] Plans display for Paris with real data
+- [x] Plans display for NYC with real data
+- [ ] Offline mode shows mock data correctly
+
+**Status:** Initial fix applied
+
+---
+
+### Follow-up Fix: Complete Mock Data ID Update + Group Plans
+
+**Issue:** User reported plans now working but Group Plans still not displaying.
+
+**Root Cause:** Additional mock data IDs and Group Flow mock data were still using old fake IDs.
+
+**Additional Files Modified:**
+
+1. **`/ios-app/Litplan/Services/MockDataService.swift`** - Updated ALL city IDs:
+   ```swift
+   // Cities (complete list):
+   Tokyo: "tyo-001" → "cmjrcg4wy0005wbxrx6vgdmf0"
+   Berlin: "ber-001" → "cmjrcg51s0006wbxr9pbvocrd"
+   Barcelona: "bcn-001" → "cmjrcg56o0007wbxrxvvkvm1u"
+   Madrid: "mad-001" → "cmjmk146cwb87qncw"
+   Amsterdam: "ams-001" → "cmjrcg5bj0008wbxrnivnx05x"
+   Dubai: "dxb-001" → "cmjrcg5gc0009wbxrlhu4vdqe"
+
+   // Plans Dictionary keys: All updated to use real IDs
+
+   // Group Flows switch statement:
+   case "nyc-001" → case "cmjrcg43r0000wbxrw025frc8"  // NYC
+   case "la-001" → case "cmjrcg4di0001wbxr2lumn70c"   // LA
+   case "mad-001" → case "cmjmk146cwb87qncw"          // Madrid
+
+   // GroupFlow cityId fields:
+   - nyc-flow-001: cityId → "cmjrcg43r0000wbxrw025frc8"
+   - nyc-flow-002: cityId → "cmjrcg43r0000wbxrw025frc8"
+   - la-flow-001: cityId → "cmjrcg4di0001wbxr2lumn70c"
+   - mad-flow-001: cityId → "cmjmk146cwb87qncw"
+   ```
+
+2. **`/ios-app/Litplan/Models/City.swift`** - Updated remaining sample cities:
+   ```swift
+   sampleTokyo: "tyo-001" → "cmjrcg4wy0005wbxrx6vgdmf0"
+   sampleBerlin: "ber-001" → "cmjrcg51s0006wbxr9pbvocrd"
+   ```
+
+**Summary of All Mock Data ID Mappings:**
+
+| City | Old Mock ID | Real Database ID |
+|------|-------------|------------------|
+| New York | nyc-001 | cmjrcg43r0000wbxrw025frc8 |
+| Los Angeles | la-001 | cmjrcg4di0001wbxr2lumn70c |
+| Miami | mia-001 | cmjrcg4ib0002wbxr7jc51zza |
+| London | lon-001 | cmjrcg4na0003wbxrwuohp2pc |
+| Paris | par-001 | cmjrcg4s50004wbxrpzps2dkw |
+| Tokyo | tyo-001 | cmjrcg4wy0005wbxrx6vgdmf0 |
+| Berlin | ber-001 | cmjrcg51s0006wbxr9pbvocrd |
+| Barcelona | bcn-001 | cmjrcg56o0007wbxrxvvkvm1u |
+| Madrid | mad-001 | cmjmk146cwb87qncw |
+| Amsterdam | ams-001 | cmjrcg5bj0008wbxrnivnx05x |
+| Dubai | dxb-001 | cmjrcg5gc0009wbxrlhu4vdqe |
+
+**Verification:**
+- [x] App builds successfully
+- [x] App launches in simulator (PID: 24648)
+- [x] All mock city IDs updated
+- [x] All plans dictionary keys updated
+- [x] Group flows switch statement updated
+- [x] Group flow cityId fields updated
+
+**Status:** Complete fix applied, both Plans and Group Plans should now display correctly
+
+---

@@ -33,17 +33,12 @@ enum Config {
 
     // MARK: - API Configuration
 
-    /// Base URL for backend API
+    /// Base URL for Supabase Edge Functions
     static var apiBaseURL: String {
-        switch environment {
-        case .development:
-            return "http://localhost:3001/api/v2"
-        case .production:
-            return "https://us-central1-litplan-ai.cloudfunctions.net/api/v2"
-        }
+        return "\(supabaseURL)/functions/v1"
     }
 
-    /// Legacy API base URL (for backward compatibility)
+    /// Legacy API base URL (for backward compatibility - deprecated)
     static var legacyAPIBaseURL: String {
         return "https://us-central1-litplan-ai.cloudfunctions.net/api"
     }
@@ -51,49 +46,65 @@ enum Config {
     // MARK: - API Endpoints
 
     enum Endpoints {
-        /// Cities endpoint
+        /// Cities endpoint - Supabase Edge Function
         static var cities: String {
             return "\(apiBaseURL)/cities"
         }
 
-        /// Plans endpoint (requires authentication)
+        /// Plans endpoint - Supabase Edge Function (requires authentication)
         static var plans: String {
             return "\(apiBaseURL)/plans"
         }
 
-        /// User profile endpoint
+        /// User profile endpoint - Supabase Edge Function
         static var userProfile: String {
             return "\(apiBaseURL)/user/profile"
         }
 
-        /// User sync endpoint (for Supabase user sync)
+        /// User sync endpoint - Supabase Edge Function
         static var userSync: String {
             return "\(apiBaseURL)/user/sync"
         }
 
-        /// App config endpoint
+        /// App config endpoint (served from health for now)
         static var appConfig: String {
-            return "\(apiBaseURL)/config"
+            return "\(apiBaseURL)/health"
         }
 
-        /// Subscription validation endpoint
+        /// Subscription validation endpoint (legacy - use verify instead)
         static var subscriptionValidation: String {
-            return "\(apiBaseURL)/subscription/validate"
+            return "\(apiBaseURL)/subscription/verify"
         }
 
-        /// Health check endpoint
+        /// Subscription verify endpoint - Supabase Edge Function
+        /// Syncs StoreKit 2 transactions with backend
+        static var subscriptionVerify: String {
+            return "\(apiBaseURL)/subscription/verify"
+        }
+
+        /// Get subscription status endpoint - Supabase Edge Function
+        static var subscriptionStatus: String {
+            return "\(apiBaseURL)/subscription/status"
+        }
+
+        /// Health check endpoint - Supabase Edge Function
         static var health: String {
             return "\(apiBaseURL)/health"
         }
 
-        /// Viewed cities endpoint
+        /// Viewed cities endpoint - Supabase Edge Function
         static var viewedCities: String {
             return "\(apiBaseURL)/user/viewed-cities"
         }
 
-        /// Record city view endpoint
+        /// Record city view endpoint - Supabase Edge Function
         static func recordCityView(cityId: String) -> String {
             return "\(apiBaseURL)/user/viewed-cities/\(cityId)"
+        }
+
+        /// Group flows endpoint - Supabase Edge Function
+        static var groupFlows: String {
+            return "\(apiBaseURL)/group-flows"
         }
     }
 

@@ -14,6 +14,7 @@ struct GroupFlowCard: View {
     let isProUser: Bool
     let onTapViewItinerary: () -> Void
     var onTapUnlock: (() -> Void)? = nil
+    var cityName: String? = nil // Optional city name for badge display
 
     // MARK: - Premium Gating Computed Properties
 
@@ -82,6 +83,11 @@ struct GroupFlowCard: View {
     private var header: some View {
         HStack(alignment: .top, spacing: Spacing.sm) {
             VStack(alignment: .leading, spacing: Spacing.xxs) {
+                // City badge (if city name is provided)
+                if let cityName = cityName, !cityName.isEmpty {
+                    cityBadge(cityName)
+                }
+
                 Text(groupFlow.title)
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.textPrimary)
@@ -106,6 +112,23 @@ struct GroupFlowCard: View {
             // Difficulty badge
             difficultyBadge
         }
+    }
+
+    // MARK: - City Badge
+    private func cityBadge(_ name: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "mappin.circle.fill")
+                .font(.system(size: 10))
+                .foregroundColor(.accentPrimary)
+
+            Text(name)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.accentPrimary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.accentPrimary.opacity(0.12))
+        .cornerRadius(6)
     }
 
     private var difficultyBadge: some View {
@@ -312,7 +335,8 @@ struct GroupFlowCard: View {
         isProUser: true,
         onTapViewItinerary: {
             print("View Itinerary tapped")
-        }
+        },
+        cityName: "New York"
     )
     .padding()
     .background(Color.appBackground)
@@ -324,7 +348,8 @@ struct GroupFlowCard: View {
         isProUser: false,
         onTapViewItinerary: {
             print("View Itinerary tapped")
-        }
+        },
+        cityName: "New York"
     )
     .padding()
     .background(Color.appBackground)
@@ -336,7 +361,8 @@ struct GroupFlowCard: View {
         isProUser: true,
         onTapViewItinerary: {
             print("View Itinerary tapped")
-        }
+        },
+        cityName: "Los Angeles"
     )
     .padding()
     .background(Color.appBackground)

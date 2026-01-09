@@ -80,6 +80,9 @@ class SupabaseManager: ObservableObject {
     func getAccessToken() async -> String? {
         do {
             let session = try await client.auth.session
+            if Config.enableDebugLogging {
+                print("[SupabaseManager] Got access token, length: \(session.accessToken.count), user: \(session.user.id)")
+            }
             return session.accessToken
         } catch {
             if Config.enableDebugLogging {

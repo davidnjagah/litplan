@@ -16,6 +16,9 @@ struct ViewedCity: Identifiable, Codable {
     let viewCount: Int
     let displayAssets: DisplayAssets
 
+    // Plan count from API - single source of truth for city plan counts
+    let planCount: Int?
+
     // Computed property for ID conformance
     var id: String { cityId }
 
@@ -92,6 +95,7 @@ struct ViewedCity: Identifiable, Codable {
         case viewedAt
         case viewCount
         case displayAssets
+        case planCount
     }
 }
 
@@ -110,7 +114,8 @@ extension ViewedCity {
             heroImageUrl: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9",
             thumbnailUrl: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400",
             countryFlag: "🇺🇸"
-        )
+        ),
+        planCount: 50
     )
 
     static let sampleLondon = ViewedCity(
@@ -126,7 +131,8 @@ extension ViewedCity {
             heroImageUrl: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad",
             thumbnailUrl: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400",
             countryFlag: "🇬🇧"
-        )
+        ),
+        planCount: 50
     )
 
     static let sampleTokyo = ViewedCity(
@@ -142,7 +148,8 @@ extension ViewedCity {
             heroImageUrl: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf",
             thumbnailUrl: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400",
             countryFlag: "🇯🇵"
-        )
+        ),
+        planCount: 50
     )
 
     static let samples = [sampleNYC, sampleLondon, sampleTokyo]

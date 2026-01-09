@@ -11,7 +11,7 @@ import Foundation
 enum PaywallTrigger: Equatable {
     case planLimit(cityName: String)      // 11th plan in a city
     case weekendPlan(cityName: String)    // Trying to view weekend plan
-    case cityLimit                        // 2nd city in the week
+    case cityLimit                        // 11th city in the week (Sprint 14: increased from 2)
     case saveCity(cityName: String)       // Trying to save a city
     case groupFlow(cityName: String)      // Trying to view group flow itinerary
     case profile                          // Opened from profile subscription settings
@@ -40,7 +40,7 @@ enum PaywallTrigger: Equatable {
         case .weekendPlan(let city):
             return "Weekend plans in \(city) are exclusive to Pro members. Upgrade to access premium weekend experiences."
         case .cityLimit:
-            return "Free users can explore 1 city per week. Upgrade to Pro for unlimited cities."
+            return "Free users can explore 10 cities per week. Upgrade to Pro for unlimited cities."
         case .saveCity(let city):
             return "Save \(city) to your favorites for quick access. This feature is available with Litplan Pro."
         case .groupFlow(let city):
