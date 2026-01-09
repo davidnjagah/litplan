@@ -71,7 +71,7 @@ app.post('/api/pipeline/individual', async (req: Request, res: Response) => {
   const startTime = Date.now();
 
   try {
-    const { cityId, cityName, country, weekStartDate, weekEndDate, yearWeek } = req.body;
+    const { cityId, cityName, country, weekStartDate, weekEndDate, yearWeek, storeResults = true } = req.body;
 
     if (!cityId || !cityName || !country) {
       return res.status(400).json({
@@ -88,7 +88,7 @@ app.post('/api/pipeline/individual', async (req: Request, res: Response) => {
     const weekEnd = weekEndDate || getWeekEnd(now);
     const currentYearWeek = yearWeek || getYearWeek(now);
 
-    // Call Claude-powered search-agent
+    // Call Claude-powered search-agent (now handles storage internally)
     const searchResult = await callSupabaseFunction('search-agent', {
       cityId,
       cityName,
@@ -96,22 +96,18 @@ app.post('/api/pipeline/individual', async (req: Request, res: Response) => {
       weekStartDate: weekStart,
       weekEndDate: weekEnd,
       yearWeek: currentYearWeek,
+      storeResults, // Let search-agent handle storage
     });
 
     if (!searchResult.success) {
       throw new Error(`Search failed: ${searchResult.error}`);
     }
 
-    console.log(`[individual] Found ${searchResult.data?.totalVenues || 0} venues, ${searchResult.data?.totalEvents || 0} events`);
+    const venuesFound = searchResult.data?.totalVenues || 0;
+    const eventsFound = searchResult.data?.totalEvents || 0;
+    const storedCount = searchResult.data?.stored || 0;
 
-    // Store plans in database
-    const storeResult = await storePlans(
-      cityId,
-      searchResult.data?.venues || [],
-      searchResult.data?.events || [],
-      currentYearWeek,
-      weekStart
-    );
+    console.log(`[individual] Found ${venuesFound} venues, ${eventsFound} events, stored ${storedCount}`);
 
     const durationMs = Date.now() - startTime;
 
@@ -122,10 +118,11 @@ app.post('/api/pipeline/individual', async (req: Request, res: Response) => {
       phase: 'individual',
       data: {
         aiModel: 'Claude',
-        venuesFound: searchResult.data?.totalVenues || 0,
-        eventsFound: searchResult.data?.totalEvents || 0,
-        venuesStored: storeResult.venuesStored,
-        eventsStored: storeResult.eventsStored,
+        venuesFound,
+        eventsFound,
+        venuesStored: storedCount > 0 ? venuesFound : 0,
+        eventsStored: storedCount > 0 ? eventsFound : 0,
+        totalStored: storedCount,
         yearWeek: currentYearWeek,
       },
       durationMs,
@@ -246,22 +243,14 @@ app.post('/api/pipeline/full', async (req: Request, res: Response) => {
       weekStartDate: weekStart,
       weekEndDate: weekEnd,
       yearWeek,
+      storeResults, // Pass through to search-agent for database storage
     });
 
     const individualDuration = Date.now() - individualStart;
-    console.log(`[full] Phase 1 complete in ${individualDuration}ms: ${searchResult.data?.totalVenues || 0} venues, ${searchResult.data?.totalEvents || 0} events`);
-
-    // Store individual plans
-    let storeResult = { venuesStored: 0, eventsStored: 0 };
-    if (searchResult.success && searchResult.data && storeResults) {
-      storeResult = await storePlans(
-        cityId || '',
-        searchResult.data.venues || [],
-        searchResult.data.events || [],
-        yearWeek,
-        weekStart
-      );
-    }
+    const venuesFound = searchResult.data?.totalVenues || 0;
+    const eventsFound = searchResult.data?.totalEvents || 0;
+    const individualStored = searchResult.data?.stored || 0;
+    console.log(`[full] Phase 1 complete in ${individualDuration}ms: ${venuesFound} venues, ${eventsFound} events, ${individualStored} stored`);
 
     // Phase 2: Generate group plans with GPT 7-agent
     const groupStart = Date.now();
@@ -283,10 +272,9 @@ app.post('/api/pipeline/full', async (req: Request, res: Response) => {
       data: {
         individual: {
           aiModel: 'Claude',
-          venuesFound: searchResult.data?.totalVenues || 0,
-          eventsFound: searchResult.data?.totalEvents || 0,
-          venuesStored: storeResult.venuesStored,
-          eventsStored: storeResult.eventsStored,
+          venuesFound,
+          eventsFound,
+          totalStored: individualStored,
           durationMs: individualDuration,
         },
         group: {
