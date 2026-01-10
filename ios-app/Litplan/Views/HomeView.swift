@@ -237,7 +237,6 @@ struct HomeView: View {
                 }
             }
             .onAppear {
-                resetWeeklyLimitIfNeeded()
                 if cities.isEmpty && !isLoading {
                     loadPlans()
                 }
@@ -404,37 +403,7 @@ struct HomeView: View {
         // Haptic feedback on tap
         HapticManager.shared.medium()
 
-        // Free users: check weekly city limit
-        if !isProUser {
-            // Load current viewed cities
-            let currentViewedCities: Set<String>
-            if let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
-               let cities = try? JSONDecoder().decode(Set<String>.self, from: data) {
-                currentViewedCities = cities
-            } else {
-                currentViewedCities = []
-            }
-
-            // If this city hasn't been viewed yet
-            if !currentViewedCities.contains(city.id) {
-                // Check if they've already viewed 10 cities this week (Sprint 14: increased from 1)
-                if currentViewedCities.count >= 10 {
-                    paywallTrigger = .cityLimit
-                    return
-                }
-
-                // Add to viewed cities
-                var updatedCities = currentViewedCities
-                updatedCities.insert(city.id)
-
-                // Save back to UserDefaults
-                if let data = try? JSONEncoder().encode(updatedCities) {
-                    UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
-                }
-            }
-        }
-
-        // Record city view to backend (fire and forget)
+        // Record city view to backend for analytics (fire and forget)
         Task {
             do {
                 try await APIService.shared.recordCityView(cityId: city.id)
@@ -450,43 +419,6 @@ struct HomeView: View {
         showCityDetails = true
     }
 
-    // MARK: - Weekly City Tracking
-
-    private var viewedCitiesThisWeek: Set<String> {
-        get {
-            guard let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
-                  let cities = try? JSONDecoder().decode(Set<String>.self, from: data) else {
-                return []
-            }
-            return cities
-        }
-        set {
-            if let data = try? JSONEncoder().encode(newValue) {
-                UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
-            }
-        }
-    }
-
-    private var lastWeekReset: Date {
-        get {
-            UserDefaults.standard.object(forKey: "lastWeekReset") as? Date ?? Date()
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: "lastWeekReset")
-        }
-    }
-
-    private func resetWeeklyLimitIfNeeded() {
-        let now = Date()
-        let calendar = Calendar.current
-
-        // Check if a week has passed
-        if calendar.dateComponents([.day], from: lastWeekReset, to: now).day ?? 0 >= 7 {
-            // Reset by directly modifying UserDefaults
-            UserDefaults.standard.removeObject(forKey: "viewedCitiesThisWeek")
-            UserDefaults.standard.set(now, forKey: "lastWeekReset")
-        }
-    }
 
     // MARK: - API Data Loading
 

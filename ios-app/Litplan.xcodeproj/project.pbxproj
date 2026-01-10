@@ -11,7 +11,7 @@
 		002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 102 /* ContentView.swift */; };
 		003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 103 /* HomeView.swift */; };
 		004 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104 /* SearchView.swift */; };
-		005 /* ViewedCitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105 /* ViewedCitiesView.swift */; };
+		005 /* SearchedCitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 105 /* SearchedCitiesView.swift */; };
 		006 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106 /* ProfileView.swift */; };
 		007 /* Color+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 107 /* Color+Extensions.swift */; };
 		008 /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108 /* Spacing.swift */; };
@@ -74,7 +74,7 @@
 		102 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		103 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		104 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
-		105 /* ViewedCitiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewedCitiesView.swift; sourceTree = "<group>"; };
+		105 /* SearchedCitiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchedCitiesView.swift; sourceTree = "<group>"; };
 		106 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		107 /* Color+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Extensions.swift"; sourceTree = "<group>"; };
 		108 /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spacing.swift; sourceTree = "<group>"; };
@@ -179,7 +179,7 @@
 			children = (
 				103 /* HomeView.swift */,
 				104 /* SearchView.swift */,
-				105 /* ViewedCitiesView.swift */,
+				105 /* SearchedCitiesView.swift */,
 				SP13002 /* MyPlansView.swift */,
 				106 /* ProfileView.swift */,
 				119 /* CityDetailsView.swift */,
@@ -359,7 +359,7 @@
 				002 /* ContentView.swift in Sources */,
 				003 /* HomeView.swift in Sources */,
 				004 /* SearchView.swift in Sources */,
-				005 /* ViewedCitiesView.swift in Sources */,
+				005 /* SearchedCitiesView.swift in Sources */,
 				006 /* ProfileView.swift in Sources */,
 				007 /* Color+Extensions.swift in Sources */,
 				008 /* Spacing.swift in Sources */,

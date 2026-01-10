@@ -528,38 +528,7 @@ struct SearchView: View {
         // Haptic feedback on tap
         HapticManager.shared.medium()
 
-        // Free users: check weekly city limit
-        if !isProUser {
-            // Load current viewed cities
-            let currentViewedCities: Set<String>
-            if let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
-               let cities = try? JSONDecoder().decode(Set<String>.self, from: data) {
-                currentViewedCities = cities
-            } else {
-                currentViewedCities = []
-            }
-
-            // If this city hasn't been viewed yet
-            if !currentViewedCities.contains(city.id) {
-                // Check if they've already viewed 10 cities this week (Sprint 14: increased from 1)
-                if currentViewedCities.count >= 10 {
-                    HapticManager.shared.warning()
-                    paywallTrigger = .cityLimit
-                    return
-                }
-
-                // Add to viewed cities
-                var updatedCities = currentViewedCities
-                updatedCities.insert(city.id)
-
-                // Save back to UserDefaults
-                if let data = try? JSONEncoder().encode(updatedCities) {
-                    UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
-                }
-            }
-        }
-
-        // Record city view to backend (fire and forget)
+        // Record city view to backend for analytics (fire and forget)
         Task {
             do {
                 try await APIService.shared.recordCityView(cityId: city.id)

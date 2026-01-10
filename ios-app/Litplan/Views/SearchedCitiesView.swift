@@ -1,17 +1,18 @@
 //
-//  ViewedCitiesView.swift
+//  SearchedCitiesView.swift
 //  Litplan
 //
 //  Created by UI Designer Agent on 12/28/25.
-//  Sprint 2, Day 9 - Viewed Cities tab with history of cities user has explored
+//  Sprint 2, Day 9 - Searched Cities tab with history of cities user has explored
 //  Sprint 10 - Connected to real API data with pagination
 //  Sprint 12 - Graceful fallback to recommended cities when API unavailable
 //  Sprint 13 - Migrated to live API data, removed MockDataService dependency
+//  Renamed from ViewedCitiesView to SearchedCitiesView
 //
 
 import SwiftUI
 
-struct ViewedCitiesView: View {
+struct SearchedCitiesView: View {
     // MARK: - State Properties
     @State private var viewedCities: [ViewedCity] = []
     @State private var recommendedCities: [City] = []
@@ -167,18 +168,18 @@ struct ViewedCitiesView: View {
         }
     }
 
-    // MARK: - Viewed Cities List
+    // MARK: - Searched Cities List
     private var viewedCitiesList: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
                 // Header
                 HStack {
                     VStack(alignment: .leading, spacing: Spacing.xxs) {
-                        Text("Viewed Cities")
+                        Text("Searched Cities")
                             .font(.displayLarge)
                             .foregroundColor(.textPrimary)
 
-                        Text("\(totalCount) cit\(totalCount == 1 ? "y" : "ies") viewed")
+                        Text("\(totalCount) cit\(totalCount == 1 ? "y" : "ies") searched")
                             .font(.callout)
                             .foregroundColor(.textSecondary)
                     }
@@ -387,44 +388,13 @@ struct ViewedCitiesView: View {
         // Haptic feedback on tap
         HapticManager.shared.medium()
 
-        // Free users: check weekly city limit
-        if !isProUser {
-            // Load current viewed cities
-            let currentViewedCities: Set<String>
-            if let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
-               let cities = try? JSONDecoder().decode(Set<String>.self, from: data) {
-                currentViewedCities = cities
-            } else {
-                currentViewedCities = []
-            }
-
-            // If this city hasn't been viewed yet this week
-            if !currentViewedCities.contains(viewedCity.cityId) {
-                // Check if they've already viewed 10 cities this week (Sprint 14: increased from 1)
-                if currentViewedCities.count >= 10 {
-                    HapticManager.shared.warning()
-                    paywallTrigger = .cityLimit
-                    return
-                }
-
-                // Add to viewed cities
-                var updatedCities = currentViewedCities
-                updatedCities.insert(viewedCity.cityId)
-
-                // Save back to UserDefaults
-                if let data = try? JSONEncoder().encode(updatedCities) {
-                    UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
-                }
-            }
-        }
-
-        // Record city view to backend
+        // Record city view to backend for analytics
         Task {
             do {
                 try await APIService.shared.recordCityView(cityId: viewedCity.cityId)
             } catch {
                 if Config.enableDebugLogging {
-                    print("[ViewedCitiesView] Failed to record city view: \(error)")
+                    print("[SearchedCitiesView] Failed to record city view: \(error)")
                 }
             }
         }
@@ -464,45 +434,14 @@ struct ViewedCitiesView: View {
         // Haptic feedback on tap
         HapticManager.shared.medium()
 
-        // Free users: check weekly city limit
-        if !isProUser {
-            // Load current viewed cities
-            let currentViewedCities: Set<String>
-            if let data = UserDefaults.standard.data(forKey: "viewedCitiesThisWeek"),
-               let cities = try? JSONDecoder().decode(Set<String>.self, from: data) {
-                currentViewedCities = cities
-            } else {
-                currentViewedCities = []
-            }
-
-            // If this city hasn't been viewed yet this week
-            if !currentViewedCities.contains(city.id) {
-                // Check if they've already viewed 10 cities this week (Sprint 14: increased from 1)
-                if currentViewedCities.count >= 10 {
-                    HapticManager.shared.warning()
-                    paywallTrigger = .cityLimit
-                    return
-                }
-
-                // Add to viewed cities
-                var updatedCities = currentViewedCities
-                updatedCities.insert(city.id)
-
-                // Save back to UserDefaults
-                if let data = try? JSONEncoder().encode(updatedCities) {
-                    UserDefaults.standard.set(data, forKey: "viewedCitiesThisWeek")
-                }
-            }
-        }
-
-        // Record city view to backend (fire and forget)
+        // Record city view to backend for analytics (fire and forget)
         Task {
             do {
                 try await APIService.shared.recordCityView(cityId: city.id)
             } catch {
                 // Silently fail - this is fire and forget
                 if Config.enableDebugLogging {
-                    print("[ViewedCitiesView] Failed to record recommended city view: \(error)")
+                    print("[SearchedCitiesView] Failed to record recommended city view: \(error)")
                 }
             }
         }
@@ -599,8 +538,8 @@ struct RecommendedCityCard: View {
     }
 }
 
-#Preview("Viewed Cities") {
-    ViewedCitiesView()
+#Preview("Searched Cities") {
+    SearchedCitiesView()
 }
 
 #Preview("Recommended City Card") {

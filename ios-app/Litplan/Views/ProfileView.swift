@@ -24,7 +24,7 @@ struct ProfileView: View {
     @State private var showHelpSupport = false
     @State private var showAbout = false
     @State private var showSubscriptionManagement = false
-    @State private var showViewedCitiesHistory = false
+    @State private var showSearchedCitiesHistory = false
 
     // Computed properties for user data
     private var userName: String {
@@ -96,8 +96,8 @@ struct ProfileView: View {
             .sheet(isPresented: $showSubscriptionManagement) {
                 PaywallView(trigger: .profile)
             }
-            .sheet(isPresented: $showViewedCitiesHistory) {
-                ViewedCitiesView()
+            .sheet(isPresented: $showSearchedCitiesHistory) {
+                SearchedCitiesView()
             }
             .alert("Sign Out", isPresented: $showSignOutConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -263,10 +263,10 @@ struct ProfileView: View {
 
                 settingsRow(
                     icon: "clock.arrow.circlepath",
-                    title: "Viewed Cities History",
+                    title: "Searched Cities History",
                     iconColor: .textSecondary
                 ) {
-                    showViewedCitiesHistory = true
+                    showSearchedCitiesHistory = true
                 }
 
                 settingsRow(
