@@ -111,4 +111,10 @@ Return JSON:
   ]
 }
 
-IMPORTANT: Dates must be between ${weekStartDate} and ${weekEndDate}. dayOfWeek must match eventDate.`;
+CRITICAL REQUIREMENTS:
+1. Dates must be between ${weekStartDate} and ${weekEndDate}
+2. dayOfWeek MUST match eventDate exactly (e.g., if eventDate is a Saturday, dayOfWeek must be "Saturday")
+3. If the title mentions a day (e.g., "Friday Night Live"), the eventDate MUST be on that day
+   - WRONG: Title "Friday Night Live" with eventDate on Saturday
+   - CORRECT: Title "Friday Night Live" with eventDate on an actual Friday
+4. Do NOT create titles with day names unless the eventDate falls on that exact day`;

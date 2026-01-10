@@ -21,11 +21,15 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { claudeRequest, parseClaudeJSON } from '../_shared/claude-client.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { RATE_LIMITS } from '../_shared/quality-criteria.ts';
+import { getWeekdayFromDate, isWeekendDate } from '../_shared/date-utils.ts';
 import {
   SEARCH_AGENT_SYSTEM_PROMPT,
   VENUES_USER_PROMPT,
   EVENTS_USER_PROMPT,
 } from './prompts.ts';
+
+// Day names for title validation
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // Types for search results
 interface VenueResult {
@@ -364,37 +368,69 @@ async function storePlansToDatabase(
     updatedAt: now,
   }));
 
-  // Prepare event records for batch insert
-  const eventRecords = events.map((event, i) => ({
-    id: `plan-${citySlug}-claude-${timestamp}-e${i}`,
-    planId: `plan-${citySlug}-claude-${timestamp}-e${i}`,
-    title: event.title,
-    venueName: event.venueName,
-    description: event.description,
-    category: event.category.toLowerCase().replace(/\s+/g, '_'),
-    type: 'EVENT',
-    cityId: cityId,
-    date: event.eventDate || event.schedule?.date || weekStartDate,
-    weekday: event.schedule?.dayOfWeek || 'Saturday',
-    isWeekend: ['Friday', 'Saturday', 'Sunday'].includes(event.schedule?.dayOfWeek || ''),
-    startTime: event.schedule?.startTime || '21:00',
-    endTime: event.schedule?.endTime || '03:00',
-    latitude: event.location?.latitude || 0,
-    longitude: event.location?.longitude || 0,
-    address: event.location?.address || '',
-    neighborhood: event.location?.neighborhood || '',
-    priceRange: event.pricing?.priceRange || '$$',
-    entryFee: event.pricing?.ticketPrice || 0,
-    freeEntry: (event.pricing?.ticketPrice || 0) === 0,
-    currency: event.pricing?.currency || 'USD',
-    rank: venues.length + i + 1,
-    source: 'ai-agent-claude',
-    aiGenerated: true,
-    isIndividual: true,
-    isGroup: false,
-    createdAt: now,
-    updatedAt: now,
-  }));
+  // Prepare event records for batch insert with title-date validation
+  const eventRecords = events.map((event, i) => {
+    let eventDate = event.eventDate || event.schedule?.date || weekStartDate;
+
+    // Validate title-date alignment: if title mentions a specific day, ensure date matches
+    const titleDayMatch = DAY_NAMES.find(day =>
+      event.title.toLowerCase().includes(day.toLowerCase())
+    );
+
+    if (titleDayMatch) {
+      const actualDayOfWeek = getWeekdayFromDate(eventDate);
+      if (actualDayOfWeek !== titleDayMatch) {
+        // Title says one day but date is different - fix the date
+        // Find the correct date within the week range that matches the title day
+        const targetDayIndex = DAY_NAMES.indexOf(titleDayMatch);
+        const startDate = new Date(weekStartDate + 'T12:00:00Z');
+        const endDate = new Date(weekEndDate + 'T12:00:00Z');
+
+        // Search for the matching day in the week range
+        for (let d = new Date(startDate); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
+          if (d.getUTCDay() === targetDayIndex) {
+            eventDate = d.toISOString().split('T')[0];
+            console.log(`[search-agent] Fixed date for "${event.title}": ${actualDayOfWeek} -> ${titleDayMatch} (${eventDate})`);
+            break;
+          }
+        }
+      }
+    }
+
+    // Calculate correct weekday from the (possibly fixed) date
+    const correctWeekday = getWeekdayFromDate(eventDate);
+
+    return {
+      id: `plan-${citySlug}-claude-${timestamp}-e${i}`,
+      planId: `plan-${citySlug}-claude-${timestamp}-e${i}`,
+      title: event.title,
+      venueName: event.venueName,
+      description: event.description,
+      category: event.category.toLowerCase().replace(/\s+/g, '_'),
+      type: 'EVENT',
+      cityId: cityId,
+      date: eventDate,
+      weekday: correctWeekday,
+      isWeekend: isWeekendDate(eventDate),
+      startTime: event.schedule?.startTime || '21:00',
+      endTime: event.schedule?.endTime || '03:00',
+      latitude: event.location?.latitude || 0,
+      longitude: event.location?.longitude || 0,
+      address: event.location?.address || '',
+      neighborhood: event.location?.neighborhood || '',
+      priceRange: event.pricing?.priceRange || '$$',
+      entryFee: event.pricing?.ticketPrice || 0,
+      freeEntry: (event.pricing?.ticketPrice || 0) === 0,
+      currency: event.pricing?.currency || 'USD',
+      rank: venues.length + i + 1,
+      source: 'ai-agent-claude',
+      aiGenerated: true,
+      isIndividual: true,
+      isGroup: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
 
   let storedCount = 0;
 
