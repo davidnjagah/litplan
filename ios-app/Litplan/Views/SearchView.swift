@@ -164,27 +164,29 @@ struct SearchView: View {
                 // No local results - offer to discover
                 discoveryPromptView
             } else {
-                // Search results list (local + discovered)
+                // Search results list (local + discovered, avoiding duplicates)
                 LazyVStack(spacing: Spacing.sm) {
-                    // Show discovered city first if available
-                    if let discovered = discoveredCity {
+                    // Show discovered city first if available and not already in local results
+                    if let discovered = discoveredCity,
+                       !searchResults.contains(where: { $0.id == discovered.id }) {
                         searchResultRow(city: discovered, isDiscovered: true)
                     }
 
-                    // Show local search results
-                    ForEach(searchResults) { city in
+                    // Show local search results (filter out discovered city to avoid duplicates)
+                    ForEach(searchResults.filter { city in
+                        discoveredCity == nil || city.id != discoveredCity?.id
+                    }) { city in
                         searchResultRow(city: city, isDiscovered: false)
                     }
                 }
                 .padding(.horizontal, Spacing.md)
             }
         }
-        .onChange(of: searchQuery) { _, newValue in
-            // Reset discovery state when search query changes
-            if newValue.isEmpty {
-                discoveredCity = nil
-                discoveryError = nil
-            }
+        .onChange(of: searchQuery) { _, _ in
+            // Reset discovery state whenever search query changes
+            // This prevents discovered cities from appearing in unrelated searches
+            discoveredCity = nil
+            discoveryError = nil
         }
     }
 

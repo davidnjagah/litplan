@@ -123,7 +123,7 @@ async function getPlanCountsByCityIds(supabase: any, cityIds: string[]): Promise
  * List all cities with optional pagination
  */
 async function listCities(supabase: any, params: URLSearchParams) {
-  const limit = parseInt(params.get('limit') || '50');
+  const limit = parseInt(params.get('limit') || '100');
   const offset = parseInt(params.get('offset') || '0');
   const featured = params.get('featured');
 
