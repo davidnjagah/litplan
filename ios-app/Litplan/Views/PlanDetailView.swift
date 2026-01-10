@@ -17,6 +17,9 @@ struct PlanDetailView: View {
     @State private var isSaved: Bool = false
     @State private var mapCameraPosition: MapCameraPosition
 
+    // Swipe to dismiss state
+    @State private var dragOffset: CGFloat = 0
+
     @ObservedObject private var savedItemsManager = SavedItemsManager.shared
 
     // Hero image dimensions
@@ -41,58 +44,65 @@ struct PlanDetailView: View {
             Color.appBackground
                 .ignoresSafeArea()
 
-            if isContentReady {
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Hero image section
-                        heroImageSection
+            VStack(spacing: 0) {
+                // Drag handle indicator for swipe to dismiss
+                dragHandle
 
-                        // Content sections
-                        VStack(alignment: .leading, spacing: Spacing.lg) {
-                            // Title and venue header
-                            headerSection
+                if isContentReady {
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // Hero image section
+                            heroImageSection
 
-                            // Quick info badges (duration, price, category)
-                            quickInfoSection
+                            // Content sections
+                            VStack(alignment: .leading, spacing: Spacing.lg) {
+                                // Title and venue header
+                                headerSection
 
-                            // Description
-                            descriptionSection
+                                // Quick info badges (duration, price, category)
+                                quickInfoSection
 
-                            // Tags section
-                            tagsSection
+                                // Description
+                                descriptionSection
 
-                            // Schedule details
-                            scheduleSection
+                                // Tags section
+                                tagsSection
 
-                            // Venue information
-                            venueInfoSection
+                                // Schedule details
+                                scheduleSection
 
-                            // Map section
-                            mapSection
+                                // Venue information
+                                venueInfoSection
 
-                            // Bottom padding for safe area
-                            Color.clear.frame(height: Spacing.xxl)
+                                // Map section
+                                mapSection
+
+                                // Bottom padding for safe area
+                                Color.clear.frame(height: Spacing.xxl)
+                            }
+                            .padding(.horizontal, Spacing.md)
+                            .padding(.top, Spacing.lg)
                         }
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.top, Spacing.lg)
                     }
-                }
-                .transition(.opacity)
-            } else {
-                // Loading state
-                VStack(spacing: 20) {
-                    ProgressView()
-                        .tint(.accentPrimary)
-                        .scaleEffect(1.5)
-                    Text("Loading plan details...")
-                        .font(.system(size: 16))
-                        .foregroundColor(.textSecondary)
+                    .transition(.opacity)
+                } else {
+                    // Loading state
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .tint(.accentPrimary)
+                            .scaleEffect(1.5)
+                        Text("Loading plan details...")
+                            .font(.system(size: 16))
+                            .foregroundColor(.textSecondary)
+                    }
+                    .frame(maxHeight: .infinity)
                 }
             }
 
             // Top navigation bar with back and share buttons
             topNavigationBar
         }
+        .offset(y: dragOffset)
         .background(Color.appBackground.ignoresSafeArea())
         .onAppear {
             // Check initial saved state from SavedItemsManager
@@ -104,6 +114,47 @@ struct PlanDetailView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Drag Handle for Swipe to Dismiss
+    private var dragHandle: some View {
+        VStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color.textTertiary.opacity(0.5))
+                .frame(width: 36, height: 5)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .contentShape(Rectangle())
+        .gesture(dismissGesture)
+    }
+
+    private var dismissGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                if value.translation.height > 0 {
+                    // Apply slight resistance (0.8 multiplier) for natural feel
+                    dragOffset = value.translation.height * 0.8
+                }
+            }
+            .onEnded { value in
+                if value.translation.height > 120 || value.predictedEndTranslation.height > 200 {
+                    // Dismiss the view
+                    HapticManager.shared.medium()
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        dragOffset = UIScreen.main.bounds.height
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        onDismiss()
+                    }
+                } else {
+                    // Snap back with spring animation
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        dragOffset = 0
+                    }
+                }
+            }
     }
 
     // MARK: - Hero Image Section

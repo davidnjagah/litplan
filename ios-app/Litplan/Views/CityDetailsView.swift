@@ -15,6 +15,9 @@ struct CityDetailsView: View {
 
     @State private var selectedTab: PlanTab = .individual
     @State private var scrollOffset: CGFloat = 0
+
+    // Swipe to dismiss state
+    @State private var dragOffset: CGFloat = 0
     @State private var plans: [Plan] = []
     @State private var groupFlows: [GroupFlow] = []
     @State private var isLoading: Bool = true
@@ -114,35 +117,41 @@ struct CityDetailsView: View {
             Color.appBackground
                 .ignoresSafeArea()
 
-            // Scrollable content - only show after initial render
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    // Hero image with parallax effect
-                    heroImageSection
+            VStack(spacing: 0) {
+                // Drag handle indicator for swipe to dismiss
+                dragHandle
 
-                    // Tab switcher
-                    tabSwitcher
-                        .padding(.top, Spacing.md)
+                // Scrollable content - only show after initial render
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        // Hero image with parallax effect
+                        heroImageSection
 
-                    // "This Week" header (Sprint 14 - replaced WeekSelectorView)
-                    if selectedTab == .individual {
-                        thisWeekHeader
-                            .padding(.top, Spacing.sm)
+                        // Tab switcher
+                        tabSwitcher
+                            .padding(.top, Spacing.md)
+
+                        // "This Week" header (Sprint 14 - replaced WeekSelectorView)
+                        if selectedTab == .individual {
+                            thisWeekHeader
+                                .padding(.top, Spacing.sm)
+                        }
+
+                        // Plans list based on selected tab
+                        plansListSection
                     }
-
-                    // Plans list based on selected tab
-                    plansListSection
                 }
-            }
-            .coordinateSpace(name: "scroll")
-            .refreshable {
-                await refreshData()
+                .coordinateSpace(name: "scroll")
+                .refreshable {
+                    await refreshData()
+                }
             }
 
             // PRIORITY: Close button ALWAYS renders first and stays visible
             // This ensures users can always dismiss the screen even if content fails to load
             closeButtonOverlay
         }
+        .offset(y: dragOffset)
         .navigationBarHidden(true)
         .sheet(item: $paywallTrigger) { trigger in
             PaywallView(trigger: trigger) {
@@ -219,6 +228,47 @@ struct CityDetailsView: View {
 
             Spacer()
         }
+    }
+
+    // MARK: - Drag Handle for Swipe to Dismiss
+    private var dragHandle: some View {
+        VStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color.textTertiary.opacity(0.5))
+                .frame(width: 36, height: 5)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .contentShape(Rectangle())
+        .gesture(dismissGesture)
+    }
+
+    private var dismissGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                if value.translation.height > 0 {
+                    // Apply slight resistance (0.8 multiplier) for natural feel
+                    dragOffset = value.translation.height * 0.8
+                }
+            }
+            .onEnded { value in
+                if value.translation.height > 120 || value.predictedEndTranslation.height > 200 {
+                    // Dismiss the view
+                    HapticManager.shared.medium()
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        dragOffset = UIScreen.main.bounds.height
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        onDismiss()
+                    }
+                } else {
+                    // Snap back with spring animation
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        dragOffset = 0
+                    }
+                }
+            }
     }
 
     // MARK: - Data Loading
