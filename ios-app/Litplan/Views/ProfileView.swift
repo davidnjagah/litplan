@@ -375,9 +375,9 @@ struct ProfileView: View {
 
                 // Features List
                 VStack(alignment: .leading, spacing: Spacing.md) {
-                    featureRow(icon: "infinity", text: "Unlimited city searches")
-                    featureRow(icon: "bookmark.fill", text: "Save unlimited cities")
+                    featureRow(icon: "globe.americas.fill", text: "100+ cities worldwide")
                     featureRow(icon: "sparkles", text: "50 plans per city")
+                    featureRow(icon: "bookmark.fill", text: "Save your favorite cities")
                     featureRow(icon: "star.fill", text: "Exclusive venues & events")
                     featureRow(icon: "person.3.fill", text: "Advanced group planning")
                 }

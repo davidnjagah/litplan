@@ -149,7 +149,7 @@ struct StandardCard<Content: View>: View {
                         .font(.headline)
                         .foregroundColor(.textPrimary)
 
-                    Text("Unlock unlimited cities and 50 plans per city")
+                    Text("Unlock 50 plans per city and premium features")
                         .font(.callout)
                         .foregroundColor(.textSecondary)
                         .multilineTextAlignment(.center)

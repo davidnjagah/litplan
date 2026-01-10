@@ -11,7 +11,6 @@ import Foundation
 enum PaywallTrigger: Equatable {
     case planLimit(cityName: String)      // 11th plan in a city
     case weekendPlan(cityName: String)    // Trying to view weekend plan
-    case cityLimit                        // 11th city in the week (Sprint 14: increased from 2)
     case saveCity(cityName: String)       // Trying to save a city
     case groupFlow(cityName: String)      // Trying to view group flow itinerary
     case profile                          // Opened from profile subscription settings
@@ -22,8 +21,6 @@ enum PaywallTrigger: Equatable {
             return "Unlock More Plans"
         case .weekendPlan:
             return "Weekend Plans Are Pro-Only"
-        case .cityLimit:
-            return "Explore More Cities"
         case .saveCity:
             return "Save Your Favorite Cities"
         case .groupFlow:
@@ -39,14 +36,12 @@ enum PaywallTrigger: Equatable {
             return "You've viewed 10 plans in \(city). Upgrade to Pro to see up to 50 plans per city."
         case .weekendPlan(let city):
             return "Weekend plans in \(city) are exclusive to Pro members. Upgrade to access premium weekend experiences."
-        case .cityLimit:
-            return "Free users can explore 10 cities per week. Upgrade to Pro for unlimited cities."
         case .saveCity(let city):
             return "Save \(city) to your favorites for quick access. This feature is available with Litplan Pro."
         case .groupFlow(let city):
             return "Group flow itineraries in \(city) are exclusive to Pro members. Upgrade to unlock curated multi-venue experiences."
         case .profile:
-            return "Get unlimited access to all cities, save favorites, and unlock premium nightlife experiences."
+            return "Get full access to all plans, save favorites, and unlock premium nightlife experiences."
         }
     }
 
@@ -56,8 +51,6 @@ enum PaywallTrigger: Equatable {
             return "calendar.badge.exclamationmark"
         case .weekendPlan:
             return "star.fill"
-        case .cityLimit:
-            return "globe.americas.fill"
         case .saveCity:
             return "heart.fill"
         case .groupFlow:
@@ -76,8 +69,6 @@ extension PaywallTrigger: Identifiable {
             return "planLimit_\(city)"
         case .weekendPlan(let city):
             return "weekendPlan_\(city)"
-        case .cityLimit:
-            return "cityLimit"
         case .saveCity(let city):
             return "saveCity_\(city)"
         case .groupFlow(let city):

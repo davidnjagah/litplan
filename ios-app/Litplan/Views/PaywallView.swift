@@ -221,8 +221,8 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             BenefitRow(
                 icon: "globe.americas.fill",
-                title: "Unlimited cities",
-                description: "Explore nightlife in every city worldwide"
+                title: "100+ cities worldwide",
+                description: "Explore nightlife in cities across the globe"
             )
 
             BenefitRow(
