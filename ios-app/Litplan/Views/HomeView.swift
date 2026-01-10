@@ -45,9 +45,6 @@ struct HomeView: View {
     private var trendingCities: [City] {
         Array(cities.prefix(5))
     }
-    private var topUSCities: [City] {
-        cities.filter { $0.country == "United States" }
-    }
     private var europeanCities: [City] {
         cities.filter { $0.country == "United Kingdom" || $0.country == "France" ||
                           $0.country == "Spain" || $0.country == "Netherlands" }
@@ -150,14 +147,6 @@ struct HomeView: View {
                             // Sprint 18A: Weekend Plans section
                             if !weekendPlans.isEmpty {
                                 weekendPlansSection
-                            }
-
-                            // Top US Cities section
-                            if !topUSCities.isEmpty {
-                                citySection(
-                                    title: "Top US Cities",
-                                    cities: topUSCities
-                                )
                             }
 
                             // European Nights section
