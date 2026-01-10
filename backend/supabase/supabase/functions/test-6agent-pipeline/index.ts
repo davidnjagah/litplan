@@ -18,6 +18,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { gptRequest, parseGPTJSON } from '../_shared/gpt-client.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { getWeekdayFromDate, isWeekendDate } from '../_shared/date-utils.ts';
 
 // City configurations
 const CITY_CONFIGS: Record<string, any> = {
@@ -830,8 +831,8 @@ async function storePlans(
         type: 'EVENT',
         cityId: cityId,
         date: new Date().toISOString().split('T')[0],
-        weekday: 'Saturday',
-        isWeekend: true,
+        weekday: getWeekdayFromDate(new Date().toISOString().split('T')[0]),
+        isWeekend: isWeekendDate(new Date().toISOString().split('T')[0]),
         startTime: activity.startTime,
         endTime: calculateEndTime(activity.startTime, activity.duration),
         latitude: activity.coordinates.latitude,
@@ -869,7 +870,7 @@ async function storePlans(
         endTime: plan.activities[plan.activities.length - 1]?.startTime,
         totalEstimate: Math.round((plan.estimatedCost.min + plan.estimatedCost.max) / 2),
         currency: plan.estimatedCost.currency,
-        isWeekend: true,
+        isWeekend: isWeekendDate(new Date().toISOString().split('T')[0]),
         proOnly: i >= 2,
         aiGenerated: true,
         isTemporary: false,

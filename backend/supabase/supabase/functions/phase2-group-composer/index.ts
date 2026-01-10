@@ -21,6 +21,7 @@ import {
 } from '../_shared/theme-config.ts';
 import { QUALITY_THRESHOLDS_V2 } from '../_shared/quality-criteria.ts';
 import { GROUP_COMPOSER_SYSTEM_PROMPT, buildCompositionPrompt } from './prompts.ts';
+import { getWeekdayFromDate, isWeekendDate } from '../_shared/date-utils.ts';
 
 // Input plan from Phase 1
 interface IndividualPlan {
@@ -411,7 +412,7 @@ async function storeGroupFlows(
         totalEstimate: Math.round(flow.estimatedCost.max), // Store as dollars
         currency: flow.estimatedCost.currency,
         aiGenerated: true,
-        isWeekend: true,
+        isWeekend: isWeekendDate(new Date().toISOString().split('T')[0]),
         proOnly: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

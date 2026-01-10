@@ -166,9 +166,8 @@ struct SearchView: View {
             } else {
                 // Search results list (local + discovered, avoiding duplicates)
                 LazyVStack(spacing: Spacing.sm) {
-                    // Show discovered city first if available and not already in local results
-                    if let discovered = discoveredCity,
-                       !searchResults.contains(where: { $0.id == discovered.id }) {
+                    // Show discovered city first with "NEW" badge if available
+                    if let discovered = discoveredCity {
                         searchResultRow(city: discovered, isDiscovered: true)
                     }
 

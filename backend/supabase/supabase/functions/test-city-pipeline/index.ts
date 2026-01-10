@@ -12,6 +12,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { claudeRequest, parseClaudeJSON } from '../_shared/claude-client.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { getWeekdayFromDate, isWeekendDate } from '../_shared/date-utils.ts';
 
 // City configurations
 const CITY_CONFIGS: Record<string, {
@@ -204,7 +205,7 @@ serve(async (req: Request) => {
             endTime: plan.activities[plan.activities.length - 1]?.startTime,
             totalEstimate: Math.round((plan.estimatedCost.min + plan.estimatedCost.max) / 2),
             currency: plan.estimatedCost.currency,
-            isWeekend: true,
+            isWeekend: isWeekendDate(new Date().toISOString().split('T')[0]),
             proOnly: i >= 2,
             aiGenerated: true,
             isTemporary: false,

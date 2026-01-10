@@ -5,6 +5,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { getWeekdayFromDate, isWeekendDate } from '../_shared/date-utils.ts';
 
 serve(async (req: Request) => {
   const corsResponse = handleCors(req);
@@ -41,7 +42,7 @@ serve(async (req: Request) => {
           category: 'activity',
           cityId: 'cmjrcg43r0000wbxrw025frc8', // NYC as default
           date: new Date().toISOString().split('T')[0],
-          weekday: 'Saturday',
+          weekday: getWeekdayFromDate(new Date().toISOString().split('T')[0]),
           startTime: '20:00',
           endTime: '23:00',
           latitude: 0,
