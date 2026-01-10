@@ -382,18 +382,21 @@ struct CityDetailsView: View {
                 .padding(.horizontal, Spacing.lg)
                 .transition(.opacity)
             } else if plans.isEmpty && hasLoadedOnce {
-                // Empty state - shown if no plans available for this city
-                VStack(spacing: 12) {
-                    Image(systemName: "calendar.badge.exclamationmark")
-                        .font(.system(size: 40))
-                        .foregroundColor(.textSecondary)
-                    Text("No plans available yet")
-                        .font(.system(size: 16, weight: .medium))
+                // Coming Soon state - shown for newly discovered cities
+                VStack(spacing: Spacing.md) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 48))
+                        .foregroundColor(.accentPrimary)
+
+                    Text("Plans Coming Soon!")
+                        .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.textPrimary)
-                    Text("Check back soon for curated nightlife experiences")
-                        .font(.system(size: 14))
+
+                    Text("We're curating the best nightlife experiences in \(city.name). Check back in a few days!")
+                        .font(.system(size: 16))
                         .foregroundColor(.textSecondary)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, Spacing.lg)
 
                     Button(action: {
                         Task {
@@ -403,14 +406,14 @@ struct CityDetailsView: View {
                         HStack(spacing: Spacing.xs) {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 14, weight: .medium))
-                            Text("Refresh")
+                            Text("Check for Updates")
                                 .font(.system(size: 14, weight: .medium))
                         }
                         .foregroundColor(.accentPrimary)
                     }
                     .padding(.top, Spacing.sm)
                 }
-                .frame(height: 220)
+                .frame(height: 260)
                 .padding(.horizontal, Spacing.lg)
                 .transition(.opacity)
             } else {
@@ -456,17 +459,17 @@ struct CityDetailsView: View {
     private var individualPlansList: some View {
         LazyVStack(spacing: Spacing.lg) {
             if plans.isEmpty {
-                // Empty state
+                // Coming Soon empty state
                 VStack(spacing: Spacing.md) {
-                    Image(systemName: "calendar.badge.exclamationmark")
+                    Image(systemName: "sparkles")
                         .font(.system(size: 40))
-                        .foregroundColor(.textTertiary)
+                        .foregroundColor(.accentPrimary)
 
-                    Text("No plans available this week")
+                    Text("Plans Coming Soon!")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.textPrimary)
 
-                    Text("Check back soon for curated experiences")
+                    Text("We're finding the best spots in \(city.name)")
                         .font(.system(size: 14))
                         .foregroundColor(.textSecondary)
                         .multilineTextAlignment(.center)
@@ -665,17 +668,23 @@ struct CityDetailsView: View {
     private var groupPlansList: some View {
         LazyVStack(spacing: Spacing.md) {
             if groupFlows.isEmpty {
-                // Empty state for group plans
+                // Coming Soon empty state for group plans
                 VStack(spacing: Spacing.md) {
-                    Image(systemName: "person.3.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.textTertiary)
+                    ZStack {
+                        Image(systemName: "person.3.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.textTertiary)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 24))
+                            .foregroundColor(.accentPrimary)
+                            .offset(x: 30, y: -20)
+                    }
 
-                    Text("Group Plans Coming Soon")
+                    Text("Group Plans Coming Soon!")
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.textPrimary)
 
-                    Text("We're working on creating awesome group experiences for \(city.name)")
+                    Text("Epic group experiences for \(city.name) are being curated")
                         .font(.system(size: 16))
                         .foregroundColor(.textSecondary)
                         .multilineTextAlignment(.center)

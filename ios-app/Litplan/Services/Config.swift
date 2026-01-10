@@ -106,6 +106,12 @@ enum Config {
         static var groupFlows: String {
             return "\(apiBaseURL)/group-flows"
         }
+
+        /// City discovery endpoint - Supabase Edge Function
+        /// Discovers and creates new cities on-demand using AI validation
+        static var cityDiscover: String {
+            return "\(apiBaseURL)/cities-discover"
+        }
     }
 
     // MARK: - App Configuration

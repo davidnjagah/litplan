@@ -15,6 +15,11 @@ struct SearchView: View {
     @State private var paywallTrigger: PaywallTrigger? = nil
     @FocusState private var isSearchFocused: Bool
 
+    // City discovery states
+    @State private var isDiscovering: Bool = false
+    @State private var discoveredCity: City? = nil
+    @State private var discoveryError: String? = nil
+
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
@@ -143,50 +148,121 @@ struct SearchView: View {
                 .padding(.horizontal, Spacing.md)
                 .accessibilityAddTraits(.isHeader)
 
-            if isSearchLoading {
-                // Loading state - cities still loading in background
+            if isSearchLoading || isDiscovering {
+                // Loading state - cities loading or discovering
                 VStack(spacing: Spacing.md) {
                     ProgressView()
                         .tint(.accentPrimary)
 
-                    Text("Loading cities...")
+                    Text(isDiscovering ? "Discovering city..." : "Loading cities...")
                         .font(.callout)
                         .foregroundColor(.textSecondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)
-            } else if searchResults.isEmpty {
-                // No results found
-                VStack(spacing: Spacing.md) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.textTertiary)
-                        .accessibilityHidden(true)
-
-                    Text("No cities found")
-                        .font(.headline)
-                        .foregroundColor(.textPrimary)
-
-                    Text("Try searching for a different city")
-                        .font(.callout)
-                        .foregroundColor(.textSecondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.xl)
+            } else if searchResults.isEmpty && discoveredCity == nil {
+                // No local results - offer to discover
+                discoveryPromptView
             } else {
-                // Search results list
+                // Search results list (local + discovered)
                 LazyVStack(spacing: Spacing.sm) {
+                    // Show discovered city first if available
+                    if let discovered = discoveredCity {
+                        searchResultRow(city: discovered, isDiscovered: true)
+                    }
+
+                    // Show local search results
                     ForEach(searchResults) { city in
-                        searchResultRow(city: city)
+                        searchResultRow(city: city, isDiscovered: false)
                     }
                 }
                 .padding(.horizontal, Spacing.md)
             }
         }
+        .onChange(of: searchQuery) { _, newValue in
+            // Reset discovery state when search query changes
+            if newValue.isEmpty {
+                discoveredCity = nil
+                discoveryError = nil
+            }
+        }
+    }
+
+    // MARK: - Discovery Prompt View
+    private var discoveryPromptView: some View {
+        VStack(spacing: Spacing.md) {
+            Image(systemName: "globe")
+                .font(.system(size: 48))
+                .foregroundColor(.accentPrimary)
+                .accessibilityHidden(true)
+
+            Text("Can't find \"\(searchQuery)\"?")
+                .font(.headline)
+                .foregroundColor(.textPrimary)
+
+            Text("We can search for this city worldwide")
+                .font(.callout)
+                .foregroundColor(.textSecondary)
+
+            Button(action: {
+                Task {
+                    await discoverCity()
+                }
+            }) {
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: "magnifyingglass.circle.fill")
+                    Text("Discover City")
+                }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.accentPrimary)
+                .cornerRadius(12)
+            }
+            .padding(.horizontal, Spacing.xl)
+            .accessibilityLabel("Discover \(searchQuery)")
+            .accessibilityHint("Search worldwide for this city using AI")
+
+            if let error = discoveryError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Spacing.lg)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
+    }
+
+    // MARK: - Discovery Action
+    private func discoverCity() async {
+        guard !searchQuery.isEmpty else { return }
+
+        isDiscovering = true
+        discoveryError = nil
+
+        // Dismiss keyboard
+        isSearchFocused = false
+
+        if let city = await cityPreloadService.discoverCityRemotely(query: searchQuery) {
+            await MainActor.run {
+                discoveredCity = city
+                isDiscovering = false
+                HapticManager.shared.success()
+            }
+        } else {
+            await MainActor.run {
+                discoveryError = "Could not find a city named \"\(searchQuery)\". Try a different spelling or check if it's a real city."
+                isDiscovering = false
+                HapticManager.shared.warning()
+            }
+        }
     }
 
     // Individual search result row
-    private func searchResultRow(city: City) -> some View {
+    private func searchResultRow(city: City, isDiscovered: Bool = false) -> some View {
         Button(action: {
             handleCityTap(city)
         }) {
@@ -207,12 +283,29 @@ struct SearchView: View {
 
                         Text(city.displayAssets.countryFlag)
                             .font(.callout)
+
+                        // Show "New" badge for discovered cities
+                        if isDiscovered {
+                            Text("NEW")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.accentPrimary)
+                                .cornerRadius(4)
+                        }
                     }
 
-                    Text("50 plans available")
-                        .font(.callout)
-                        .foregroundColor(.textSecondary)
-                    // Original: Text("\(city.metadata.displayPlanCount) plans this week")
+                    // Show "Coming Soon" for cities with no plans
+                    if city.metadata.planCount == 0 {
+                        Text("Plans coming soon")
+                            .font(.callout)
+                            .foregroundColor(.accentPrimary)
+                    } else {
+                        Text("\(city.metadata.planCount) plans available")
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                    }
                 }
 
                 Spacer()
@@ -229,7 +322,7 @@ struct SearchView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(city.name), \(city.country)")
-        .accessibilityHint("Double tap to explore 50 nightlife plans")
+        .accessibilityHint(city.metadata.planCount == 0 ? "Newly discovered city. Plans coming soon." : "Double tap to explore \(city.metadata.planCount) nightlife plans")
     }
 
     // MARK: - Recent Searches Section

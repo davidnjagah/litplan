@@ -295,6 +295,31 @@ class APIService: ObservableObject {
         return response.cities
     }
 
+    /// Discover a new city by searching for it using AI validation
+    /// - Parameter query: The city name to search for
+    /// - Returns: The discovered city if valid
+    /// - Throws: APIError if the city is not found or invalid
+    func discoverCity(query: String) async throws -> City {
+        struct DiscoverCityRequest: Codable {
+            let query: String
+        }
+
+        struct DiscoverCityResponse: Codable {
+            let success: Bool
+            let city: City
+            let isNew: Bool
+        }
+
+        let response: DiscoverCityResponse = try await request(
+            endpoint: Config.Endpoints.cityDiscover,
+            method: .POST,
+            body: DiscoverCityRequest(query: query),
+            requiresAuth: false
+        )
+
+        return response.city
+    }
+
     // MARK: - Plans API
 
     /// Fetch plans for a city (public access - no auth required)

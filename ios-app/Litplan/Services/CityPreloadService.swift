@@ -69,4 +69,34 @@ class CityPreloadService: ObservableObject {
             city.country.localizedCaseInsensitiveContains(query)
         }
     }
+
+    /// Discover a city remotely if not found locally
+    /// Uses AI to validate and create new cities on-demand
+    /// - Parameter query: The city name to discover
+    /// - Returns: The discovered city if valid, nil otherwise
+    func discoverCityRemotely(query: String) async -> City? {
+        guard !query.isEmpty else { return nil }
+
+        do {
+            let city = try await APIService.shared.discoverCity(query: query)
+
+            // Add to local cache for future searches
+            await MainActor.run {
+                if !self.allCities.contains(where: { $0.id == city.id }) {
+                    self.allCities.append(city)
+
+                    #if DEBUG
+                    print("[CityPreloadService] Discovered and cached new city: \(city.name)")
+                    #endif
+                }
+            }
+
+            return city
+        } catch {
+            #if DEBUG
+            print("[CityPreloadService] Failed to discover city '\(query)': \(error.localizedDescription)")
+            #endif
+            return nil
+        }
+    }
 }
