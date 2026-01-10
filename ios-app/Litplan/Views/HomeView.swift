@@ -89,8 +89,8 @@ struct HomeView: View {
                 }
 
                 if isLoading {
-                    // Loading state
-                    LoadingStateView(message: "Loading plans...")
+                    // Skeleton loading state with placeholder cards
+                    skeletonLoadingView
                         .transition(.opacity)
                 } else if hasError {
                     // Error state with smart error parsing
@@ -316,6 +316,87 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Skeleton Loading View
+    private var skeletonLoadingView: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: Spacing.lg) {
+                // Skeleton search bar
+                skeletonSearchBar
+                    .padding(.horizontal, Spacing.md)
+
+                // Skeleton section header
+                skeletonSectionHeader
+                    .padding(.horizontal, Spacing.md)
+
+                // Skeleton city cards (horizontal scroll)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.lg) {
+                        Spacer().frame(width: Spacing.xxs)
+                        ForEach(0..<3, id: \.self) { _ in
+                            skeletonCityCard
+                        }
+                        Spacer().frame(width: Spacing.xxs)
+                    }
+                }
+
+                // Second skeleton section
+                skeletonSectionHeader
+                    .padding(.horizontal, Spacing.md)
+
+                // More skeleton city cards
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Spacing.lg) {
+                        Spacer().frame(width: Spacing.xxs)
+                        ForEach(0..<3, id: \.self) { _ in
+                            skeletonCityCard
+                        }
+                        Spacer().frame(width: Spacing.xxs)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.top, Spacing.md)
+        }
+    }
+
+    private var skeletonSearchBar: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color.surfaceSecondary)
+            .frame(height: 44)
+            .shimmer()
+    }
+
+    private var skeletonSectionHeader: some View {
+        HStack {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.surfaceSecondary)
+                .frame(width: 160, height: 24)
+            Spacer()
+        }
+        .shimmer()
+    }
+
+    private var skeletonCityCard: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Skeleton image
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.surfaceSecondary)
+                .frame(width: 280, height: 180)
+
+            // Skeleton title
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.surfaceSecondary)
+                .frame(width: 120, height: 20)
+
+            // Skeleton subtitle
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.surfaceSecondary)
+                .frame(width: 80, height: 14)
+        }
+        .shimmer()
     }
 
     // MARK: - Action Handlers

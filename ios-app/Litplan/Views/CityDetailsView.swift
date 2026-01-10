@@ -135,6 +135,9 @@ struct CityDetailsView: View {
                 }
             }
             .coordinateSpace(name: "scroll")
+            .refreshable {
+                await refreshData()
+            }
 
             // PRIORITY: Close button ALWAYS renders first and stays visible
             // This ensures users can always dismiss the screen even if content fails to load
@@ -243,6 +246,36 @@ struct CityDetailsView: View {
         }
     }
 
+    // MARK: - Pull-to-Refresh Handler
+    private func refreshData() async {
+        // Check network connectivity
+        guard NetworkMonitor.shared.isConnected else {
+            await MainActor.run {
+                loadError = "No internet connection. Pull down to try again."
+                HapticManager.shared.warning()
+            }
+            return
+        }
+
+        // Reload data without showing full loading state
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                await self.loadPlansAsync()
+            }
+
+            group.addTask {
+                await self.loadGroupFlowsAsync()
+            }
+
+            for await _ in group {}
+        }
+
+        await MainActor.run {
+            loadError = nil
+            HapticManager.shared.success()
+        }
+    }
+
     // MARK: - Hero Image Section
     private var heroImageSection: some View {
         GeometryReader { geometry in
@@ -329,16 +362,24 @@ struct CityDetailsView: View {
     private var plansListSection: some View {
         VStack(spacing: Spacing.md) {
             if isLoading {
-                // Loading state - shown while data is being fetched
-                VStack(spacing: 20) {
-                    ProgressView()
-                        .tint(.accentPrimary)
-                        .scaleEffect(1.5)
-                    Text("Loading nightlife plans...")
-                        .font(.system(size: 16))
-                        .foregroundColor(.textSecondary)
+                // Skeleton loading state - shown while data is being fetched
+                VStack(spacing: Spacing.md) {
+                    // Loading header with progress indicator
+                    HStack(spacing: Spacing.sm) {
+                        ProgressView()
+                            .tint(.accentPrimary)
+                        Text("Loading plans...")
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                    }
+                    .padding(.bottom, Spacing.sm)
+
+                    // Skeleton plan cards
+                    ForEach(0..<3, id: \.self) { _ in
+                        skeletonPlanCard
+                    }
                 }
-                .frame(height: 200)
+                .padding(.horizontal, Spacing.sm)
                 .accessibilityLabel("Loading plans")
                 .accessibilityValue("Please wait")
                 .transition(.opacity)
@@ -662,6 +703,37 @@ struct CityDetailsView: View {
         case "Thursday": return Color(hex: "#AF52DE") // Purple
         default: return .textSecondary
         }
+    }
+
+    // MARK: - Skeleton Loading Card
+    private var skeletonPlanCard: some View {
+        HStack(spacing: Spacing.md) {
+            // Skeleton image placeholder
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.surfaceSecondary)
+                .frame(width: 60, height: 60)
+
+            // Skeleton text placeholders
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 150, height: 16)
+
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 100, height: 12)
+
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.surfaceSecondary)
+                    .frame(width: 80, height: 12)
+            }
+
+            Spacer()
+        }
+        .padding(Spacing.md)
+        .background(Color.surfacePrimary)
+        .cornerRadius(12)
+        .shimmer()
     }
 
     // MARK: - Group Plans List

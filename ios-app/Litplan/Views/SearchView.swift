@@ -19,6 +19,7 @@ struct SearchView: View {
     @State private var isDiscovering: Bool = false
     @State private var discoveredCity: City? = nil
     @State private var discoveryError: String? = nil
+    @State private var searchError: String? = nil
 
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
@@ -76,6 +77,9 @@ struct SearchView: View {
                                 .frame(height: Spacing.xl)
                         }
                         .padding(.top, Spacing.lg)
+                    }
+                    .refreshable {
+                        await refreshCities()
                     }
                 }
             }
@@ -160,6 +164,9 @@ struct SearchView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xl)
+            } else if let error = searchError {
+                // Search error state with retry option
+                searchErrorView(error: error)
             } else if searchResults.isEmpty && discoveredCity == nil {
                 // No local results - offer to discover
                 discoveryPromptView
@@ -187,6 +194,66 @@ struct SearchView: View {
             discoveredCity = nil
             discoveryError = nil
         }
+    }
+
+    // MARK: - Search Error View
+    private func searchErrorView(error: String) -> some View {
+        VStack(spacing: Spacing.md) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.warning)
+                .accessibilityHidden(true)
+
+            Text("Search Failed")
+                .font(.headline)
+                .foregroundColor(.textPrimary)
+
+            Text(error)
+                .font(.callout)
+                .foregroundColor(.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, Spacing.lg)
+
+            Button(action: {
+                retrySearch()
+            }) {
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Try Again")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundColor(.accentPrimary)
+                .padding(.horizontal, Spacing.md)
+                .padding(.vertical, Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.accentPrimary, lineWidth: 1.5)
+                )
+            }
+            .accessibilityLabel("Retry search")
+            .accessibilityHint("Double tap to search again")
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
+    }
+
+    // MARK: - Retry Search
+    private func retrySearch() {
+        searchError = nil
+        HapticManager.shared.light()
+
+        // Trigger a re-search by forcing the preload service to reload
+        Task {
+            await cityPreloadService.reloadCities()
+        }
+    }
+
+    // MARK: - Refresh Cities (Pull-to-Refresh)
+    private func refreshCities() async {
+        searchError = nil
+        await cityPreloadService.reloadCities()
+        HapticManager.shared.success()
     }
 
     // MARK: - Discovery Prompt View

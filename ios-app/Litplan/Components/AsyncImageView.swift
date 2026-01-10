@@ -9,6 +9,47 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Shimmer Effect Modifier
+
+/// Animated shimmer effect for loading placeholders
+struct ShimmerModifier: ViewModifier {
+    @State private var phase: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                GeometryReader { geometry in
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.clear,
+                            Color.white.opacity(0.3),
+                            Color.clear
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geometry.size.width * 2)
+                    .offset(x: -geometry.size.width + (phase * geometry.size.width * 2))
+                }
+            )
+            .mask(content)
+            .onAppear {
+                withAnimation(
+                    Animation.linear(duration: 1.5)
+                        .repeatForever(autoreverses: false)
+                ) {
+                    phase = 1
+                }
+            }
+    }
+}
+
+extension View {
+    func shimmer() -> some View {
+        modifier(ShimmerModifier())
+    }
+}
+
 // MARK: - Image Cache Manager
 
 /// Centralized image cache using NSCache for memory-efficient caching
@@ -98,6 +139,43 @@ class ImageCacheManager {
             return total + Int64(size)
         }
     }
+
+    // MARK: - Image Prefetching
+
+    /// Prefetch images in the background for faster loading
+    /// - Parameter urls: Array of URLs to prefetch
+    func prefetchImages(_ urls: [URL]) {
+        for url in urls {
+            let cacheKey = url.absoluteString
+
+            // Skip if already cached
+            if image(forKey: cacheKey) != nil { continue }
+            if loadFromDisk(forKey: cacheKey) != nil { continue }
+
+            // Download in background
+            Task(priority: .low) {
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    if let image = UIImage(data: data) {
+                        setImage(image, forKey: cacheKey)
+                        saveToDisk(image, forKey: cacheKey)
+                        #if DEBUG
+                        print("[ImageCache] Prefetched: \(url.lastPathComponent)")
+                        #endif
+                    }
+                } catch {
+                    #if DEBUG
+                    print("[ImageCache] Prefetch failed for \(url.lastPathComponent): \(error.localizedDescription)")
+                    #endif
+                }
+            }
+        }
+    }
+
+    /// Check if an image is already cached (memory or disk)
+    func isCached(forKey key: String) -> Bool {
+        return image(forKey: key) != nil || loadFromDisk(forKey: key) != nil
+    }
 }
 
 // MARK: - Async Image View
@@ -112,6 +190,7 @@ struct AsyncImageView: View {
     @State private var isLoaded = false
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
+    @State private var hasError = false
 
     init(
         url: URL?,
@@ -137,6 +216,8 @@ struct AsyncImageView: View {
                             isLoaded = true
                         }
                     }
+            } else if hasError {
+                errorState
             } else if isLoading {
                 loadingState
             } else {
@@ -152,14 +233,22 @@ struct AsyncImageView: View {
         }
     }
 
-    // MARK: - Loading State
+    // MARK: - Loading State (Shimmer Effect)
 
     private var loadingState: some View {
-        Color.surfaceSecondary
-            .overlay {
-                ProgressView()
-                    .tint(.accentPrimary)
-            }
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.surfaceSecondary,
+                        Color.surfaceSecondary.opacity(0.7),
+                        Color.surfaceSecondary
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .shimmer()
     }
 
     // MARK: - Error State
@@ -168,9 +257,11 @@ struct AsyncImageView: View {
         Color.surfaceSecondary
             .overlay {
                 if showPlaceholder {
-                    Image(systemName: "photo")
-                        .foregroundColor(.textTertiary)
-                        .font(.system(size: 40))
+                    VStack(spacing: 4) {
+                        Image(systemName: "photo")
+                            .foregroundColor(.textTertiary)
+                            .font(.system(size: 24))
+                    }
                 }
             }
     }
@@ -179,31 +270,44 @@ struct AsyncImageView: View {
 
     private func loadImage() {
         guard let url = url else {
-            loadedImage = nil
+            hasError = true
             return
         }
 
         let cacheKey = url.absoluteString
 
-        // Check memory cache first
+        // Check memory cache first (instant load)
         if let cachedImage = ImageCacheManager.shared.image(forKey: cacheKey) {
             self.loadedImage = cachedImage
+            self.isLoaded = true // Skip animation for cached images
             return
         }
 
-        // Check disk cache
+        // Check disk cache (fast load)
         if let diskImage = ImageCacheManager.shared.loadFromDisk(forKey: cacheKey) {
             ImageCacheManager.shared.setImage(diskImage, forKey: cacheKey)
             self.loadedImage = diskImage
+            self.isLoaded = true // Skip animation for cached images
             return
         }
 
-        // Download image
+        // Download image from network
         isLoading = true
+        hasError = false
 
         Task {
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
+                let (data, response) = try await URLSession.shared.data(from: url)
+
+                // Validate HTTP response
+                if let httpResponse = response as? HTTPURLResponse,
+                   !(200...299).contains(httpResponse.statusCode) {
+                    await MainActor.run {
+                        self.hasError = true
+                        self.isLoading = false
+                    }
+                    return
+                }
 
                 // Only process if still loading (view hasn't disappeared)
                 guard isLoading else { return }
@@ -219,13 +323,13 @@ struct AsyncImageView: View {
 
                 guard let finalImage = image else {
                     await MainActor.run {
-                        self.loadedImage = nil
+                        self.hasError = true
                         self.isLoading = false
                     }
                     return
                 }
 
-                // Cache image
+                // Cache image for future use
                 ImageCacheManager.shared.setImage(finalImage, forKey: cacheKey)
                 ImageCacheManager.shared.saveToDisk(finalImage, forKey: cacheKey)
 
@@ -235,8 +339,11 @@ struct AsyncImageView: View {
                 }
             } catch {
                 await MainActor.run {
-                    self.loadedImage = nil
+                    self.hasError = true
                     self.isLoading = false
+                    #if DEBUG
+                    print("[AsyncImageView] Failed to load image: \(error.localizedDescription)")
+                    #endif
                 }
             }
         }

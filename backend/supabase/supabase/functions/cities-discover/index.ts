@@ -232,12 +232,204 @@ async function discoverCity(query: string): Promise<CityDiscoveryResult> {
 }
 
 /**
- * Generate Unsplash source URL for city images
- * Uses source.unsplash.com for dynamic, random images
+ * Curated city images from Unsplash with direct URLs
+ * These are high-quality, fast-loading images for popular cities
+ */
+const CURATED_CITY_IMAGES: Record<string, { hero: string; card: string }> = {
+  // African cities
+  'mombasa': {
+    hero: 'https://images.unsplash.com/photo-1596005554384-d293674c91d7?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1596005554384-d293674c91d7?w=400&h=500&fit=crop&q=80',
+  },
+  'dar es salaam': {
+    hero: 'https://images.unsplash.com/photo-1611348524140-53c9a25263d6?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1611348524140-53c9a25263d6?w=400&h=500&fit=crop&q=80',
+  },
+  'nairobi': {
+    hero: 'https://images.unsplash.com/photo-1611348524140-53c9a25263d6?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1611348524140-53c9a25263d6?w=400&h=500&fit=crop&q=80',
+  },
+  'lagos': {
+    hero: 'https://images.unsplash.com/photo-1618828665011-0abd973f7bb8?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1618828665011-0abd973f7bb8?w=400&h=500&fit=crop&q=80',
+  },
+  'cape town': {
+    hero: 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=400&h=500&fit=crop&q=80',
+  },
+  'johannesburg': {
+    hero: 'https://images.unsplash.com/photo-1577948000111-9c970dfe3743?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1577948000111-9c970dfe3743?w=400&h=500&fit=crop&q=80',
+  },
+  'cairo': {
+    hero: 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?w=400&h=500&fit=crop&q=80',
+  },
+  'marrakech': {
+    hero: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=400&h=500&fit=crop&q=80',
+  },
+  // European cities
+  'gothenburg': {
+    hero: 'https://images.unsplash.com/photo-1578075904982-5c212abe93ba?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1578075904982-5c212abe93ba?w=400&h=500&fit=crop&q=80',
+  },
+  'stockholm': {
+    hero: 'https://images.unsplash.com/photo-1509356843151-3e7d96241e11?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1509356843151-3e7d96241e11?w=400&h=500&fit=crop&q=80',
+  },
+  'copenhagen': {
+    hero: 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=400&h=500&fit=crop&q=80',
+  },
+  'oslo': {
+    hero: 'https://images.unsplash.com/photo-1533929736562-8a0b5fa9becd?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1533929736562-8a0b5fa9becd?w=400&h=500&fit=crop&q=80',
+  },
+  'helsinki': {
+    hero: 'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?w=400&h=500&fit=crop&q=80',
+  },
+  'prague': {
+    hero: 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1541849546-216549ae216d?w=400&h=500&fit=crop&q=80',
+  },
+  'vienna': {
+    hero: 'https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=400&h=500&fit=crop&q=80',
+  },
+  'budapest': {
+    hero: 'https://images.unsplash.com/photo-1551867633-194f125bddfa?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1551867633-194f125bddfa?w=400&h=500&fit=crop&q=80',
+  },
+  'athens': {
+    hero: 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=400&h=500&fit=crop&q=80',
+  },
+  'lisbon': {
+    hero: 'https://images.unsplash.com/photo-1588729959852-508f62be8db7?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1588729959852-508f62be8db7?w=400&h=500&fit=crop&q=80',
+  },
+  'dublin': {
+    hero: 'https://images.unsplash.com/photo-1549918864-48ac978761a4?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1549918864-48ac978761a4?w=400&h=500&fit=crop&q=80',
+  },
+  'edinburgh': {
+    hero: 'https://images.unsplash.com/photo-1506377585622-bedcbb5f7c09?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1506377585622-bedcbb5f7c09?w=400&h=500&fit=crop&q=80',
+  },
+  // Asian cities
+  'singapore': {
+    hero: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=400&h=500&fit=crop&q=80',
+  },
+  'bangkok': {
+    hero: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=400&h=500&fit=crop&q=80',
+  },
+  'kuala lumpur': {
+    hero: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=400&h=500&fit=crop&q=80',
+  },
+  'hong kong': {
+    hero: 'https://images.unsplash.com/photo-1536599018102-9f803c979b86?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1536599018102-9f803c979b86?w=400&h=500&fit=crop&q=80',
+  },
+  'seoul': {
+    hero: 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=400&h=500&fit=crop&q=80',
+  },
+  'taipei': {
+    hero: 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=400&h=500&fit=crop&q=80',
+  },
+  'manila': {
+    hero: 'https://images.unsplash.com/photo-1573455494060-c5595004fb6c?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1573455494060-c5595004fb6c?w=400&h=500&fit=crop&q=80',
+  },
+  'mumbai': {
+    hero: 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=400&h=500&fit=crop&q=80',
+  },
+  'delhi': {
+    hero: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=400&h=500&fit=crop&q=80',
+  },
+  // Americas
+  'vancouver': {
+    hero: 'https://images.unsplash.com/photo-1559511260-66a68e7a4d9f?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1559511260-66a68e7a4d9f?w=400&h=500&fit=crop&q=80',
+  },
+  'toronto': {
+    hero: 'https://images.unsplash.com/photo-1517090504586-fde19ea6066f?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1517090504586-fde19ea6066f?w=400&h=500&fit=crop&q=80',
+  },
+  'montreal': {
+    hero: 'https://images.unsplash.com/photo-1519178614-68673b201f36?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1519178614-68673b201f36?w=400&h=500&fit=crop&q=80',
+  },
+  'mexico city': {
+    hero: 'https://images.unsplash.com/photo-1518659526054-190340b32735?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1518659526054-190340b32735?w=400&h=500&fit=crop&q=80',
+  },
+  'buenos aires': {
+    hero: 'https://images.unsplash.com/photo-1612294037637-ec328d0e075e?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1612294037637-ec328d0e075e?w=400&h=500&fit=crop&q=80',
+  },
+  'rio de janeiro': {
+    hero: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=400&h=500&fit=crop&q=80',
+  },
+  'sao paulo': {
+    hero: 'https://images.unsplash.com/photo-1554168848-228452c09d60?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1554168848-228452c09d60?w=400&h=500&fit=crop&q=80',
+  },
+  // Oceania
+  'sydney': {
+    hero: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=400&h=500&fit=crop&q=80',
+  },
+  'melbourne': {
+    hero: 'https://images.unsplash.com/photo-1514395462725-fb4566210144?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1514395462725-fb4566210144?w=400&h=500&fit=crop&q=80',
+  },
+  'auckland': {
+    hero: 'https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=1200&h=800&fit=crop&q=80',
+    card: 'https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=400&h=500&fit=crop&q=80',
+  },
+};
+
+/**
+ * Default fallback images for cities not in the curated list
+ * Uses beautiful generic cityscape images
+ */
+const DEFAULT_CITY_IMAGES = {
+  hero: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1200&h=800&fit=crop&q=80',
+  card: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&h=500&fit=crop&q=80',
+};
+
+/**
+ * Generate optimized Unsplash image URL for city images
+ * Uses curated direct image URLs for faster loading and better quality
  */
 function generateUnsplashUrl(searchQuery: string, width: number, height: number): string {
-  const encodedQuery = encodeURIComponent(searchQuery);
-  return `https://source.unsplash.com/featured/${width}x${height}/?${encodedQuery}`;
+  // Normalize the city name for lookup
+  const normalizedCity = searchQuery
+    .toLowerCase()
+    .replace(/\s+skyline$/i, '')
+    .replace(/\s+city$/i, '')
+    .trim();
+
+  // Check if we have a curated image for this city
+  const curatedImages = CURATED_CITY_IMAGES[normalizedCity];
+
+  if (curatedImages) {
+    // Return hero or card based on dimensions
+    return width >= 800 ? curatedImages.hero : curatedImages.card;
+  }
+
+  // Fallback to default cityscape image
+  return width >= 800 ? DEFAULT_CITY_IMAGES.hero : DEFAULT_CITY_IMAGES.card;
 }
 
 /**
