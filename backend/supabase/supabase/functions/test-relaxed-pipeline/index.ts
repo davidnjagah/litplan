@@ -906,6 +906,10 @@ async function storePlans(
     const score = scores.find(s => s.title === plan.title)?.score || 0;
     const flowId = `gf-${citySlug}-test-relaxed-${timestamp}-${i}`;
 
+    // Get appropriate day for this plan type
+    const dayInfo = getDateForPlanType(plan.planType);
+    console.log(`[storage] ${plan.planType} → ${dayInfo.weekday} (${dayInfo.date})`);
+
     // Create Plan records
     const activityPlanIds: string[] = [];
     for (let j = 0; j < plan.activities.length; j++) {
@@ -921,9 +925,9 @@ async function storePlans(
         category: 'nightlife',
         type: 'EVENT',
         cityId: cityId,
-        date: new Date().toISOString().split('T')[0],
-        weekday: getWeekdayFromDate(new Date().toISOString().split('T')[0]),
-        isWeekend: isWeekendDate(new Date().toISOString().split('T')[0]),
+        date: dayInfo.date,
+        weekday: dayInfo.weekday,
+        isWeekend: dayInfo.isWeekend,
         startTime: activity.startTime,
         endTime: calculateEndTime(activity.startTime, activity.duration),
         latitude: activity.coordinates.latitude,
@@ -956,12 +960,14 @@ async function storePlans(
         rank: i + 1,
         title: plan.title,
         description: plan.description,
+        planType: plan.planType,
         totalHours: Math.ceil(plan.totalDuration / 60),
         startTime: plan.activities[0]?.startTime,
         endTime: plan.activities[plan.activities.length - 1]?.startTime,
         totalEstimate: Math.round((plan.estimatedCost.min + plan.estimatedCost.max) / 2),
         currency: plan.estimatedCost.currency,
-        isWeekend: isWeekendDate(new Date().toISOString().split('T')[0]),
+        weekday: dayInfo.weekday,
+        isWeekend: dayInfo.isWeekend,
         proOnly: i >= 2,
         aiGenerated: true,
         isTemporary: false,
@@ -1002,4 +1008,49 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
   const endHours = Math.floor(totalMinutes / 60) % 24;
   const endMinutes = totalMinutes % 60;
   return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+}
+
+/**
+ * DAY DISTRIBUTION LOGIC
+ * Assigns appropriate days based on plan type to avoid all plans on same day.
+ * Returns a date string for the upcoming week.
+ */
+function getDateForPlanType(planType: string): { date: string; weekday: string; isWeekend: boolean } {
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+  // Day mapping for each plan type (0 = Sunday, 6 = Saturday)
+  const planTypeDayMap: Record<string, number[]> = {
+    'couples': [5, 6],           // Friday, Saturday
+    'friend_groups': [5, 6],     // Friday, Saturday
+    'girls_trips': [6],          // Saturday
+    'girls_night_out': [5, 6],   // Friday, Saturday
+    'boys_night_out': [5, 6],    // Friday, Saturday
+    'luxury': [4, 5, 6],         // Thursday, Friday, Saturday
+    'family': [0, 6],            // Sunday, Saturday
+    'free_experiences': [0, 6],  // Sunday, Saturday
+    'romantic': [5, 6],          // Friday, Saturday
+  };
+
+  const allowedDays = planTypeDayMap[planType] || [5, 6]; // Default to weekend
+
+  // Pick a day from the allowed days (distribute by using planType hash)
+  const dayIndex = planType.length % allowedDays.length;
+  const targetDay = allowedDays[dayIndex];
+
+  // Calculate the date for the next occurrence of this day
+  let daysUntilTarget = targetDay - currentDay;
+  if (daysUntilTarget <= 0) {
+    daysUntilTarget += 7; // Next week
+  }
+
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + daysUntilTarget);
+
+  const dateString = targetDate.toISOString().split('T')[0];
+  const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const weekday = weekdayNames[targetDay];
+  const isWeekend = targetDay === 0 || targetDay === 6;
+
+  return { date: dateString, weekday, isWeekend };
 }
