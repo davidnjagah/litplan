@@ -69,7 +69,7 @@ struct ContentView: View {
                 .tag(0)
 
             // Search Tab
-            SearchView(focusTrigger: searchFocusTrigger)
+            SearchView(focusTrigger: $searchFocusTrigger)
                 .tabItem {
                     Image(systemName: selectedTab == 1 ? "magnifyingglass.circle.fill" : "magnifyingglass")
                     Text("Search")

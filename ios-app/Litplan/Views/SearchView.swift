@@ -9,14 +9,17 @@
 import SwiftUI
 
 struct SearchView: View {
-    // Focus trigger - when this value changes, focus the search field
-    var focusTrigger: Int = 0
+    // Focus trigger binding - when this value changes, focus the search field
+    @Binding var focusTrigger: Int
 
     @State private var searchQuery = ""
     @State private var selectedCity: City?
     @State private var paywallTrigger: PaywallTrigger? = nil
     @FocusState private var isSearchFocused: Bool
-    @State private var lastFocusTrigger: Int = 0
+
+    init(focusTrigger: Binding<Int> = .constant(0)) {
+        self._focusTrigger = focusTrigger
+    }
 
     // City discovery states
     @State private var isDiscovering: Bool = false
@@ -102,20 +105,13 @@ struct SearchView: View {
                 print("[SearchView] 🚀 onAppear, focusTrigger: \(focusTrigger)")
                 print("[SearchView] 📊 State - trendingCities: \(trendingCities.count), preloadedCities: \(cityPreloadService.allCities.count)")
                 print("[SearchView] 📊 PreloadService - isLoading: \(cityPreloadService.isLoading), hasLoaded: \(cityPreloadService.hasLoaded)")
-
-                // Check if we should auto-focus (trigger changed since last time)
-                if focusTrigger > lastFocusTrigger {
-                    lastFocusTrigger = focusTrigger
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        isSearchFocused = true
-                    }
-                }
             }
             .onChange(of: focusTrigger) { oldValue, newValue in
                 // Focus search field when trigger increments (navigated from HomeView)
+                print("[SearchView] 🔄 focusTrigger changed: \(oldValue) → \(newValue)")
                 if newValue > oldValue {
-                    lastFocusTrigger = newValue
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        print("[SearchView] 🎯 Setting isSearchFocused = true")
                         isSearchFocused = true
                     }
                 }
