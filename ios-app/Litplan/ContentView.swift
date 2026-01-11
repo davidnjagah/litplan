@@ -13,6 +13,7 @@ struct ContentView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var selectedTab = 0
     @State private var showingLaunchScreen = true
+    @State private var shouldAutoFocusSearch = false
 
     var body: some View {
         ZStack {
@@ -57,6 +58,8 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             // Home (Explore) Tab
             HomeView(onNavigateToSearch: {
+                // Set auto-focus flag before switching tabs
+                shouldAutoFocusSearch = true
                 selectedTab = 1
             })
                 .tabItem {
@@ -66,7 +69,7 @@ struct ContentView: View {
                 .tag(0)
 
             // Search Tab
-            SearchView()
+            SearchView(shouldAutoFocus: $shouldAutoFocusSearch)
                 .tabItem {
                     Image(systemName: selectedTab == 1 ? "magnifyingglass.circle.fill" : "magnifyingglass")
                     Text("Search")

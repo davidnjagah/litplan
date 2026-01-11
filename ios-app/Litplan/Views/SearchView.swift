@@ -9,6 +9,9 @@
 import SwiftUI
 
 struct SearchView: View {
+    // Auto-focus binding - when true, focus the search field on appear
+    @Binding var shouldAutoFocus: Bool
+
     @State private var searchQuery = ""
     @State private var selectedCity: City?
     @State private var paywallTrigger: PaywallTrigger? = nil
@@ -25,6 +28,11 @@ struct SearchView: View {
 
     // City preload service for background-loaded cities (used for search)
     @ObservedObject private var cityPreloadService = CityPreloadService.shared
+
+    // Convenience initializer for when auto-focus is not needed
+    init(shouldAutoFocus: Binding<Bool> = .constant(false)) {
+        self._shouldAutoFocus = shouldAutoFocus
+    }
 
     private var isProUser: Bool {
         subscriptionManager.isProUser
@@ -98,6 +106,23 @@ struct SearchView: View {
                 print("[SearchView] 🚀 onAppear")
                 print("[SearchView] 📊 State - trendingCities: \(trendingCities.count), preloadedCities: \(cityPreloadService.allCities.count)")
                 print("[SearchView] 📊 PreloadService - isLoading: \(cityPreloadService.isLoading), hasLoaded: \(cityPreloadService.hasLoaded)")
+
+                // Auto-focus search field if requested on initial load
+                if shouldAutoFocus {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isSearchFocused = true
+                        shouldAutoFocus = false
+                    }
+                }
+            }
+            .onChange(of: shouldAutoFocus) { _, newValue in
+                // Auto-focus search field when flag changes to true (e.g., navigated from HomeView)
+                if newValue {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isSearchFocused = true
+                        shouldAutoFocus = false  // Reset flag after focusing
+                    }
+                }
             }
             // Note: Pro status is managed centrally by SubscriptionManager
             // Views should read cached isProUser state, not call refresh on every onAppear
