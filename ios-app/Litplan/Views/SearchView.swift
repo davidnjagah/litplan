@@ -110,9 +110,13 @@ struct SearchView: View {
                 // Focus search field when trigger increments (navigated from HomeView)
                 print("[SearchView] 🔄 focusTrigger changed: \(oldValue) → \(newValue)")
                 if newValue > oldValue {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    // Use Task to ensure we're on the main actor and give view time to settle
+                    Task { @MainActor in
+                        // Wait for tab transition animation to complete
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
                         print("[SearchView] 🎯 Setting isSearchFocused = true")
                         isSearchFocused = true
+                        print("[SearchView] ✅ isSearchFocused is now: \(isSearchFocused)")
                     }
                 }
             }
