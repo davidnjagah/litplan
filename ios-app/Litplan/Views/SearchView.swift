@@ -9,17 +9,10 @@
 import SwiftUI
 
 struct SearchView: View {
-    // Focus trigger binding - when this value changes, focus the search field
-    @Binding var focusTrigger: Int
-
     @State private var searchQuery = ""
     @State private var selectedCity: City?
     @State private var paywallTrigger: PaywallTrigger? = nil
     @FocusState private var isSearchFocused: Bool
-
-    init(focusTrigger: Binding<Int> = .constant(0)) {
-        self._focusTrigger = focusTrigger
-    }
 
     // City discovery states
     @State private var isDiscovering: Bool = false
@@ -102,23 +95,9 @@ struct SearchView: View {
                 .environmentObject(subscriptionManager)
             }
             .onAppear {
-                print("[SearchView] 🚀 onAppear, focusTrigger: \(focusTrigger)")
+                print("[SearchView] 🚀 onAppear")
                 print("[SearchView] 📊 State - trendingCities: \(trendingCities.count), preloadedCities: \(cityPreloadService.allCities.count)")
                 print("[SearchView] 📊 PreloadService - isLoading: \(cityPreloadService.isLoading), hasLoaded: \(cityPreloadService.hasLoaded)")
-            }
-            .onChange(of: focusTrigger) { oldValue, newValue in
-                // Focus search field when trigger increments (navigated from HomeView)
-                print("[SearchView] 🔄 focusTrigger changed: \(oldValue) → \(newValue)")
-                if newValue > oldValue {
-                    // Use Task to ensure we're on the main actor and give view time to settle
-                    Task { @MainActor in
-                        // Wait for tab transition animation to complete
-                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                        print("[SearchView] 🎯 Setting isSearchFocused = true")
-                        isSearchFocused = true
-                        print("[SearchView] ✅ isSearchFocused is now: \(isSearchFocused)")
-                    }
-                }
             }
             // Note: Pro status is managed centrally by SubscriptionManager
             // Views should read cached isProUser state, not call refresh on every onAppear
