@@ -64,9 +64,6 @@ struct SearchView: View {
                             if !searchQuery.isEmpty {
                                 searchResultsSection
                             } else {
-                                // Show Recent Searches (placeholder for now - Pro feature)
-                                recentSearchesSection
-
                                 // Show Trending Cities grid
                                 trendingCitiesSection
                             }
@@ -388,34 +385,6 @@ struct SearchView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(city.name), \(city.country)")
         .accessibilityHint(city.metadata.planCount == 0 ? "Newly discovered city. Plans coming soon." : "Double tap to explore \(city.metadata.planCount) nightlife plans")
-    }
-
-    // MARK: - Recent Searches Section
-    private var recentSearchesSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Recent Searches")
-                .font(.displayMedium)
-                .fontWeight(.bold)
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, Spacing.md)
-                .accessibilityAddTraits(.isHeader)
-
-            // Empty state - no search history yet
-            HStack(spacing: Spacing.sm) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .foregroundColor(.textTertiary)
-                    .font(.system(size: 18))
-
-                Text("No recent searches")
-                    .font(.callout)
-                    .foregroundColor(.textSecondary)
-            }
-            .padding(Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.surfacePrimary)
-            .cornerRadius(12)
-            .padding(.horizontal, Spacing.md)
-        }
     }
 
     // MARK: - Trending Cities Section
