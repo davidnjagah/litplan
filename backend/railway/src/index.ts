@@ -40,6 +40,9 @@
  * POST /api/pipeline/batch - Run for multiple cities
  *   Body: { cities: [{ cityId, cityName, country }] }
  *
+ * POST /api/pipeline/test-relaxed - Test relaxed validation (won't overwrite production)
+ *   Body: { cityName, storeResults? }
+ *
  * GET /health - Health check
  *
  * ──────────────────────────────────────────────────────────────────────────────
@@ -417,6 +420,79 @@ app.post('/api/pipeline/batch', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Test relaxed validation pipeline for group plans
+ * Uses test-relaxed-pipeline which has:
+ * - Timing/travel context in generator
+ * - Relaxed venue validation (keeps plausible venues)
+ * - Relaxed address validation (corrects instead of removes)
+ * - Stores with "test-relaxed" prefix (doesn't overwrite production plans)
+ */
+app.post('/api/pipeline/test-relaxed', async (req: Request, res: Response) => {
+  const startTime = Date.now();
+
+  try {
+    const { cityName, country, storeResults = true } = req.body;
+
+    if (!cityName) {
+      return res.status(400).json({
+        success: false,
+        error: 'cityName is required',
+      });
+    }
+
+    console.log(`[test-relaxed] Starting relaxed 7-agent GPT pipeline for ${cityName}`);
+
+    // Call the test-relaxed-pipeline (relaxed validation)
+    const groupResult = await callSupabaseFunction('test-relaxed-pipeline', {
+      city: cityName,
+      storeResults,
+    });
+
+    if (!groupResult.success) {
+      throw new Error(`Relaxed pipeline failed: ${groupResult.error}`);
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    const result: PipelineResult = {
+      success: true,
+      cityId: '',
+      cityName,
+      phase: 'test-relaxed',
+      data: {
+        aiModel: 'GPT-4o',
+        pipeline: '7-agent-relaxed',
+        totalGenerated: groupResult.data?.summary?.totalGenerated || 0,
+        totalApproved: groupResult.data?.summary?.totalApproved || 0,
+        totalStored: groupResult.data?.summary?.totalStored || 0,
+        averageScore: groupResult.data?.summary?.averageScore || 0,
+        agentResults: groupResult.data?.agentResults || [],
+        plans: groupResult.data?.finalPlans?.map((p: any) => ({
+          title: p.title,
+          planType: p.planType,
+          description: p.description,
+          venues: p.activities?.map((a: any) => a.venueName) || [],
+          bestFor: p.bestFor,
+          qualityScore: p.qualityScore,
+        })) || [],
+      },
+      durationMs,
+    };
+
+    console.log(`[test-relaxed] Complete for ${cityName}: ${result.data.totalApproved} plans approved in ${durationMs}ms`);
+    res.json(result);
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    console.error('[test-relaxed] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      durationMs,
+    });
+  }
+});
+
 // Internal pipeline runners
 async function runIndividualPipeline(city: CityInput): Promise<PipelineResult> {
   const startTime = Date.now();
@@ -723,6 +799,7 @@ app.listen(PORT, () => {
 ║  POST /api/pipeline/group      - Group plans (GPT 7-agent)    ║
 ║  POST /api/pipeline/full       - Full pipeline                ║
 ║  POST /api/pipeline/batch      - Batch processing             ║
+║  POST /api/pipeline/test-relaxed - Test relaxed validation    ║
 ╚═══════════════════════════════════════════════════════════════╝
   `);
 });
