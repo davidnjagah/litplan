@@ -9,7 +9,25 @@
 import Foundation
 import StoreKit
 
+/// Cached subscription state for optimistic UI rendering
+/// Views should read this cached state instead of calling validation on every onAppear
+enum SubscriptionCacheState: String, Codable {
+    case unknown    // Initial state, still validating
+    case active     // Has active Pro subscription
+    case expired    // Subscription expired
+    case free       // No subscription (free user)
+
+    var isProUser: Bool {
+        return self == .active
+    }
+}
+
 /// Manages subscription purchases, restoration, and status using StoreKit 2
+///
+/// Architecture:
+/// - Views read the cached `isProUser` state and react (do NOT call validation on every onAppear)
+/// - SubscriptionManager refreshes at key events: app launch, app foreground, after purchase/restore
+/// - If state == unknown, views show optimistically while refresh happens asynchronously
 @MainActor
 class SubscriptionManager: ObservableObject {
 
@@ -27,11 +45,20 @@ class SubscriptionManager: ObservableObject {
     @Published var isTestMode: Bool = false  // Indicates if Pro was granted via test mode
     @Published var productsLoadedAt: Date?  // Track when products were last loaded
 
+    /// Cached subscription state - views should observe this for UI decisions
+    @Published var cacheState: SubscriptionCacheState = .unknown
+
     // MARK: - Subscription State
 
     @Published var subscriptionState: SubscriptionState = .none
     @Published var currentSubscriptionType: SubscriptionType?
     @Published var subscriptionExpirationDate: Date?
+
+    // MARK: - Cache Keys
+
+    private let cacheStateKey = "subscriptionCacheState"
+    private let cacheTimestampKey = "subscriptionCacheTimestamp"
+    private let cacheValidityDuration: TimeInterval = 3600  // 1 hour
 
     // MARK: - Private Properties
 
@@ -67,15 +94,130 @@ class SubscriptionManager: ObservableObject {
         // Start listening for transaction updates in a detached task
         updateListenerTask = listenForTransactions()
 
-        // Check for persisted test access first
+        // Load cached state first for optimistic UI
+        loadCachedState()
+
+        // Check for persisted test access
         checkPersistedTestAccess()
+
+        // Set up app lifecycle observers for automatic refresh
+        setupLifecycleObservers()
 
         // Load products and check subscription status on init (fire-and-forget)
         // Use Task with @MainActor to ensure proper actor context
         Task { @MainActor [weak self] in
             guard let self = self else { return }
             await self.loadProducts()
-            await self.checkSubscriptionStatus()
+            await self.refreshSubscriptionState()
+        }
+    }
+
+    // MARK: - Lifecycle Observers
+
+    /// Set up observers for app lifecycle events to refresh subscription at key moments
+    private func setupLifecycleObservers() {
+        // Refresh when app comes to foreground
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.refreshSubscriptionStateIfNeeded()
+            }
+        }
+
+        // Refresh when app becomes active (after unlock, etc.)
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.refreshSubscriptionStateIfNeeded()
+            }
+        }
+    }
+
+    // MARK: - Cache Management
+
+    /// Load cached subscription state for optimistic UI rendering
+    private func loadCachedState() {
+        if let cachedStateString = UserDefaults.standard.string(forKey: cacheStateKey),
+           let cachedState = SubscriptionCacheState(rawValue: cachedStateString) {
+            self.cacheState = cachedState
+            self.isProUser = cachedState.isProUser
+
+            if Config.enableDebugLogging {
+                print("[SubscriptionManager] Loaded cached state: \(cachedState)")
+            }
+        }
+    }
+
+    /// Save subscription state to cache
+    private func saveCacheState(_ state: SubscriptionCacheState) {
+        self.cacheState = state
+        UserDefaults.standard.set(state.rawValue, forKey: cacheStateKey)
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: cacheTimestampKey)
+
+        if Config.enableDebugLogging {
+            print("[SubscriptionManager] Saved cache state: \(state)")
+        }
+    }
+
+    /// Check if cache is still valid (within validity duration)
+    private var isCacheValid: Bool {
+        let timestamp = UserDefaults.standard.double(forKey: cacheTimestampKey)
+        guard timestamp > 0 else { return false }
+        let elapsed = Date().timeIntervalSince1970 - timestamp
+        return elapsed < cacheValidityDuration
+    }
+
+    // MARK: - Centralized Refresh
+
+    /// Refresh subscription state - called at key events (launch, foreground, purchase, restore)
+    /// Views should NOT call this on every onAppear - they should read cached isProUser instead
+    func refreshSubscriptionState() async {
+        if Config.enableDebugLogging {
+            print("[SubscriptionManager] refreshSubscriptionState() - full refresh")
+        }
+
+        // Check entitlements and update state
+        await checkSubscriptionStatus()
+
+        // Update cache based on subscription state
+        let newCacheState: SubscriptionCacheState
+        if isTestMode {
+            newCacheState = .active
+        } else if subscriptionState.grantsAccess {
+            newCacheState = .active
+        } else if subscriptionState == .expired {
+            newCacheState = .expired
+        } else {
+            newCacheState = .free
+        }
+
+        saveCacheState(newCacheState)
+        self.isProUser = newCacheState.isProUser
+    }
+
+    /// Refresh subscription state only if cache is invalid or state is unknown
+    /// This is called on app foreground to avoid unnecessary refreshes
+    private func refreshSubscriptionStateIfNeeded() async {
+        // Always refresh if state is unknown
+        if cacheState == .unknown {
+            await refreshSubscriptionState()
+            return
+        }
+
+        // Only refresh if cache is expired
+        if !isCacheValid {
+            if Config.enableDebugLogging {
+                print("[SubscriptionManager] Cache expired, refreshing subscription state")
+            }
+            await refreshSubscriptionState()
+        } else if Config.enableDebugLogging {
+            print("[SubscriptionManager] Cache still valid, skipping refresh")
         }
     }
 
@@ -205,8 +347,8 @@ class SubscriptionManager: ObservableObject {
                     throw error
                 }
 
-                // Update local state
-                await updateSubscriptionStatus()
+                // Update local state and cache
+                await refreshSubscriptionState()
 
                 // Finish the transaction
                 await transaction.finish()
@@ -270,8 +412,8 @@ class SubscriptionManager: ObservableObject {
                 throw SubscriptionError.appStoreConnectionFailed
             }
 
-            // Update subscription status
-            await checkSubscriptionStatus()
+            // Update subscription status and cache
+            await refreshSubscriptionState()
 
             // Validate with backend if we have an active subscription
             if isProUser, let transaction = await getCurrentSubscriptionTransaction() {
@@ -625,8 +767,8 @@ class SubscriptionManager: ObservableObject {
 
     /// Handle transaction update on MainActor
     private func handleTransactionUpdate(transaction: Transaction) async {
-        // Update subscription status
-        await updateSubscriptionStatus()
+        // Update subscription status and cache
+        await refreshSubscriptionState()
 
         // Sync with backend for auto-renewals and other updates
         do {
@@ -782,13 +924,21 @@ class SubscriptionManager: ObservableObject {
         subscriptionState = .none
         subscriptionExpirationDate = nil
         currentSubscriptionType = nil
+        cacheState = .unknown
 
         // Clear persisted data
         UserDefaults.standard.removeObject(forKey: "testProAccess")
         UserDefaults.standard.removeObject(forKey: "subscriptionStatus")
         UserDefaults.standard.removeObject(forKey: "cachedProAccess")
+        UserDefaults.standard.removeObject(forKey: cacheStateKey)
+        UserDefaults.standard.removeObject(forKey: cacheTimestampKey)
 
         print("[SubscriptionManager] Pro cache cleared on logout")
+
+        // Re-check subscription state after clearing (user might have subscription tied to Apple ID)
+        Task { @MainActor in
+            await refreshSubscriptionState()
+        }
     }
 }
 

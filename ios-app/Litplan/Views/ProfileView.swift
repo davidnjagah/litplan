@@ -111,11 +111,12 @@ struct ProfileView: View {
                 await refreshData()
             }
             .onAppear {
-                // Check pro status for all users (including guests)
-                Task {
-                    await subscriptionManager.refreshProStatus()
-                }
+                print("[ProfileView] 🚀 onAppear")
+                print("[ProfileView] 📊 User - isAuthenticated: \(authManager.isAuthenticated), isGuest: \(authManager.isGuest)")
+                print("[ProfileView] 📊 Subscription - tier: \(subscriptionTier), isProUser: \(subscriptionManager.isProUser)")
             }
+            // Note: Pro status is managed centrally by SubscriptionManager
+            // Views should read cached isProUser state, not call refresh on every onAppear
         }
     }
 

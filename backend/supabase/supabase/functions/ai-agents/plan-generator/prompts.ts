@@ -81,3 +81,57 @@ Since this is a weekday plan:
 - Consider accessibility for working professionals
 - Highlight trivia nights, open mics, or other weekday events
 - Suggest options that work for midweek celebrations`;
+
+/**
+ * Day distribution rules for plans without specific dates
+ * When a venue/plan doesn't have a specific date tied to it, assign days based on category
+ */
+export const DAY_DISTRIBUTION_RULES = `
+DAY ASSIGNMENT RULES (for venues without specific event dates):
+
+When assigning the "weekday" field, use these category-based rules to distribute plans naturally:
+
+FRIDAY & SATURDAY (Peak nightlife):
+- Nightclub, Dance Club, Mega Club, After Hours
+- Club nights and DJ events
+- High-energy bars and lounges
+- Most nightlife-focused venues
+
+SATURDAY & SUNDAY (Weekend leisure):
+- Family-friendly activities and experiences
+- Cultural venues (galleries, museums, theaters)
+- Brunch spots and day-drinking venues
+- Tourist attractions and popular landmarks
+- Outdoor activities and tours
+- Cabaret and dinner shows
+
+WEEKDAYS (Monday-Thursday):
+- Restaurants and fine dining (spread across Mon-Thu)
+- Wine bars and quiet cocktail bars
+- Pubs and sports bars (especially for game nights)
+- Business-friendly venues
+- Casual dining experiences
+- Food halls
+
+THURSDAY-SATURDAY (Social prime time):
+- Rooftop bars
+- Trendy cocktail bars
+- Live music venues
+- Jazz clubs
+
+WEDNESDAY-FRIDAY (Midweek entertainment):
+- Comedy clubs
+- Trivia nights
+- Open mic nights
+- Stand-up shows
+
+SPREAD EVENLY:
+- If many plans fall into the same category, distribute them across their allowed days
+- Avoid clustering too many plans on a single day
+- Aim for balanced coverage across the week
+
+IMPORTANT:
+- Weekend days are Friday, Saturday, Sunday
+- Clubs should NEVER be assigned to Monday, Tuesday, or Wednesday
+- Family activities should prefer Saturday or Sunday over weekdays
+- Restaurants without special events can be any day, prefer spreading across weekdays`;

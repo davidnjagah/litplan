@@ -1,11 +1,32 @@
 /**
+ * ⚠️ DEPRECATED - PIPELINE MOVED TO RAILWAY ⚠️
+ *
+ * This Supabase Edge Function has been DEPRECATED.
+ * The AI pipeline has been moved to Railway to prevent request timeouts.
+ *
+ * NEW LOCATION: backend/railway/src/index.ts
+ * RAILWAY ENDPOINT: POST /api/pipeline/individual
+ * RAILWAY URL: See RAILWAY_URL in backend/supabase/.env
+ *              (Currently: https://litplan-production.up.railway.app)
+ *
+ * The Railway service now uses the search-agent (Claude) for individual plan generation.
+ * This GPT-based generator is kept for reference only.
+ *
+ * Migration Date: January 2026
+ * Reason: Supabase Edge Functions have a 60-second timeout limit,
+ *         which is insufficient for AI pipeline operations.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * ORIGINAL DOCUMENTATION (for reference):
+ * ─────────────────────────────────────────────────────────────────
+ *
  * Phase 1 Plan Generator - Unified Plan Generation with Inline Validation
  *
  * Generates 50+ individual plans (venues + events) per city with inline quality validation.
  * Uses 3 parallel GPT calls for efficiency.
  *
  * Endpoints:
- * POST /ai-agents/phase1-plan-generator - Generate plans for a city
+ * POST /phase1-plan-generator - Generate plans for a city
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';

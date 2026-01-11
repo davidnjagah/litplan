@@ -11,7 +11,6 @@ import SwiftUI
 struct SearchView: View {
     @State private var searchQuery = ""
     @State private var selectedCity: City?
-    @State private var showCityDetails = false
     @State private var paywallTrigger: PaywallTrigger? = nil
     @FocusState private var isSearchFocused: Bool
 
@@ -84,12 +83,9 @@ struct SearchView: View {
                 }
             }
             .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $showCityDetails) {
-                if let city = selectedCity {
-                    CityDetailsView(city: city) {
-                        showCityDetails = false
-                        selectedCity = nil
-                    }
+            .fullScreenCover(item: $selectedCity) { city in
+                CityDetailsView(city: city) {
+                    selectedCity = nil
                 }
             }
             .sheet(item: $paywallTrigger) { trigger in
@@ -99,11 +95,12 @@ struct SearchView: View {
                 .environmentObject(subscriptionManager)
             }
             .onAppear {
-                // Check pro status for all users (including guests)
-                Task {
-                    await subscriptionManager.refreshProStatus()
-                }
+                print("[SearchView] 🚀 onAppear")
+                print("[SearchView] 📊 State - trendingCities: \(trendingCities.count), preloadedCities: \(cityPreloadService.allCities.count)")
+                print("[SearchView] 📊 PreloadService - isLoading: \(cityPreloadService.isLoading), hasLoaded: \(cityPreloadService.hasLoaded)")
             }
+            // Note: Pro status is managed centrally by SubscriptionManager
+            // Views should read cached isProUser state, not call refresh on every onAppear
         }
     }
 
@@ -336,7 +333,7 @@ struct SearchView: View {
         }) {
             HStack(spacing: Spacing.md) {
                 // City thumbnail
-                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl))
+                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl), targetSize: CGSize(width: 60, height: 60))
                     .frame(width: 60, height: 60)
                     .cornerRadius(8)
                     .clipped()
@@ -454,7 +451,7 @@ struct SearchView: View {
         }) {
             ZStack(alignment: .bottom) {
                 // Background image with gradient overlay
-                AsyncImageView(url: URL(string: city.displayAssets.heroImageUrl))
+                AsyncImageView(url: URL(string: city.displayAssets.heroImageUrl), targetSize: CGSize(width: 160, height: 200))
                     .frame(width: 160, height: 200)
                     .clipped()
 
@@ -539,9 +536,8 @@ struct SearchView: View {
             }
         }
 
-        // Show city details view
+        // Show city details view - using item: binding
         selectedCity = city
-        showCityDetails = true
     }
 }
 

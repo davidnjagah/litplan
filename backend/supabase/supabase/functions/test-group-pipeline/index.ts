@@ -1,4 +1,28 @@
 /**
+ * ⚠️ DEPRECATED - PIPELINE MOVED TO RAILWAY ⚠️
+ *
+ * This Supabase Edge Function has been DEPRECATED.
+ * The AI pipeline has been moved to Railway to prevent request timeouts.
+ *
+ * NEW LOCATION: backend/railway/src/index.ts
+ * RAILWAY ENDPOINTS:
+ *   - POST /api/pipeline/group - Group plans only
+ *   - POST /api/pipeline/full - Full pipeline (individual + group)
+ *   - POST /api/pipeline/batch - Batch processing for multiple cities
+ * RAILWAY URL: See RAILWAY_URL in backend/supabase/.env
+ *              (Currently: https://litplan-production.up.railway.app)
+ *
+ * This file is kept for reference only. DO NOT deploy or use directly.
+ * All pipeline orchestration should go through the Railway service.
+ *
+ * Migration Date: January 2026
+ * Reason: Supabase Edge Functions have a 60-second timeout limit,
+ *         which is insufficient for AI pipeline operations.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * ORIGINAL DOCUMENTATION (for reference):
+ * ─────────────────────────────────────────────────────────────────
+ *
  * Group Plan Pipeline Orchestrator
  *
  * Runs all 5 AI agents in sequence to generate high-quality group plans:
@@ -309,7 +333,8 @@ async function runStage(
   const start = Date.now();
 
   try {
-    const response = await fetch(`${FUNCTIONS_BASE}/ai-agents/${agentName}`, {
+    // Note: AI agents are deployed directly, not in ai-agents subfolder
+    const response = await fetch(`${FUNCTIONS_BASE}/${agentName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

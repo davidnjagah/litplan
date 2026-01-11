@@ -1,11 +1,21 @@
 /**
- * Weekly Pipeline V2 - Optimized 2-Phase Orchestrator
+ * ⚠️ DEPRECATED - PIPELINE MOVED TO RAILWAY ⚠️
  *
- * Runs the complete plan generation and group composition pipeline:
+ * This Supabase Edge Function has been DEPRECATED.
+ * The AI pipeline has been moved to Railway to prevent request timeouts.
+ *
+ * NEW LOCATION: backend/railway/src/index.ts
+ * RAILWAY ENDPOINT: POST /api/pipeline/full
+ * RAILWAY URL: See RAILWAY_URL in backend/supabase/.env
+ *              (Currently: https://litplan-production.up.railway.app)
+ *
+ * Migration Date: January 2026
+ * Reason: Supabase Edge Functions have a 60-second timeout limit.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * ORIGINAL: Weekly Pipeline V2 - Optimized 2-Phase Orchestrator
  * Phase 1: Generate 50+ individual plans with inline validation
- * Phase 2: Compose group plans from individual plans + polish with comms specialist
- *
- * Endpoints:
+ * Phase 2: Compose group plans from individual plans + polish
  * POST /weekly-pipeline-v2 - Run pipeline for specified cities
  */
 

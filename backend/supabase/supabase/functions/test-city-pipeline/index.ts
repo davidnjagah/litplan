@@ -1,9 +1,18 @@
 /**
- * Test City Pipeline
+ * ⚠️ DEPRECATED - PIPELINE MOVED TO RAILWAY ⚠️
  *
- * Generates high-quality group plans for any city using the 5-agent AI pipeline.
- * Validates and stores results in the database.
+ * This Supabase Edge Function has been DEPRECATED.
+ * The AI pipeline has been moved to Railway to prevent request timeouts.
  *
+ * NEW LOCATION: backend/railway/src/index.ts
+ * RAILWAY ENDPOINT: POST /api/pipeline/group
+ *
+ * Migration Date: January 2026
+ * Reason: Supabase Edge Functions have a 60-second timeout limit.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * ORIGINAL: Test City Pipeline
+ * Generates high-quality group plans for any city using 5-agent AI pipeline.
  * POST /test-city-pipeline
  * Body: { cityName, targetCount?, storeResults? }
  */

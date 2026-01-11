@@ -15,7 +15,7 @@ This service hosts the AI pipeline orchestrator on Railway, bypassing Supabase's
         ▼                                       ▼
 ┌───────────────────────┐         ┌───────────────────────┐
 │   INDIVIDUAL PLANS    │         │     GROUP PLANS       │
-│   (search-agent)      │         │ (test-6agent-pipeline)│
+│   (search-agent)      │         │(group-7agent-pipeline)│
 │   Uses: CLAUDE        │         │   Uses: GPT-4o        │
 │   ~60s per city       │         │   ~180s per city      │
 └───────────────────────┘         └───────────────────────┘
@@ -160,7 +160,7 @@ Content-Type: application/json
 }
 ```
 
-Supported cities for group plans: `Ibiza`, `Paris`, `New York` (add more in test-6agent-pipeline)
+Supported cities for group plans: `Ibiza`, `Paris`, `New York` (add more in group-7agent-pipeline)
 
 ### Full Pipeline (Individual + Group)
 ```bash
@@ -263,7 +263,7 @@ curl -X POST https://YOUR_RAILWAY_URL.up.railway.app/api/pipeline/group \
 ## Troubleshooting
 
 ### "Function not found" error
-- Ensure Supabase functions are deployed: `search-agent` and `test-6agent-pipeline`
+- Ensure Supabase functions are deployed: `search-agent` and `group-7agent-pipeline`
 
 ### Timeout on individual plans
 - Check Claude API key in Supabase secrets: `ANTHROPIC_API_KEY`

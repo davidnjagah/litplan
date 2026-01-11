@@ -146,6 +146,23 @@ CRITICAL REQUIREMENTS:
    - Underground / Alternative
    - Luxury Night Out
    - Boat Party (coastal cities only)
+   - Luxury Experiences (high-end dining, 5-star hotels, premium lounges, VIP experiences)
+   - Family Excursions (kid-friendly activities, parks, museums, cultural tours, zoos)
+   - Free Experiences (public parks, street art, free museums, walking tours, markets, viewpoints)
+   - Romantic (candlelit dinners, sunset spots, couples activities, intimate venues, scenic walks)
+
+9. DAY DISTRIBUTION (for bestDays/isWeekend assignment):
+   - Club Hopping, Late Night, Mega Clubs → Friday & Saturday ONLY
+   - Cultural experiences (Flamenco, Cabaret, Tours) → Saturday & Sunday
+   - Food & Drink Crawls, Tapas Tours → Any day, prefer spreading
+   - Jazz/Live Music → Thursday-Saturday
+   - Comedy Nights → Wednesday-Friday
+   - Rooftop experiences → Thursday-Saturday (weather permitting)
+   - Speakeasy/Cocktail tours → Thursday-Saturday
+   - Family Excursions → Saturday & Sunday (when kids are free)
+   - Luxury Experiences → Thursday-Saturday (prime time)
+   - Free Experiences → Any day, especially weekends for tourists
+   - Romantic → Friday & Saturday (date nights), also good on weekdays for intimate settings
 
 OUTPUT FORMAT:
 Return a JSON object with a "plans" array containing exactly the requested number of group plans.`;
@@ -165,7 +182,7 @@ REQUIREMENTS:
 4. Coordinates must be PRECISE (not city center placeholders)
 5. Descriptions must be 15-25 words, evocative and specific
 6. Use ${currency} for all cost estimates
-7. Include a variety of themes (rooftop, jazz, comedy, cultural, club, speakeasy, etc.)
+7. Include a variety of themes (rooftop, jazz, comedy, cultural, club, speakeasy, luxury, family, free experiences, romantic, etc.)
 8. Make geographic sense (nearby venues grouped together)
 
 ${existingVenues.length > 0 ? `
@@ -270,5 +287,29 @@ export const CITY_CONFIGS: Record<string, {
     country: 'Netherlands',
     neighborhoods: ['De Pijp', 'Jordaan', 'Leidseplein', 'Rembrandtplein', 'NDSM', 'Noord'],
     themes: ['pub-crawl', 'jazz', 'club', 'canal-bar', 'alternative', 'live-music']
+  },
+  'Dar es Salaam': {
+    currency: 'TZS',
+    country: 'Tanzania',
+    neighborhoods: ['Masaki', 'Oyster Bay', 'Msasani', 'Kariakoo', 'City Centre', 'Mikocheni', 'Kinondoni'],
+    themes: ['beach-club', 'rooftop', 'live-music', 'cultural', 'luxury', 'family', 'free-experiences', 'boat-party', 'local-food', 'romantic']
+  },
+  'Nairobi': {
+    currency: 'KES',
+    country: 'Kenya',
+    neighborhoods: ['Westlands', 'Kilimani', 'Karen', 'Lavington', 'CBD', 'Gigiri', 'Runda', 'Langata'],
+    themes: ['rooftop', 'live-music', 'club', 'cultural', 'luxury', 'family', 'free-experiences', 'safari', 'local-food', 'romantic']
+  },
+  'Cape Town': {
+    currency: 'ZAR',
+    country: 'South Africa',
+    neighborhoods: ['V&A Waterfront', 'Camps Bay', 'Clifton', 'Sea Point', 'Green Point', 'Long Street', 'Woodstock', 'Constantia'],
+    themes: ['beach-club', 'rooftop', 'wine-tour', 'live-music', 'club', 'cultural', 'luxury', 'family', 'free-experiences', 'romantic']
+  },
+  'Lagos': {
+    currency: 'NGN',
+    country: 'Nigeria',
+    neighborhoods: ['Victoria Island', 'Ikoyi', 'Lekki', 'Lagos Island', 'Ikeja', 'Surulere'],
+    themes: ['beach-club', 'rooftop', 'live-music', 'afrobeats', 'club', 'cultural', 'luxury', 'local-food', 'romantic']
   }
 };

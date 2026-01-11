@@ -1,18 +1,54 @@
 /**
- * LitplanAI Pipeline Orchestrator Service
+ * ══════════════════════════════════════════════════════════════════════════════
+ * LitplanAI Pipeline Orchestrator Service - PRIMARY PIPELINE LOCATION
+ * ══════════════════════════════════════════════════════════════════════════════
  *
- * Railway-hosted service that orchestrates the AI pipelines with no timeout limits.
+ * This Railway-hosted service is the OFFICIAL and PRIMARY location for all
+ * AI pipeline orchestration. It replaced the Supabase Edge Functions to avoid
+ * the 60-second timeout limitation.
  *
- * Pipelines:
- * - Individual Plans: Uses Claude via search-agent
- * - Group Plans: Uses GPT 7-agent pipeline (test-6agent-pipeline)
+ * IMPORTANT: All AI pipeline operations should go through this service.
+ * The Supabase Edge Functions (test-group-pipeline, test-weekly-pipeline, etc.)
+ * are DEPRECATED and kept for reference only.
  *
- * Endpoints:
- * - POST /api/pipeline/individual - Generate individual plans (Claude)
- * - POST /api/pipeline/group - Generate group plans (GPT 7-agent)
- * - POST /api/pipeline/full - Run complete pipeline
- * - POST /api/pipeline/batch - Run for multiple cities
- * - GET /health - Health check
+ * ──────────────────────────────────────────────────────────────────────────────
+ * PIPELINES
+ * ──────────────────────────────────────────────────────────────────────────────
+ *
+ * Individual Plans:
+ *   - Uses Claude via search-agent (Supabase Edge Function)
+ *   - Generates venues and events for a city
+ *
+ * Group Plans:
+ *   - Uses GPT 7-agent pipeline (group-7agent-pipeline Supabase Edge Function)
+ *   - Generates 9 default plan types: couples, friend_groups, girls_trips,
+ *     girls_night_out, boys_night_out, luxury, family, free_experiences, romantic
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * ENDPOINTS
+ * ──────────────────────────────────────────────────────────────────────────────
+ *
+ * POST /api/pipeline/individual - Generate individual plans (Claude)
+ *   Body: { cityId, cityName, country, weekStartDate?, weekEndDate?, yearWeek? }
+ *
+ * POST /api/pipeline/group - Generate group plans (GPT 7-agent)
+ *   Body: { cityId?, cityName, country, storeResults? }
+ *
+ * POST /api/pipeline/full - Run complete pipeline (individual + group)
+ *   Body: { cityId, cityName, country, storeResults? }
+ *
+ * POST /api/pipeline/batch - Run for multiple cities
+ *   Body: { cities: [{ cityId, cityName, country }] }
+ *
+ * GET /health - Health check
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * SUPPORTED CITIES (with full configuration)
+ * ──────────────────────────────────────────────────────────────────────────────
+ * Ibiza, Paris, Nairobi, Dar es Salaam, Cape Town, Lagos, New York, Los Angeles,
+ * Miami, London, Madrid, Barcelona, Berlin, Tokyo, Amsterdam
+ *
+ * ══════════════════════════════════════════════════════════════════════════════
  */
 
 import express, { Request, Response } from 'express';
@@ -58,7 +94,7 @@ app.get('/health', (req: Request, res: Response) => {
     version: '2.0.0',
     pipelines: {
       individual: 'Claude (search-agent)',
-      group: 'GPT 7-agent (test-6agent-pipeline)',
+      group: 'GPT 7-agent (group-7agent-pipeline)',
     },
     timestamp: new Date().toISOString(),
   });
@@ -159,8 +195,8 @@ app.post('/api/pipeline/group', async (req: Request, res: Response) => {
 
     console.log(`[group] Starting 7-agent GPT pipeline for ${cityName}, ${country}`);
 
-    // Call the GPT 7-agent pipeline (test-6agent-pipeline)
-    const groupResult = await callSupabaseFunction('test-6agent-pipeline', {
+    // Call the GPT 7-agent pipeline (group-7agent-pipeline)
+    const groupResult = await callSupabaseFunction('group-7agent-pipeline', {
       city: cityName,
       storeResults,
     });
@@ -254,7 +290,7 @@ app.post('/api/pipeline/full', async (req: Request, res: Response) => {
 
     // Phase 2: Generate group plans with GPT 7-agent
     const groupStart = Date.now();
-    const groupResult = await callSupabaseFunction('test-6agent-pipeline', {
+    const groupResult = await callSupabaseFunction('group-7agent-pipeline', {
       city: cityName,
       storeResults,
     });
@@ -433,7 +469,7 @@ async function runIndividualPipeline(city: CityInput): Promise<PipelineResult> {
 async function runGroupPipeline(city: CityInput): Promise<PipelineResult> {
   const startTime = Date.now();
 
-  const groupResult = await callSupabaseFunction('test-6agent-pipeline', {
+  const groupResult = await callSupabaseFunction('group-7agent-pipeline', {
     city: city.cityName,
     storeResults: true,
   });
@@ -679,7 +715,7 @@ app.listen(PORT, () => {
 ╠═══════════════════════════════════════════════════════════════╣
 ║  Pipelines:                                                   ║
 ║  • Individual Plans: Claude (search-agent)                    ║
-║  • Group Plans: GPT-4o 7-agent (test-6agent-pipeline)         ║
+║  • Group Plans: GPT-4o 7-agent (group-7agent-pipeline)        ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║  Endpoints:                                                   ║
 ║  GET  /health                - Health check                   ║

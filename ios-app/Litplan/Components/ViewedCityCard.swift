@@ -16,7 +16,7 @@ struct ViewedCityCard: View {
         Button(action: onTap) {
             HStack(spacing: Spacing.sm) {
                 // Left: City thumbnail image (80x80pt per design-brief.md)
-                AsyncImageView(url: URL(string: viewedCity.displayAssets.thumbnailUrl ?? ""))
+                AsyncImageView(url: URL(string: viewedCity.displayAssets.thumbnailUrl ?? ""), targetSize: CGSize(width: 80, height: 80))
                     .frame(width: 80, height: 80)
                     .cornerRadius(12)
                     .clipped()

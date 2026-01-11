@@ -13,10 +13,21 @@ struct IndividualPlanCard: View {
 
     @State private var isFavorited: Bool = false
 
+    // Fallback image URL for plans without images
+    private var planImageUrl: URL? {
+        // Try to use the first image from the plan
+        if let firstImage = plan.images.first, !firstImage.isEmpty {
+            return URL(string: firstImage)
+        }
+        // Fallback to a placeholder based on category
+        let fallbackUrl = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400"  // Nightlife default
+        return URL(string: fallbackUrl)
+    }
+
     var body: some View {
         HStack(spacing: Spacing.sm) {
             // Left: Image (120x120pt)
-            AsyncImageView.thumbnail(url: URL(string: plan.images.first ?? ""))
+            AsyncImageView.thumbnail(url: planImageUrl)
 
             // Right: Content
             VStack(alignment: .leading, spacing: Spacing.xs) {

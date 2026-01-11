@@ -9,9 +9,11 @@
 import SwiftUI
 
 struct HomeView: View {
+    // Callback to navigate to Search tab
+    var onNavigateToSearch: (() -> Void)?
+
     @State private var searchText = ""
     @State private var selectedCity: City?
-    @State private var showCityDetails = false
     @State private var paywallTrigger: PaywallTrigger? = nil
     @State private var isLoading = false
     @State private var hasError = false
@@ -23,12 +25,10 @@ struct HomeView: View {
     // Sprint 15: Recommended Group Plans
     @State private var recommendedGroupFlows: [GroupFlow] = []
     @State private var selectedGroupFlow: GroupFlow? = nil
-    @State private var showGroupFlowDetails = false
 
     // Sprint 18A: Weekend Plans from various cities
     @State private var weekendPlans: [Plan] = []
     @State private var selectedPlan: Plan? = nil
-    @State private var showPlanDetails = false
 
     // Network monitoring
     @EnvironmentObject private var networkMonitor: NetworkMonitor
@@ -40,7 +40,7 @@ struct HomeView: View {
         subscriptionManager.isProUser
     }
 
-    // Cached cities for filtering after API load (fallback to MockDataService when offline)
+    // Cached cities for filtering after API load (fallback to CacheService when offline)
     @State private var allCities: [City] = []
     private var trendingCities: [City] {
         Array(cities.prefix(5))
@@ -94,14 +94,14 @@ struct HomeView: View {
                     Group {
                         if let error = errorData {
                             ErrorStateView(error: error) {
-                                loadPlans()
+                                Task { await loadPlans() }
                             }
                         } else {
                             ErrorStateView(
                                 title: "Connection Lost",
                                 message: "Unable to load plans. Please check your connection and try again."
                             ) {
-                                loadPlans()
+                                Task { await loadPlans() }
                             }
                         }
                     }
@@ -119,7 +119,7 @@ struct HomeView: View {
                             message: "Check back soon! Fresh nightlife plans are generated every Monday.",
                             ctaText: "Refresh",
                             ctaAction: {
-                                loadPlans()
+                                Task { await loadPlans() }
                             }
                         )
                     }
@@ -194,46 +194,38 @@ struct HomeView: View {
                     paywallTrigger = nil
                 }
             }
-            .fullScreenCover(isPresented: $showCityDetails) {
-                if let city = selectedCity {
-                    CityDetailsView(city: city) {
-                        showCityDetails = false
-                        selectedCity = nil
+            .fullScreenCover(item: $selectedCity) { city in
+                CityDetailsView(city: city) {
+                    selectedCity = nil
+                }
+                .onAppear {
+                    print("[HomeView] 📱 CityDetailsView APPEARED in fullScreenCover for: \(city.name)")
+                }
+            }
+            .fullScreenCover(item: $selectedGroupFlow) { groupFlow in
+                DetailedGroupFlowView(
+                    groupFlow: groupFlow,
+                    onDismiss: {
+                        selectedGroupFlow = nil
+                    },
+                    onUpgrade: {
+                        selectedGroupFlow = nil
+                        paywallTrigger = .groupFlow(cityName: getCityName(for: groupFlow))
                     }
+                )
+            }
+            .fullScreenCover(item: $selectedPlan) { plan in
+                PlanDetailView(plan: plan) {
+                    selectedPlan = nil
                 }
             }
-            .fullScreenCover(isPresented: $showGroupFlowDetails) {
-                if let groupFlow = selectedGroupFlow {
-                    DetailedGroupFlowView(
-                        groupFlow: groupFlow,
-                        onDismiss: {
-                            showGroupFlowDetails = false
-                            selectedGroupFlow = nil
-                        },
-                        onUpgrade: {
-                            showGroupFlowDetails = false
-                            paywallTrigger = .groupFlow(cityName: getCityName(for: groupFlow))
-                        }
-                    )
+            .task {
+                // Load plans if not already loaded
+                if cities.isEmpty {
+                    await loadPlans()
                 }
-            }
-            .fullScreenCover(isPresented: $showPlanDetails) {
-                if let plan = selectedPlan {
-                    PlanDetailView(plan: plan) {
-                        showPlanDetails = false
-                        selectedPlan = nil
-                    }
-                }
-            }
-            .onAppear {
-                if cities.isEmpty && !isLoading {
-                    loadPlans()
-                }
-
-                // Check pro status for all users (including guests)
-                Task {
-                    await subscriptionManager.refreshProStatus()
-                }
+                // Note: Pro status is managed centrally by SubscriptionManager
+                // Views should read cached isProUser state, not call refresh on every onAppear
             }
             .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
                 if newValue && !oldValue {
@@ -241,7 +233,7 @@ struct HomeView: View {
                     toast = ToastData(type: .success, message: "Connection restored")
                     // Auto-retry failed requests
                     if hasError {
-                        loadPlans()
+                        Task { await loadPlans() }
                     }
                 }
             }
@@ -273,8 +265,8 @@ struct HomeView: View {
         .onTapGesture {
             // Haptic feedback for search tap
             HapticManager.shared.light()
-            // TODO: Navigate to Search tab (Day 3 task - will be implemented later)
-            print("Search bar tapped - navigate to Search tab")
+            // Navigate to Search tab
+            onNavigateToSearch?()
         }
     }
 
@@ -354,7 +346,6 @@ struct HomeView: View {
         RoundedRectangle(cornerRadius: 12)
             .fill(Color.surfaceSecondary)
             .frame(height: 44)
-            .shimmer()
     }
 
     private var skeletonSectionHeader: some View {
@@ -364,7 +355,6 @@ struct HomeView: View {
                 .frame(width: 160, height: 24)
             Spacer()
         }
-        .shimmer()
     }
 
     private var skeletonCityCard: some View {
@@ -384,11 +374,12 @@ struct HomeView: View {
                 .fill(Color.surfaceSecondary)
                 .frame(width: 80, height: 14)
         }
-        .shimmer()
     }
 
     // MARK: - Action Handlers
     private func handleCityTap(_ city: City) {
+        print("[HomeView] 👆 handleCityTap called for city: \(city.name) (id: \(city.id))")
+
         // Haptic feedback on tap
         HapticManager.shared.medium()
 
@@ -397,67 +388,60 @@ struct HomeView: View {
             do {
                 try await APIService.shared.recordCityView(cityId: city.id)
             } catch {
-                if Config.enableDebugLogging {
-                    print("[HomeView] Failed to record city view: \(error)")
-                }
+                print("[HomeView] ❌ Failed to record city view: \(error)")
             }
         }
 
-        // Show city details
+        // Show city details - using item: binding, so just set the city
         selectedCity = city
-        showCityDetails = true
+        print("[HomeView] ✅ Set selectedCity=\(city.name)")
     }
 
 
-    // MARK: - API Data Loading
+    // MARK: - API Data Loading (Cache-First Strategy)
 
-    private func loadPlans() {
-        // Check internet connection first - if offline, use MockDataService fallback
-        guard networkMonitor.isConnected else {
-            // Use mock data as offline fallback for content data (cities/plans)
-            allCities = MockDataService.shared.cities
-            cities = allCities
-            // Sprint 15: Load recommended group flows offline
-            loadRecommendedGroupFlows()
-            // Sprint 18A: Load weekend plans offline
-            loadWeekendPlans()
-            isLoading = false
-            hasError = false
-
-            if Config.enableDebugLogging {
-                print("[HomeView] Offline - using cached/mock cities data")
-            }
-            return
-        }
-
-        isLoading = true
+    @MainActor
+    private func loadPlans() async {
         hasError = false
         errorData = nil
-        loadingStartTime = Date()
 
-        // Fetch cities from API with fallback to mock data
-        Task {
-            do {
-                // Use APIService's fetchCitiesWithFallback which handles offline/error cases
-                let fetchedCities = await APIService.shared.fetchCitiesWithFallback()
+        print("[HomeView] 🚀 loadPlans() called - isLoading: \(isLoading), cities: \(cities.count)")
 
-                await MainActor.run {
-                    allCities = fetchedCities
-                    cities = fetchedCities
-                    // Sprint 15: Load recommended group flows
-                    loadRecommendedGroupFlows()
-                    // Sprint 18A: Load weekend plans
-                    loadWeekendPlans()
-                    isLoading = false
-                    hasError = false
-                    loadingStartTime = nil
+        // STEP 1: Load from cache IMMEDIATELY (no network delay)
+        if let cachedCities = CacheService.shared.getCachedCities(), !cachedCities.isEmpty {
+            allCities = cachedCities
+            cities = cachedCities
+            isLoading = false  // Show cached content immediately
 
-                    if Config.enableDebugLogging {
-                        print("[HomeView] Loaded \(fetchedCities.count) cities")
-                    }
-                }
-            }
+            print("[HomeView] ⚡ Loaded \(cachedCities.count) cities from cache (instant)")
+
+            // Load supplementary data with cached cities
+            loadRecommendedGroupFlows()
+            loadWeekendPlans()
+        } else {
+            // No cache - show loading state
+            isLoading = true
+            print("[HomeView] ⏳ No cache found, showing loading state")
         }
+
+        // STEP 2: Fetch fresh data from API in background
+        loadingStartTime = Date()
+        print("[HomeView] 🌐 Fetching cities from API... (network: \(networkMonitor.isConnected))")
+        let fetchedCities = await APIService.shared.fetchCitiesWithFallback()
+        loadingStartTime = nil
+
+        print("[HomeView] 📦 API returned \(fetchedCities.count) cities")
+
+        // Update with fresh data
+        allCities = fetchedCities
+        cities = fetchedCities
+        isLoading = false
+
+        // Load supplementary data with fresh cities
+        loadRecommendedGroupFlows()
+        loadWeekendPlans()
+
+        print("[HomeView] ✅ Final state - cities: \(cities.count), isLoading: \(isLoading), hasError: \(hasError)")
     }
 
     private func refreshPlans() async {
@@ -530,33 +514,35 @@ struct HomeView: View {
 
     // MARK: - Sprint 18A: Weekend Plans
 
-    /// Load weekend plans from all available cities
+    /// Load weekend plans from all available cities (using cached data)
     private func loadWeekendPlans() {
         var allWeekendPlans: [Plan] = []
 
-        // Get weekend plans from multiple cities
+        // Get weekend plans from cached data for each city
         for city in cities {
-            let cityPlans = MockDataService.shared.getPlans(for: city.id)
-            let weekendOnly = cityPlans.filter { $0.flags.isWeekendPlan || $0.schedule.isWeekend }
-            allWeekendPlans.append(contentsOf: weekendOnly)
+            // Use cached plans if available (CacheService)
+            if let cityPlans = CacheService.shared.getCachedPlans(for: city.id) {
+                let weekendOnly = cityPlans.filter { $0.flags.isWeekendPlan || $0.schedule.isWeekend }
+                allWeekendPlans.append(contentsOf: weekendOnly)
+            }
         }
 
         // Shuffle and take up to 8 for display
         weekendPlans = Array(allWeekendPlans.shuffled().prefix(8))
 
         if Config.enableDebugLogging {
-            print("[HomeView] Loaded \(weekendPlans.count) weekend plans")
+            print("[HomeView] Loaded \(weekendPlans.count) weekend plans from cache")
         }
     }
 
     /// Get city name for a group flow
     private func getCityName(for groupFlow: GroupFlow) -> String {
-        // Match by cityId
-        if let city = MockDataService.shared.cities.first(where: { $0.id == groupFlow.cityId }) {
+        // Match by cityId from loaded cities (from API or cache)
+        if let city = allCities.first(where: { $0.id == groupFlow.cityId }) {
             return city.name
         }
         // Fallback: try matching by prefix
-        if let city = MockDataService.shared.cities.first(where: { groupFlow.cityId.hasPrefix($0.id.prefix(3).lowercased()) }) {
+        if let city = allCities.first(where: { groupFlow.cityId.hasPrefix($0.id.prefix(3).lowercased()) }) {
             return city.name
         }
         return "Unknown City"
@@ -567,9 +553,8 @@ struct HomeView: View {
         HapticManager.shared.medium()
 
         if isProUser {
-            // Pro users can view full details
+            // Pro users can view full details - using item: binding
             selectedGroupFlow = groupFlow
-            showGroupFlowDetails = true
         } else {
             // Free users see paywall
             let cityName = getCityName(for: groupFlow)
@@ -735,8 +720,8 @@ struct HomeView: View {
         HapticManager.shared.medium()
 
         if isProUser {
+            // Using item: binding - just set the plan
             selectedPlan = plan
-            showPlanDetails = true
         } else {
             HapticManager.shared.warning()
             paywallTrigger = .weekendPlan(cityName: plan.cityName)
@@ -899,11 +884,19 @@ struct WeekendPlanCard: View {
     let isBlurred: Bool
     var onTap: () -> Void
 
+    // Fallback image URL for plans without images
+    private var planImageUrl: URL? {
+        if let firstImage = plan.images.first, !firstImage.isEmpty {
+            return URL(string: firstImage)
+        }
+        return URL(string: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             // Plan image
             ZStack {
-                AsyncImageView(url: URL(string: plan.images.first ?? ""))
+                AsyncImageView(url: planImageUrl, targetSize: CGSize(width: 200, height: 120))
                     .frame(width: 200, height: 120)
                     .cornerRadius(12)
                     .blur(radius: isBlurred ? 6 : 0)

@@ -23,7 +23,6 @@ struct SearchedCitiesView: View {
     @State private var hasError: Bool = false
     @State private var errorData: Error?
     @State private var selectedCity: City?
-    @State private var showCityDetails: Bool = false
     @State private var paywallTrigger: PaywallTrigger? = nil
     @State private var showingRecommendations: Bool = false
 
@@ -60,11 +59,9 @@ struct SearchedCitiesView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: isLoading)
             .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $showCityDetails) {
-                if let city = selectedCity {
-                    CityDetailsView(city: city) {
-                        showCityDetails = false
-                    }
+            .fullScreenCover(item: $selectedCity) { city in
+                CityDetailsView(city: city) {
+                    selectedCity = nil
                 }
             }
             .sheet(item: $paywallTrigger) { trigger in
@@ -403,7 +400,6 @@ struct SearchedCitiesView: View {
         let city = convertViewedCityToCity(viewedCity)
 
         selectedCity = city
-        showCityDetails = true
     }
 
     private func convertViewedCityToCity(_ viewedCity: ViewedCity) -> City {
@@ -448,7 +444,6 @@ struct SearchedCitiesView: View {
 
         // Navigate to city details
         selectedCity = city
-        showCityDetails = true
     }
 }
 
@@ -462,7 +457,7 @@ struct RecommendedCityCard: View {
         Button(action: onTap) {
             HStack(spacing: Spacing.sm) {
                 // Left: City thumbnail image (80x80pt matching ViewedCityCard)
-                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl))
+                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl), targetSize: CGSize(width: 80, height: 80))
                     .frame(width: 80, height: 80)
                     .cornerRadius(12)
                     .clipped()

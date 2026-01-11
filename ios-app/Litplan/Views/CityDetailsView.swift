@@ -13,6 +13,12 @@ struct CityDetailsView: View {
     let city: City
     let onDismiss: () -> Void
 
+    init(city: City, onDismiss: @escaping () -> Void) {
+        self.city = city
+        self.onDismiss = onDismiss
+        print("[CityDetailsView] 🏗️ INIT called for city: \(city.name) (id: \(city.id))")
+    }
+
     @State private var selectedTab: PlanTab = .individual
     @State private var scrollOffset: CGFloat = 0
 
@@ -31,7 +37,6 @@ struct CityDetailsView: View {
     @State private var paywallTrigger: PaywallTrigger? = nil
     @State private var viewedPlansCount: Int = 0
     @State private var selectedPlan: Plan? = nil
-    @State private var showPlanDetails: Bool = false
 
     // Track which days are expanded (show all plans vs top 3)
     @State private var expandedWeekdays: Set<String> = []
@@ -126,6 +131,7 @@ struct CityDetailsView: View {
                     VStack(spacing: 0) {
                         // Hero image with parallax effect
                         heroImageSection
+                            .frame(height: heroImageHeight)  // Required for GeometryReader in ScrollView
 
                         // Tab switcher
                         tabSwitcher
@@ -170,17 +176,83 @@ struct CityDetailsView: View {
                 }
             )
         }
-        .fullScreenCover(isPresented: $showPlanDetails) {
-            if let plan = selectedPlan {
-                PlanDetailView(plan: plan) {
-                    showPlanDetails = false
-                }
+        .fullScreenCover(item: $selectedPlan) { plan in
+            PlanDetailView(plan: plan) {
+                selectedPlan = nil
             }
         }
-        .task {
+        .onAppear {
             // Check if city is already saved
             isFavorited = savedItemsManager.isCitySaved(city)
-            await loadDataWithTimeout()
+
+            // Force load data immediately
+            loadData()
+        }
+    }
+
+    // MARK: - Load Data (Cache-first with parallel API fetch + timeout)
+    private func loadData() {
+        loadError = nil
+
+        print("[CityDetailsView] 🚀 loadData() called for city: \(city.name) (id: \(city.id))")
+        print("[CityDetailsView] 📊 Initial state - plans: \(plans.count), groupFlows: \(groupFlows.count), isLoading: \(isLoading)")
+
+        // STEP 1: Load from cache IMMEDIATELY (no network delay)
+        if let cachedPlans = CacheService.shared.getCachedPlans(for: city.id) {
+            self.plans = cachedPlans
+            print("[CityDetailsView] ⚡ Cache hit: \(cachedPlans.count) plans for \(city.name)")
+        } else {
+            print("[CityDetailsView] 💨 Cache miss: no plans cached for \(city.name)")
+        }
+
+        if let cachedFlows = CacheService.shared.getCachedGroupFlows(for: city.id) {
+            self.groupFlows = cachedFlows
+            print("[CityDetailsView] ⚡ Cache hit: \(cachedFlows.count) group flows for \(city.name)")
+        } else {
+            print("[CityDetailsView] 💨 Cache miss: no group flows cached for \(city.name)")
+        }
+
+        // If we have cached data, show it immediately (no loading spinner)
+        if !plans.isEmpty || !groupFlows.isEmpty {
+            isLoading = false
+            hasLoadedOnce = true
+            print("[CityDetailsView] ✅ Showing cached data immediately")
+        } else {
+            isLoading = true
+            print("[CityDetailsView] ⏳ No cache - showing loading state")
+        }
+
+        // STEP 2: Fetch fresh data from API in background
+        Task {
+            print("[CityDetailsView] 🌐 Fetching plans and group flows from API...")
+
+            async let plansTask = APIService.shared.fetchPlansWithFallback(cityId: city.id)
+            async let flowsTask = APIService.shared.fetchGroupFlowsWithFallback(cityId: city.id)
+
+            let (loadedPlans, loadedFlows) = await (plansTask, flowsTask)
+
+            print("[CityDetailsView] 📦 API returned: \(loadedPlans.count) plans, \(loadedFlows.count) group flows")
+
+            await MainActor.run {
+                self.plans = loadedPlans
+                self.groupFlows = loadedFlows
+                self.isLoading = false
+                self.hasLoadedOnce = true
+
+                print("[CityDetailsView] ✅ Final state for \(city.name) - plans: \(plans.count), groupFlows: \(groupFlows.count), isLoading: \(isLoading)")
+            }
+        }
+
+        // STEP 3: Safety timeout - ensure loading never gets stuck (10 seconds)
+        Task {
+            try? await Task.sleep(nanoseconds: 10_000_000_000)  // 10 seconds
+            await MainActor.run {
+                if isLoading {
+                    isLoading = false
+                    hasLoadedOnce = true
+                    print("[CityDetailsView] ⏰ Loading timeout reached for \(city.name) - forcing isLoading = false")
+                }
+            }
         }
     }
 
@@ -271,31 +343,6 @@ struct CityDetailsView: View {
             }
     }
 
-    // MARK: - Data Loading
-    private func loadDataWithTimeout() async {
-        isLoading = true
-        loadError = nil
-
-        // Load plans and group flows in parallel
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                await self.loadPlansAsync()
-            }
-
-            group.addTask {
-                await self.loadGroupFlowsAsync()
-            }
-
-            // Wait for both to complete
-            for await _ in group {}
-        }
-
-        await MainActor.run {
-            isLoading = false
-            hasLoadedOnce = true
-        }
-    }
-
     // MARK: - Pull-to-Refresh Handler
     private func refreshData() async {
         // Check network connectivity
@@ -307,20 +354,16 @@ struct CityDetailsView: View {
             return
         }
 
-        // Reload data without showing full loading state
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                await self.loadPlansAsync()
-            }
-
-            group.addTask {
-                await self.loadGroupFlowsAsync()
-            }
-
-            for await _ in group {}
+        // Reload plans
+        let loadedPlans = await APIService.shared.fetchPlansWithFallback(cityId: city.id)
+        await MainActor.run {
+            self.plans = loadedPlans
         }
 
+        // Reload group flows
+        let loadedFlows = await APIService.shared.fetchGroupFlowsWithFallback(cityId: city.id)
         await MainActor.run {
+            self.groupFlows = loadedFlows
             loadError = nil
             HapticManager.shared.success()
         }
@@ -332,7 +375,7 @@ struct CityDetailsView: View {
             let offset = geometry.frame(in: .named("scroll")).minY
 
             ZStack {
-                AsyncImageView(url: URL(string: city.displayAssets.heroImageUrl))
+                AsyncImageView(url: URL(string: city.displayAssets.heroImageUrl), targetSize: CGSize(width: 400, height: heroImageHeight))
                     .frame(width: geometry.size.width, height: heroImageHeight + max(0, offset))
                     .offset(y: -offset)
                     .clipped()
@@ -450,9 +493,7 @@ struct CityDetailsView: View {
                         .multilineTextAlignment(.center)
 
                     Button(action: {
-                        Task {
-                            await loadDataWithTimeout()
-                        }
+                        loadData()
                     }) {
                         HStack(spacing: Spacing.xs) {
                             Image(systemName: "arrow.clockwise")
@@ -490,9 +531,7 @@ struct CityDetailsView: View {
                         .padding(.horizontal, Spacing.lg)
 
                     Button(action: {
-                        Task {
-                            await loadDataWithTimeout()
-                        }
+                        loadData()
                     }) {
                         HStack(spacing: Spacing.xs) {
                             Image(systemName: "arrow.clockwise")
@@ -783,7 +822,6 @@ struct CityDetailsView: View {
         .padding(Spacing.md)
         .background(Color.surfacePrimary)
         .cornerRadius(12)
-        .shimmer()
     }
 
     // MARK: - Group Plans List
@@ -840,54 +878,6 @@ struct CityDetailsView: View {
             }
         }
     }
-
-    // MARK: - Helper Functions
-    private func loadPlansAsync() async {
-        // Check network first
-        let hasNetwork = NetworkMonitor.shared.isConnected
-
-        // Load plans from API with fallback to mock data for offline support
-        let loadedPlans = await APIService.shared.fetchPlansWithFallback(cityId: city.id)
-
-        // Update state on main actor
-        await MainActor.run {
-            plans = loadedPlans
-
-            // If no network and no plans, set a helpful message
-            if loadedPlans.isEmpty && !hasNetwork {
-                loadError = "No internet connection. Please check your connection and try again."
-            }
-
-            // Debug logging for plan distribution
-            #if DEBUG
-            let weekendCount = loadedPlans.filter { ["Friday", "Saturday", "Sunday"].contains($0.computedDayOfWeek) }.count
-            let weekdayCount = loadedPlans.filter { ["Monday", "Tuesday", "Wednesday", "Thursday"].contains($0.computedDayOfWeek) }.count
-            print("[CityDetailsView] Loaded \(loadedPlans.count) plans - Weekend: \(weekendCount), Weekday: \(weekdayCount)")
-            if let firstPlan = loadedPlans.first {
-                print("[CityDetailsView] Sample plan: date=\(firstPlan.schedule.date), computedDay=\(firstPlan.computedDayOfWeek), storedDay=\(firstPlan.schedule.dayOfWeek)")
-            }
-            #endif
-        }
-    }
-
-    private func loadGroupFlowsAsync() async {
-        print("[CityDetailsView] loadGroupFlowsAsync started for city: \(city.name) (id: \(city.id))")
-
-        // Load group flows from API with fallback to mock data
-        let loadedGroupFlows = await APIService.shared.fetchGroupFlowsWithFallback(cityId: city.id)
-
-        print("[CityDetailsView] Received \(loadedGroupFlows.count) group flows")
-        for (index, flow) in loadedGroupFlows.prefix(3).enumerated() {
-            print("[CityDetailsView]   [\(index)] \(flow.title)")
-        }
-
-        // Update state on main actor
-        await MainActor.run {
-            groupFlows = loadedGroupFlows
-            print("[CityDetailsView] Updated groupFlows state with \(groupFlows.count) items")
-        }
-    }
-
     // MARK: - Action Handlers
 
     private func handlePlanTap(_ plan: Plan) {
@@ -908,7 +898,6 @@ struct CityDetailsView: View {
 
         // Show plan details
         selectedPlan = plan
-        showPlanDetails = true
     }
 
     private func handleWeekendPlanTap(_ plan: Plan) {
@@ -922,7 +911,6 @@ struct CityDetailsView: View {
         }
 
         selectedPlan = plan
-        showPlanDetails = true
     }
 
     private func handleSaveTap() {

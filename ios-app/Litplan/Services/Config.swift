@@ -134,7 +134,8 @@ enum Config {
 
     // MARK: - Feature Flags
 
-    /// Enable offline mode fallback to MockDataService
+    /// Enable offline mode fallback to CacheService (local cached data)
+    /// When enabled, the app will use locally cached API responses when offline
     static let enableOfflineMode = true
 
     /// Enable debug logging

@@ -56,7 +56,9 @@ struct ContentView: View {
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
             // Home (Explore) Tab
-            HomeView()
+            HomeView(onNavigateToSearch: {
+                selectedTab = 1
+            })
                 .tabItem {
                     Image(systemName: selectedTab == 0 ? "house.fill" : "house")
                     Text("Explore")

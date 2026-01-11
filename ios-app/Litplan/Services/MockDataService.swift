@@ -5,13 +5,44 @@
 //  Created by UI Designer Agent on 12/26/25.
 //  Mock data service with 10 cities and 50 real plans per city
 //
+//  ⚠️ DEBUG-ONLY: This service is ONLY used for SwiftUI previews and testing.
+//  For production data, the app uses:
+//  - CacheService: Local file-based caching of real API responses
+//  - APIService: Fetches live data from Supabase backend
+//
+//  Do NOT use MockDataService in production code paths.
+//
 
 import Foundation
 
 class MockDataService {
     static let shared = MockDataService()
 
-    private init() {}
+    // Use eager initialization to avoid thread-safety issues with lazy var
+    // private(set) allows reading from other files but prevents external modification
+    private(set) var allPlans: [String: [Plan]] = [:]
+
+    private init() {
+        // Initialize all plans immediately (not lazily) for thread safety
+        initializeAllPlans()
+    }
+
+    /// Initialize all plans dictionary - called once during init
+    private func initializeAllPlans() {
+        allPlans = [
+            "cmjrcg43r0000wbxrw025frc8": createNYCPlans(),
+            "cmjrcg4di0001wbxr2lumn70c": createLAPlans(),
+            "cmjrcg4ib0002wbxr7jc51zza": createMiamiPlans(),
+            "cmjrcg4na0003wbxrwuohp2pc": createLondonPlans(),
+            "cmjrcg4s50004wbxrpzps2dkw": createParisPlans(),
+            "cmjrcg4wy0005wbxrx6vgdmf0": createTokyoPlans(),
+            "cmjrcg51s0006wbxr9pbvocrd": createBerlinPlans(),
+            "cmjrcg56o0007wbxrxvvkvm1u": createBarcelonaPlans(),
+            "cmjrcg5bj0008wbxrnivnx05x": createAmsterdamPlans(),
+            "cmjrcg5gc0009wbxrlhu4vdqe": createDubaiPlans(),
+            "cmjmk146cwb87qncw": createMadridPlans()
+        ]
+    }
 
     // MARK: - Cities Data
 
@@ -225,47 +256,6 @@ class MockDataService {
             )
         )
     ]
-
-    // MARK: - Plans Data (50 plans per city)
-
-    lazy var allPlans: [String: [Plan]] = {
-        var plansDict: [String: [Plan]] = [:]
-
-        // New York City Plans
-        plansDict["cmjrcg43r0000wbxrw025frc8"] = createNYCPlans()
-
-        // Los Angeles Plans
-        plansDict["cmjrcg4di0001wbxr2lumn70c"] = createLAPlans()
-
-        // Miami Plans
-        plansDict["cmjrcg4ib0002wbxr7jc51zza"] = createMiamiPlans()
-
-        // London Plans
-        plansDict["cmjrcg4na0003wbxrwuohp2pc"] = createLondonPlans()
-
-        // Paris Plans
-        plansDict["cmjrcg4s50004wbxrpzps2dkw"] = createParisPlans()
-
-        // Tokyo Plans
-        plansDict["cmjrcg4wy0005wbxrx6vgdmf0"] = createTokyoPlans()
-
-        // Berlin Plans
-        plansDict["cmjrcg51s0006wbxr9pbvocrd"] = createBerlinPlans()
-
-        // Barcelona Plans
-        plansDict["cmjrcg56o0007wbxrxvvkvm1u"] = createBarcelonaPlans()
-
-        // Amsterdam Plans
-        plansDict["cmjrcg5bj0008wbxrnivnx05x"] = createAmsterdamPlans()
-
-        // Dubai Plans
-        plansDict["cmjrcg5gc0009wbxrlhu4vdqe"] = createDubaiPlans()
-
-        // Madrid Plans
-        plansDict["cmjmk146cwb87qncw"] = createMadridPlans()
-
-        return plansDict
-    }()
 
     // MARK: - Helper Methods
 

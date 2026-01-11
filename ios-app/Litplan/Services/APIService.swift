@@ -354,42 +354,37 @@ class APIService: ObservableObject {
         return response.groupFlows
     }
 
-    /// Fetch group flows with fallback to mock data
+    /// Fetch group flows with fallback to local cache
+    /// Priority: 1. API (online) -> cache response, 2. Local cache (offline/error)
     func fetchGroupFlowsWithFallback(cityId: String) async -> [GroupFlow] {
-        let authState = AuthenticationManager.shared.authState
-        let isGuest = AuthenticationManager.shared.isGuest
-        print("[APIService] fetchGroupFlowsWithFallback called for cityId: \(cityId)")
-        print("[APIService] Auth state: \(authState), isGuest: \(isGuest)")
-        print("[APIService] Network connected: \(NetworkMonitor.shared.isConnected)")
+        print("[APIService] 🎯 fetchGroupFlowsWithFallback(cityId: \(cityId)) - network: \(NetworkMonitor.shared.isConnected)")
 
-        guard NetworkMonitor.shared.isConnected else {
-            print("[APIService] No network - using mock data for group flows")
-            let mockFlows = MockDataService.shared.getGroupFlows(for: cityId)
-            print("[APIService] Mock data returned \(mockFlows.count) group flows")
-            return mockFlows
-        }
-
-        do {
-            print("[APIService] Calling fetchGroupFlows API...")
-            let flows = try await fetchGroupFlows(cityId: cityId)
-            print("[APIService] SUCCESS: Fetched \(flows.count) group flows from API for \(cityId)")
-            for (index, flow) in flows.prefix(3).enumerated() {
-                print("[APIService]   [\(index)] \(flow.title) - \(flow.activities.count) activities")
+        // Try API first if online
+        if NetworkMonitor.shared.isConnected {
+            do {
+                print("[APIService] 🌐 Calling fetchGroupFlows(cityId: \(cityId))...")
+                let flows = try await fetchGroupFlows(cityId: cityId)
+                print("[APIService] ✅ API returned \(flows.count) group flows for city \(cityId)")
+                // Cache successful response for offline use
+                CacheService.shared.cacheGroupFlows(flows, for: cityId)
+                return flows
+            } catch {
+                print("[APIService] ❌ fetchGroupFlows failed: \(error)")
+                // Fall through to cache
             }
-            return flows
-        } catch let error as APIError {
-            print("[APIService] APIError fetching group flows: \(error.localizedDescription)")
-            print("[APIService] Auth state when error occurred: \(authState)")
-            let mockFlows = MockDataService.shared.getGroupFlows(for: cityId)
-            print("[APIService] Falling back to mock data: \(mockFlows.count) group flows")
-            return mockFlows
-        } catch {
-            print("[APIService] FAILED to fetch group flows: \(error)")
-            print("[APIService] Error type: \(type(of: error))")
-            let mockFlows = MockDataService.shared.getGroupFlows(for: cityId)
-            print("[APIService] Falling back to mock data: \(mockFlows.count) group flows")
-            return mockFlows
+        } else {
+            print("[APIService] 📴 No network - checking cache for group flows")
         }
+
+        // Fallback to cached data
+        if let cachedFlows = CacheService.shared.getCachedGroupFlows(for: cityId) {
+            print("[APIService] 💾 Using \(cachedFlows.count) cached group flows for city \(cityId)")
+            return cachedFlows
+        }
+
+        // No cache available - return empty (views will show appropriate empty state)
+        print("[APIService] ⚠️ No cached group flows for city \(cityId) - returning empty")
+        return []
     }
 
     // MARK: - User API
@@ -459,11 +454,12 @@ class APIService: ObservableObject {
 
     /// Record a city view - call this when user taps on a city
     /// - Parameter cityId: The ID of the city being viewed
+    /// Note: This is an analytics call that works for all users (including guests)
     func recordCityView(cityId: String) async throws {
         try await requestVoid(
             endpoint: Config.Endpoints.recordCityView(cityId: cityId),
             method: .POST,
-            requiresAuth: true
+            requiresAuth: false  // Allow guest users to record views for analytics
         )
 
         if Config.enableDebugLogging {
@@ -734,69 +730,70 @@ struct RecordCityViewRequest: Codable {
 // MARK: - Fallback to Mock Data
 
 extension APIService {
-    /// Fetch cities with fallback to mock data
+    /// Fetch cities with fallback to local cache
+    /// Priority: 1. API (online) -> cache response, 2. Local cache (offline/error)
     func fetchCitiesWithFallback() async -> [City] {
-        // Check network connectivity
-        guard NetworkMonitor.shared.isConnected else {
-            if Config.enableDebugLogging {
-                print("[APIService] No network - using mock data")
+        print("[APIService] fetchCitiesWithFallback() - network: \(NetworkMonitor.shared.isConnected)")
+
+        // Try API first if online
+        if NetworkMonitor.shared.isConnected {
+            do {
+                print("[APIService] Calling fetchCities()...")
+                let cities = try await fetchCities()
+                print("[APIService] ✅ API returned \(cities.count) cities")
+                // Cache successful response for offline use
+                CacheService.shared.cacheCities(cities)
+                return cities
+            } catch {
+                print("[APIService] ❌ API fetch failed: \(error)")
+                // Fall through to cache
             }
-            return MockDataService.shared.cities
+        } else {
+            print("[APIService] 📴 No network - checking local cache for cities")
         }
 
-        do {
-            return try await fetchCities()
-        } catch {
-            if Config.enableDebugLogging {
-                print("[APIService] Failed to fetch cities, using mock data: \(error)")
-            }
-            return MockDataService.shared.cities
+        // Fallback to cached data
+        if let cachedCities = CacheService.shared.getCachedCities() {
+            print("[APIService] 💾 Using \(cachedCities.count) cached cities (fallback)")
+            return cachedCities
         }
+
+        // No cache available - return empty (views will show appropriate empty state)
+        print("[APIService] ⚠️ No cached cities available - returning empty array")
+        return []
     }
 
-    /// Fetch plans with fallback to mock data
+    /// Fetch plans with fallback to local cache
+    /// Priority: 1. API (online) -> cache response, 2. Local cache (offline/error)
     func fetchPlansWithFallback(cityId: String) async -> [Plan] {
-        print("[APIService] fetchPlansWithFallback called for cityId: \(cityId)")
-        print("[APIService] Network connected: \(NetworkMonitor.shared.isConnected)")
+        print("[APIService] 🎯 fetchPlansWithFallback(cityId: \(cityId)) - network: \(NetworkMonitor.shared.isConnected)")
 
-        guard NetworkMonitor.shared.isConnected else {
-            print("[APIService] No network - using mock data for plans")
-            return MockDataService.shared.plans(for: cityId)
+        // Try API first if online
+        if NetworkMonitor.shared.isConnected {
+            do {
+                print("[APIService] 🌐 Calling fetchPlans(cityId: \(cityId))...")
+                let plans = try await fetchPlans(cityId: cityId)
+                print("[APIService] ✅ API returned \(plans.count) plans for city \(cityId)")
+                // Cache successful response for offline use
+                CacheService.shared.cachePlans(plans, for: cityId)
+                return plans
+            } catch {
+                print("[APIService] ❌ fetchPlans failed: \(error)")
+                // Fall through to cache
+            }
+        } else {
+            print("[APIService] 📴 No network - checking cache for plans")
         }
 
-        do {
-            print("[APIService] Calling fetchPlans API...")
-            let plans = try await fetchPlans(cityId: cityId)
-            print("[APIService] SUCCESS: Fetched \(plans.count) plans from API for city: \(cityId)")
-            return plans
-        } catch let error as APIError {
-            print("[APIService] APIError fetching plans: \(error.localizedDescription)")
-            print("[APIService] Falling back to mock data")
-            return MockDataService.shared.plans(for: cityId)
-        } catch {
-            print("[APIService] Unknown error fetching plans: \(error)")
-            print("[APIService] Error type: \(type(of: error))")
-            print("[APIService] Error details: \(String(describing: error))")
-            print("[APIService] Falling back to mock data")
-            return MockDataService.shared.plans(for: cityId)
+        // Fallback to cached data
+        if let cachedPlans = CacheService.shared.getCachedPlans(for: cityId) {
+            print("[APIService] 💾 Using \(cachedPlans.count) cached plans for city \(cityId)")
+            return cachedPlans
         }
+
+        // No cache available - return empty (views will show appropriate empty state)
+        print("[APIService] ⚠️ No cached plans for city \(cityId) - returning empty")
+        return []
     }
 }
 
-// MARK: - MockDataService Extension
-
-extension MockDataService {
-    /// Get plans for a specific city ID
-    func plans(for cityId: String) -> [Plan] {
-        // Return plans for the city from the dictionary
-        if let cityPlans = allPlans[cityId] {
-            return cityPlans
-        }
-
-        // Fallback: search for plans with matching city prefix
-        let allPlansList: [Plan] = allPlans.values.flatMap { $0 }
-        return allPlansList.filter { plan in
-            plan.id.lowercased().hasPrefix(cityId.prefix(3).lowercased())
-        }
-    }
-}

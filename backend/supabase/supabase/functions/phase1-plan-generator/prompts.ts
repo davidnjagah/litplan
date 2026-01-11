@@ -42,6 +42,18 @@ CRITICAL REQUIREMENTS FOR EVERY PLAN:
    - Include insider tips that locals would know
    - Reflect the city's nightlife culture and timing
 
+6. DAY DISTRIBUTION (Critical for "weekday" field)
+   - Nightclubs/Dance Clubs → Friday or Saturday ONLY
+   - Family activities (zoo, museum, parks) → Saturday or Sunday
+   - Cultural activities/tours → Saturday or Sunday
+   - Restaurants/Wine bars → Spread across weekdays (Mon-Thu)
+   - Rooftop/Cocktail bars → Thursday-Saturday
+   - Comedy/Live music → Wednesday-Friday
+   - Luxury experiences → Thursday-Saturday (prime time)
+   - Free experiences (parks, markets, viewpoints) → Any day, prefer weekends
+   - Never assign clubs to Monday, Tuesday, or Wednesday
+   - Spread similar venues evenly across their allowed days
+
 QUALITY SCORE: Rate each plan 0-100 based on accuracy, completeness, and appeal.
 Only include plans with qualityScore >= 75.
 
@@ -104,6 +116,46 @@ REQUIREMENTS:
 - Include accurate coordinates within ${cityName} city limits
 - Mix of price ranges and neighborhoods
 - Each venue must have qualityScore >= 75
+
+DAY ASSIGNMENT RULES (CRITICAL - follow these for the "weekday" field):
+
+Distribute venues across days based on their category:
+
+FRIDAY & SATURDAY ONLY:
+- Nightclubs, Dance Clubs, Mega Clubs, After Hours venues
+- Club nights and DJ events
+- High-energy party venues
+- These should NEVER be assigned to Mon-Wed
+
+SATURDAY & SUNDAY:
+- Family-friendly activities and cultural experiences
+- Galleries, museums, theaters, tours
+- Brunch spots and daytime venues
+- Cabaret and dinner shows
+
+WEEKDAYS (Mon-Thu) - spread restaurants and casual spots:
+- Restaurants and fine dining
+- Wine bars and quiet cocktail bars
+- Pubs and sports bars
+- Food halls and casual dining
+- Business lunch spots
+
+THURSDAY-SATURDAY:
+- Rooftop bars
+- Trendy cocktail bars
+- Live music venues
+- Jazz clubs
+
+WEDNESDAY-FRIDAY:
+- Comedy clubs
+- Open mic nights
+- Trivia nights
+
+IMPORTANT:
+- Spread plans evenly - don't cluster too many on one day
+- If you have 10 restaurants, spread them across Mon-Thu
+- If you have 5 nightclubs, split them between Fri and Sat
+- Aim for balanced weekly coverage
 
 Return JSON:
 {
@@ -247,4 +299,43 @@ export const VALID_CATEGORIES = [
   'festival',
   'party',
   'concert',
+
+  // Luxury
+  'luxury_dining',
+  'luxury_lounge',
+  'five_star_hotel',
+  'vip_experience',
+  'premium_spa',
+  'fine_dining',
+
+  // Family
+  'family_activity',
+  'family_restaurant',
+  'museum',
+  'zoo',
+  'aquarium',
+  'theme_park',
+  'park',
+  'playground',
+  'cultural_tour',
+
+  // Free Experiences
+  'free_museum',
+  'public_park',
+  'street_art',
+  'walking_tour',
+  'market',
+  'viewpoint',
+  'beach',
+  'hiking',
+  'free_event',
+
+  // Romantic
+  'romantic_dinner',
+  'sunset_spot',
+  'couples_spa',
+  'scenic_walk',
+  'intimate_bar',
+  'wine_tasting',
+  'rooftop_date',
 ];

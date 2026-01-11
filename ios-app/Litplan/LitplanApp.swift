@@ -24,15 +24,6 @@ struct LitplanApp: App {
             print("[LitplanApp] API Base URL: \(Config.apiBaseURL)")
             print("[LitplanApp] App Version: \(Config.appVersion) (\(Config.buildNumber))")
         }
-
-        // Pre-warm MockDataService asynchronously to avoid potential deadlock
-        // The sync call was causing issues on physical devices
-        DispatchQueue.global(qos: .userInitiated).async {
-            let planCount = MockDataService.shared.allPlans.count
-            if Config.enableDebugLogging {
-                print("[LitplanApp] MockDataService pre-initialized with \(planCount) cities")
-            }
-        }
     }
 
     var body: some Scene {

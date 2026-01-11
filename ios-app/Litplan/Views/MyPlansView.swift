@@ -82,13 +82,10 @@ struct MyPlansView: View {
     @State private var selectedTab: MyPlansTab = .savedCities
     @State private var isRefreshing: Bool = false
 
-    // Navigation state
+    // Navigation state - using item: binding to prevent race condition
     @State private var selectedCity: City?
-    @State private var showCityDetails: Bool = false
     @State private var selectedPlan: Plan?
-    @State private var showPlanDetails: Bool = false
     @State private var selectedGroupFlow: GroupFlow?
-    @State private var showGroupFlowDetails: Bool = false
     @State private var paywallTrigger: PaywallTrigger? = nil
 
     // Subscription manager for premium gating
@@ -152,26 +149,20 @@ struct MyPlansView: View {
             .animation(.easeInOut(duration: 0.2), value: isLoading)
             .animation(.easeInOut(duration: 0.25), value: selectedTab)
             .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $showCityDetails) {
-                if let city = selectedCity {
-                    CityDetailsView(city: city) {
-                        showCityDetails = false
-                    }
+            .fullScreenCover(item: $selectedCity) { city in
+                CityDetailsView(city: city) {
+                    selectedCity = nil
                 }
             }
-            .sheet(isPresented: $showGroupFlowDetails) {
-                if let groupFlow = selectedGroupFlow {
-                    DetailedGroupFlowView(groupFlow: groupFlow, onDismiss: {
-                        showGroupFlowDetails = false
-                    })
-                }
+            .sheet(item: $selectedGroupFlow) { groupFlow in
+                DetailedGroupFlowView(groupFlow: groupFlow, onDismiss: {
+                    selectedGroupFlow = nil
+                })
             }
-            .sheet(isPresented: $showPlanDetails) {
-                if let plan = selectedPlan {
-                    PlanDetailView(plan: plan, onDismiss: {
-                        showPlanDetails = false
-                    })
-                }
+            .sheet(item: $selectedPlan) { plan in
+                PlanDetailView(plan: plan, onDismiss: {
+                    selectedPlan = nil
+                })
             }
             .sheet(item: $paywallTrigger) { trigger in
                 PaywallView(trigger: trigger) {
@@ -180,12 +171,12 @@ struct MyPlansView: View {
                 .environmentObject(subscriptionManager)
             }
             .onAppear {
+                print("[MyPlansView] 🚀 onAppear")
+                print("[MyPlansView] 📊 Auth state - isAuthenticated: \(authManager.isAuthenticated), isGuest: \(authManager.isGuest)")
                 loadData()
-
-                // Check pro status for all users (including guests)
-                Task {
-                    await subscriptionManager.refreshProStatus()
-                }
+                print("[MyPlansView] 📊 Saved items - cities: \(savedItemsManager.savedCities.count), plans: \(savedItemsManager.savedPlans.count), groupFlows: \(savedItemsManager.savedGroupFlows.count)")
+                // Note: Pro status is managed centrally by SubscriptionManager
+                // Views should read cached isProUser state, not call refresh on every onAppear
             }
         }
     }
@@ -408,14 +399,18 @@ struct MyPlansView: View {
 
     // MARK: - Data Loading
     private func loadData() {
+        print("[MyPlansView] 🔄 loadData() called")
+
         // Check if user is authenticated
         guard authManager.isAuthenticated || authManager.isGuest else {
+            print("[MyPlansView] ⚠️ User not authenticated - skipping load")
             return
         }
 
         // Load saved items from local storage via SavedItemsManager
         // Data is already loaded on init, but refresh to ensure we have latest
         savedItemsManager.loadFromLocalStorage()
+        print("[MyPlansView] ✅ Loaded from local storage - cities: \(savedItemsManager.savedCities.count), plans: \(savedItemsManager.savedPlans.count), groupFlows: \(savedItemsManager.savedGroupFlows.count)")
     }
 
     private func refreshData() async {
@@ -444,13 +439,11 @@ struct MyPlansView: View {
     private func handleCityTap(_ city: City) {
         HapticManager.shared.medium()
         selectedCity = city
-        showCityDetails = true
     }
 
     private func handlePlanTap(_ plan: Plan) {
         HapticManager.shared.medium()
         selectedPlan = plan
-        showPlanDetails = true
     }
 
     private func handleGroupFlowTap(_ groupFlow: GroupFlow) {
@@ -458,7 +451,6 @@ struct MyPlansView: View {
 
         if isProUser {
             selectedGroupFlow = groupFlow
-            showGroupFlowDetails = true
         } else {
             HapticManager.shared.warning()
             paywallTrigger = .groupFlow(cityName: getCityName(for: groupFlow))
@@ -475,7 +467,7 @@ struct SavedCityCard: View {
         Button(action: onTap) {
             HStack(spacing: Spacing.sm) {
                 // City thumbnail
-                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl))
+                AsyncImageView(url: URL(string: city.displayAssets.thumbnailUrl), targetSize: CGSize(width: 80, height: 80))
                     .frame(width: 80, height: 80)
                     .cornerRadius(12)
                     .clipped()
@@ -564,12 +556,20 @@ struct SavedPlanCard: View {
     let isProUser: Bool
     let onTap: () -> Void
 
+    // Fallback image URL for plans without images
+    private var planImageUrl: URL? {
+        if let firstImage = plan.images.first, !firstImage.isEmpty {
+            return URL(string: firstImage)
+        }
+        return URL(string: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400")
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: Spacing.sm) {
                 // Plan image with Pro badge overlay for free users
                 ZStack(alignment: .topTrailing) {
-                    AsyncImageView(url: URL(string: plan.images.first ?? ""))
+                    AsyncImageView(url: planImageUrl, targetSize: CGSize(width: 80, height: 80))
                         .frame(width: 80, height: 80)
                         .cornerRadius(12)
                         .clipped()
@@ -818,7 +818,7 @@ struct SavedGroupFlowCard: View {
         Color.appBackground
             .ignoresSafeArea()
 
-        SavedCityCard(city: MockDataService.shared.cities[0]) {
+        SavedCityCard(city: City.sampleNYC) {
             print("Tapped NYC")
         }
         .padding(Spacing.md)

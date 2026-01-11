@@ -1,9 +1,18 @@
 /**
- * Test Dubai Pipeline
+ * ⚠️ DEPRECATED - PIPELINE MOVED TO RAILWAY ⚠️
  *
- * Simplified test function that generates high-quality group plans for Dubai
- * and validates them through all 5 agent stages, displaying results at the end.
+ * This Supabase Edge Function has been DEPRECATED.
+ * The AI pipeline has been moved to Railway to prevent request timeouts.
  *
+ * NEW LOCATION: backend/railway/src/index.ts
+ * Use the Railway service with city="Dubai" parameter instead.
+ *
+ * Migration Date: January 2026
+ * Reason: Supabase Edge Functions have a 60-second timeout limit.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * ORIGINAL: Test Dubai Pipeline
+ * Generates high-quality group plans for Dubai through 5 agent stages.
  * POST /test-dubai-pipeline
  */
 

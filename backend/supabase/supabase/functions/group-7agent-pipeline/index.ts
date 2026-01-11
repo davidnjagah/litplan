@@ -1,17 +1,38 @@
 /**
- * Test 7-Agent Pipeline (GPT-4o) - Configurable City
+ * ══════════════════════════════════════════════════════════════════════════════
+ * Group 7-Agent Pipeline (GPT-4o) - ACTIVE SUPABASE FUNCTION
+ * ══════════════════════════════════════════════════════════════════════════════
  *
- * Full 7-agent pipeline for high-quality group plans:
- * Agent 1: Generate group plans (including 5 default types)
- * Agent 2: Validate details and remove incorrect plans
- * Agent 3: Triple-check addresses, correct or remove
- * Agent 4: Edit descriptions for quality
- * Agent 5: Quality Gate - ensure city-unique titles
- * Agent 6: Comms Specialist - captivating descriptions + brief venue descriptions
- * Agent 7: Tag Generator - generate bestFor tags based on plan context
+ * This is the ACTIVE group plan generation function called by Railway.
+ * Railway Orchestrator → This Function → GPT-4o → Supabase Database
  *
- * POST /test-6agent-pipeline
- * Body: { "city": "Ibiza" | "Paris", "storeResults": true }
+ * RAILWAY URL: See RAILWAY_URL in backend/supabase/.env
+ *              (Currently: https://litplan-production.up.railway.app)
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 7-AGENT PIPELINE
+ * ──────────────────────────────────────────────────────────────────────────────
+ *
+ * Agent 1: Generator - Creates 9 default plan types (couples, friend_groups,
+ *          girls_trips, girls_night_out, boys_night_out, luxury, family,
+ *          free_experiences, romantic)
+ * Agent 2: Details Validator - Validates venue details and removes incorrect plans
+ * Agent 3: Address Validator - Triple-checks and corrects addresses
+ * Agent 4: Description Editor - Polishes descriptions for quality
+ * Agent 5: Quality Gate - Ensures city-unique titles and quality scores
+ * Agent 6: Comms Specialist - Crafts captivating descriptions
+ * Agent 7: Tag Generator - Generates bestFor audience tags
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * SUPPORTED CITIES
+ * ──────────────────────────────────────────────────────────────────────────────
+ * Ibiza, Paris, Nairobi, Dar es Salaam, Cape Town, Lagos, New York, Los Angeles,
+ * Miami, London, Madrid, Barcelona, Berlin, Tokyo, Amsterdam
+ *
+ * POST /group-7agent-pipeline
+ * Body: { "city": "Ibiza" | "Paris" | "Nairobi" | "Dar es Salaam" | ..., "storeResults": true }
+ *
+ * ══════════════════════════════════════════════════════════════════════════════
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -89,6 +110,27 @@ const CITY_CONFIGS: Record<string, any> = {
 - Mercury Lounge: ABC Place, Waiyaki Way - Live music venue, jazz and soul nights
 - 1824: The Promenade, General Mathenge Road - Speakeasy style, craft cocktails
 - Sarabi Rooftop: Pan Africa Insurance House, Kenyatta Ave - Skyline views, sundowners, lounge`
+  },
+  'Dar es Salaam': {
+    cityName: 'Dar es Salaam',
+    country: 'Tanzania',
+    currency: 'TZS',
+    identity: 'The Haven of Peace - Tanzania\'s vibrant coastal capital, Indian Ocean beaches, rich Swahili culture, and gateway to Zanzibar',
+    vibe: 'Relaxed yet energetic, coastal charm, warm hospitality, Bongo Flava beats, cultural fusion',
+    neighborhoods: ['Masaki', 'Oyster Bay', 'Msasani', 'Kariakoo', 'City Centre', 'Mikocheni', 'Kinondoni'],
+    coordRange: { lat: [-6.88, -6.72], lon: [39.20, 39.35] },
+    legendaryVenues: 'Karambezi Cafe, High Spirit Lounge, Samaki Samaki, Slipway, The Slow Leopard, Level 8, Havoc Nightspot, Elements, Q-Bar, Coco Beach',
+    venueDetails: `
+- Karambezi Cafe: Sea Cliff Hotel, Toure Drive, Msasani - Iconic oceanfront dining, sunset cocktails, fresh seafood
+- High Spirit Lounge: Ohio Street, CBD - Rooftop bar, panoramic city views, craft cocktails
+- Samaki Samaki: Haile Selassie Road, Oyster Bay - Fresh seafood, live music, coastal vibes
+- Slipway: Msasani Slipway - Shopping, dining, beach bar, family-friendly, boat views
+- The Slow Leopard: Toure Drive, Msasani - Burgers, craft beers, live music, expat hangout
+- Level 8: Hyatt Regency, Garden Ave - Luxury rooftop, harbor views, cocktails, jazz
+- Havoc Nightspot: Ursino Street, Masaki - High-energy nightclub, DJ sets, young crowd
+- Elements: Chole Road, Masaki - Chic cocktail bar, stylish crowd, innovative mixology
+- Q-Bar: Haile Selassie Road, Oyster Bay - Live bands, craft beers, casual atmosphere
+- Coco Beach: Ocean Road - Public beach, street food, sunset watching, family activities`
   }
 };
 
@@ -98,7 +140,11 @@ const DEFAULT_PLAN_TYPES = [
   { type: 'friend_groups', description: 'Social adventures for groups of friends - energetic venues, shared experiences, bonding moments', targetAudience: 'friend groups, reunions, celebrations, birthdays' },
   { type: 'girls_trips', description: 'Feminine getaways - glamorous spots, Instagrammable locations, chic vibes', targetAudience: 'girlfriends traveling together, bachelorette trips' },
   { type: 'girls_night_out', description: 'Ladies night celebrations - chic venues, dancing, cocktails, empowering atmosphere', targetAudience: 'ladies nights, hen parties' },
-  { type: 'boys_night_out', description: 'Masculine adventures - high-energy venues, VIP experiences, memorable nights', targetAudience: 'stag parties, bachelor parties, guys weekends' }
+  { type: 'boys_night_out', description: 'Masculine adventures - high-energy venues, VIP experiences, memorable nights', targetAudience: 'stag parties, bachelor parties, guys weekends' },
+  { type: 'luxury', description: 'Premium experiences - five-star hotels, high-end dining, VIP lounges, exclusive access, refined elegance', targetAudience: 'luxury travelers, affluent couples, business travelers, special occasions' },
+  { type: 'family', description: 'Family-friendly excursions - kid-friendly venues, parks, museums, cultural tours, zoos, educational and fun activities for all ages', targetAudience: 'families with children, multi-generational groups, parents with kids' },
+  { type: 'free_experiences', description: 'Budget-friendly adventures - public parks, street art, free museums, walking tours, markets, scenic viewpoints, no-cost activities', targetAudience: 'budget travelers, students, backpackers, locals exploring' },
+  { type: 'romantic', description: 'Romantic date experiences - candlelit dinners, sunset spots, scenic walks, intimate venues, couples activities', targetAudience: 'couples, date nights, anniversaries, proposals, honeymoons' }
 ];
 
 // Interfaces
@@ -158,11 +204,11 @@ serve(async (req: Request) => {
     let plans: GroupPlan[] = [];
 
     // ===== AGENT 1: GENERATOR =====
-    console.log(`\n[AGENT 1] GENERATOR - Creating 5 default group plans...`);
+    console.log(`\n[AGENT 1] GENERATOR - Creating 9 default group plans...`);
     const agent1Start = Date.now();
     plans = await agent1_generateDefaultPlans(config);
     agentResults.push({
-      agent: 'Agent 1: Generator (5 Default Types)',
+      agent: 'Agent 1: Generator (9 Default Types)',
       duration: Date.now() - agent1Start,
       input: 0,
       output: plans.length,
@@ -333,17 +379,31 @@ serve(async (req: Request) => {
 
 // ===== AGENT 1: GENERATOR =====
 async function agent1_generateDefaultPlans(config: any): Promise<GroupPlan[]> {
-  const systemPrompt = `You are an elite nightlife curator for ${config.cityName}, ${config.country}.
+  const systemPrompt = `You are an elite nightlife and experiences curator for ${config.cityName}, ${config.country}.
 
 CITY IDENTITY: ${config.identity}
 CITY VIBE: ${config.vibe}
 
-Generate exactly 5 group plans, one for each type:
+Generate exactly 9 group plans, one for each type:
 1. COUPLES - romantic, intimate
 2. FRIEND_GROUPS - social, energetic
 3. GIRLS_TRIPS - glamorous, Instagrammable
 4. GIRLS_NIGHT_OUT - chic, dancing
 5. BOYS_NIGHT_OUT - high-energy, VIP
+6. LUXURY - premium experiences, five-star venues, VIP access
+7. FAMILY - kid-friendly activities, parks, museums, cultural tours
+8. FREE_EXPERIENCES - no-cost activities, public parks, markets, walking tours
+9. ROMANTIC - candlelit dinners, sunset spots, couples activities
+
+DAY DISTRIBUTION RULES:
+- Nightclubs/Clubs → Friday & Saturday ONLY
+- Family activities (zoo, museum, parks) → Saturday & Sunday
+- Cultural activities/tours → Saturday & Sunday
+- Restaurants → Spread across weekdays (Mon-Thu)
+- Rooftop/Cocktail bars → Thursday-Saturday
+- Luxury experiences → Thursday-Saturday
+- Free experiences (parks, markets) → Any day, prefer weekends
+- Romantic date nights → Friday & Saturday primarily
 
 CRITICAL: Titles MUST be UNIQUE to ${config.cityName} - NO generic titles!
 VENUES: ${config.legendaryVenues}
@@ -352,7 +412,7 @@ AREAS: ${config.neighborhoods.join(', ')}
 Each plan needs 3 activities with real venues, addresses, coordinates.
 RESPOND WITH VALID JSON ONLY.`;
 
-  const userPrompt = `Generate 5 group plans for ${config.cityName}:
+  const userPrompt = `Generate 9 group plans for ${config.cityName}:
 
 ${DEFAULT_PLAN_TYPES.map((t, i) => `${i + 1}. ${t.type.toUpperCase()}: ${t.description}`).join('\n')}
 
@@ -688,9 +748,9 @@ Return JSON:
 // Available tags for group plans
 const VALID_TAGS = [
   // Relationship-based tags
-  'couples', 'romantic', 'date_night', 'anniversary',
+  'couples', 'romantic', 'date_night', 'anniversary', 'honeymoon', 'proposal',
   // Friend group tags
-  'friends', 'squad', 'reunion', 'birthday',
+  'friends', 'squad', 'reunion', 'birthday', 'celebration',
   // Gendered group tags
   'girls_nightout', 'girls_trip', 'bachelorette', 'boys_night', 'bachelor', 'stag',
   // Experience-based tags
@@ -698,9 +758,13 @@ const VALID_TAGS = [
   // Vibe-based tags
   'party', 'wild', 'clubbing', 'chill', 'relaxed', 'low_key', 'energetic',
   // Occasion tags
-  'vip', 'luxury', 'exclusive', 'celebration',
+  'vip', 'luxury', 'exclusive', 'premium', 'five_star', 'upscale',
   // Practical tags
-  'budget_friendly', 'affordable', 'instagram_worthy', 'photogenic', 'late_night', 'early_evening',
+  'budget_friendly', 'affordable', 'free', 'no_cost', 'instagram_worthy', 'photogenic', 'late_night', 'early_evening',
+  // Family tags
+  'family_friendly', 'kids', 'all_ages', 'educational', 'outdoor', 'daytime',
+  // Free experience tags
+  'walking_tour', 'street_art', 'market', 'scenic', 'viewpoint', 'beach', 'park',
 ];
 
 async function agent7_tagGenerator(plans: GroupPlan[], config: any): Promise<{

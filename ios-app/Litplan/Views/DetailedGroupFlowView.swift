@@ -15,8 +15,15 @@ struct DetailedGroupFlowView: View {
     let onDismiss: () -> Void
     var onUpgrade: (() -> Void)? = nil
 
+    init(groupFlow: GroupFlow, onDismiss: @escaping () -> Void, onUpgrade: (() -> Void)? = nil) {
+        self.groupFlow = groupFlow
+        self.onDismiss = onDismiss
+        self.onUpgrade = onUpgrade
+        print("[DetailedGroupFlowView] 🏗️ INIT called for groupFlow: \(groupFlow.title) (id: \(groupFlow.id))")
+    }
+
     @State private var scrollOffset: CGFloat = 0
-    @State private var isContentReady: Bool = false
+    @State private var isContentReady: Bool = true  // Show content immediately - data is already available
     @State private var showPaywall: Bool = false
     @State private var isSaved: Bool = false
     @State private var showingShareSheet: Bool = false
@@ -129,14 +136,13 @@ struct DetailedGroupFlowView: View {
             ShareSheet(items: [shareText])
         }
         .onAppear {
+            print("[DetailedGroupFlowView] 🚀 onAppear - groupFlow: \(groupFlow.title)")
+            print("[DetailedGroupFlowView] 📊 GroupFlow data - id: \(groupFlow.id), activities: \(groupFlow.activities.count)")
+            print("[DetailedGroupFlowView] 📊 isContentReady: \(isContentReady), isProUser: \(isProUser)")
+
             // Check if already saved
             isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeIn(duration: 0.2)) {
-                    isContentReady = true
-                }
-            }
+            // Content is ready immediately - no delay needed since GroupFlow data is passed in
         }
     }
 

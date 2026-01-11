@@ -13,7 +13,7 @@ struct PlanDetailView: View {
     let plan: Plan
     let onDismiss: () -> Void
 
-    @State private var isContentReady: Bool = false
+    @State private var isContentReady: Bool = true  // Show content immediately - data is already available
     @State private var isSaved: Bool = false
     @State private var mapCameraPosition: MapCameraPosition
 
@@ -28,6 +28,7 @@ struct PlanDetailView: View {
     init(plan: Plan, onDismiss: @escaping () -> Void) {
         self.plan = plan
         self.onDismiss = onDismiss
+        print("[PlanDetailView] 🏗️ INIT called for plan: \(plan.title) (id: \(plan.id))")
         // Initialize map camera position centered on venue
         let coordinate = CLLocationCoordinate2D(
             latitude: plan.location.coordinates.latitude,
@@ -105,14 +106,13 @@ struct PlanDetailView: View {
         .offset(y: dragOffset)
         .background(Color.appBackground.ignoresSafeArea())
         .onAppear {
+            print("[PlanDetailView] 🚀 onAppear - plan: \(plan.title)")
+            print("[PlanDetailView] 📊 Plan data - id: \(plan.id), venue: \(plan.venueName), images: \(plan.images.count)")
+            print("[PlanDetailView] 📊 isContentReady: \(isContentReady)")
+
             // Check initial saved state from SavedItemsManager
             isSaved = savedItemsManager.isPlanSaved(plan)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeIn(duration: 0.2)) {
-                    isContentReady = true
-                }
-            }
+            // Content is ready immediately - no delay needed since Plan data is passed in
         }
     }
 
@@ -157,12 +157,21 @@ struct PlanDetailView: View {
             }
     }
 
+    // Fallback image URL for plans without images
+    private var planImageUrl: URL? {
+        if let firstImage = plan.images.first, !firstImage.isEmpty {
+            return URL(string: firstImage)
+        }
+        // Fallback to a nightlife placeholder
+        return URL(string: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800")
+    }
+
     // MARK: - Hero Image Section
 
     private var heroImageSection: some View {
         ZStack(alignment: .bottom) {
             // Main hero image
-            AsyncImageView(url: URL(string: plan.images.first ?? ""))
+            AsyncImageView(url: planImageUrl, targetSize: CGSize(width: 400, height: heroImageHeight))
                 .frame(height: heroImageHeight)
                 .clipped()
 

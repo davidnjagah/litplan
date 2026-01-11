@@ -65,6 +65,7 @@
 		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
 		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
 		CPS002 /* CityPreloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CPS001 /* CityPreloadService.swift */; };
+		CSS001 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CSS002 /* CacheService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -127,6 +128,7 @@
 		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
 		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
 		CPS001 /* CityPreloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPreloadService.swift; sourceTree = "<group>"; };
+		CSS002 /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -248,6 +250,7 @@
 				132 /* APIService.swift */,
 				A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */,
 				CPS001 /* CityPreloadService.swift */,
+				CSS002 /* CacheService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -409,6 +412,7 @@
 				7A9295786E53FDF606D37F31 /* SavedItemsManager.swift in Sources */,
 				CP01001 /* CopyableAddressView.swift in Sources */,
 				CPS002 /* CityPreloadService.swift in Sources */,
+				CSS001 /* CacheService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
