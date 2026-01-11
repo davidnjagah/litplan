@@ -131,6 +131,30 @@ const CITY_CONFIGS: Record<string, any> = {
 - Elements: Chole Road, Masaki - Chic cocktail bar, stylish crowd, innovative mixology
 - Q-Bar: Haile Selassie Road, Oyster Bay - Live bands, craft beers, casual atmosphere
 - Coco Beach: Ocean Road - Public beach, street food, sunset watching, family activities`
+  },
+  'Los Angeles': {
+    cityName: 'Los Angeles',
+    country: 'United States',
+    currency: 'USD',
+    identity: 'The City of Angels - Hollywood glamour, beach culture, diverse neighborhoods, celebrity hotspots, and endless entertainment',
+    vibe: 'Glamorous, laid-back, creative, diverse, sun-kissed California dreaming',
+    neighborhoods: ['Hollywood', 'West Hollywood', 'Beverly Hills', 'Santa Monica', 'Venice', 'Downtown LA', 'Silver Lake', 'Malibu', 'Los Feliz'],
+    coordRange: { lat: [33.90, 34.15], lon: [-118.50, -118.15] },
+    legendaryVenues: 'Chateau Marmont, The Abbey, Sunset Tower Hotel, Catch LA, Nobu Malibu, 1 OAK, Bootsy Bellows, The Nice Guy, Delilah, SoHo House West Hollywood, Erewhon, The Getty, Griffith Observatory',
+    venueDetails: `
+- Chateau Marmont: 8221 Sunset Blvd, West Hollywood - Legendary hotel bar, celebrity sanctuary, old Hollywood glamour
+- The Abbey: 692 N Robertson Blvd, West Hollywood - Iconic LGBTQ+ club, dancing, drag shows, WeHo institution
+- Sunset Tower Hotel: 8358 Sunset Blvd, West Hollywood - Art Deco landmark, celebrity bar, Tower Bar restaurant
+- Catch LA: 8715 Melrose Ave, West Hollywood - Rooftop seafood, celebrity hotspot, stunning views
+- Nobu Malibu: 22706 Pacific Coast Hwy, Malibu - Ocean views, celebrity favorite, Japanese cuisine
+- 1 OAK: 9039 Sunset Blvd, West Hollywood - High-energy nightclub, celebrity sightings, VIP tables
+- Bootsy Bellows: 9229 Sunset Blvd, West Hollywood - Exclusive club, celebrity owned, burlesque vibes
+- The Nice Guy: 401 N La Cienega Blvd, West Hollywood - Speakeasy Italian, A-list crowd, paparazzi favorite
+- Delilah: 7969 Santa Monica Blvd, West Hollywood - Supper club, live jazz, Old Hollywood elegance
+- SoHo House West Hollywood: 9200 Sunset Blvd, West Hollywood - Members club, rooftop pool, creative industry
+- Erewhon: Multiple locations - Organic market, celebrity smoothie bar, health-conscious LA lifestyle
+- The Getty: 1200 Getty Center Dr, Brentwood - Free museum, stunning architecture, panoramic views
+- Griffith Observatory: 2800 E Observatory Rd, Los Feliz - Free admission, iconic views, Hollywood sign`
   }
 };
 
@@ -405,6 +429,37 @@ DAY DISTRIBUTION RULES:
 - Free experiences (parks, markets) → Any day, prefer weekends
 - Romantic date nights → Friday & Saturday primarily
 
+═══════════════════════════════════════════════════════════════════════════════
+TIMING & TRAVEL CONTEXT - CRITICAL!
+═══════════════════════════════════════════════════════════════════════════════
+
+When scheduling activities, you MUST account for:
+1. DURATION at each venue (how long you'll spend there)
+2. TRAVEL TIME between venues (typically 10-20 minutes depending on distance)
+3. The NEXT venue's start time should be: current_start + duration + travel_time
+
+EXAMPLE - CORRECT TIMING:
+- Venue 1: Starts 18:00, Duration 90min, ends ~19:30
+- Travel to Venue 2: ~15 minutes
+- Venue 2: Starts 19:45 (NOT 19:00!), Duration 120min, ends ~21:45
+- Travel to Venue 3: ~20 minutes
+- Venue 3: Starts 22:05 (NOT 21:00!)
+
+EXAMPLE - WRONG TIMING (DO NOT DO THIS):
+- Venue 1: Starts 18:00, Duration 90min
+- Venue 2: Starts 19:00 (WRONG! Venue 1 doesn't end until 19:30)
+
+TIMING GUIDELINES:
+- Dinner: 90-120 minutes
+- Cocktail bar: 60-90 minutes
+- Club/Nightlife: 120-180 minutes
+- Beach/Park: 90-120 minutes
+- Museum/Cultural: 60-90 minutes
+- Travel within same neighborhood: 10 minutes
+- Travel between neighborhoods: 15-25 minutes
+
+═══════════════════════════════════════════════════════════════════════════════
+
 CRITICAL: Titles MUST be UNIQUE to ${config.cityName} - NO generic titles!
 VENUES: ${config.legendaryVenues}
 AREAS: ${config.neighborhoods.join(', ')}
@@ -449,20 +504,26 @@ Return JSON:
   return parseGPTJSON<{ plans: GroupPlan[] }>(response).plans || [];
 }
 
-// ===== AGENT 2: DETAILS VALIDATOR =====
+// ===== AGENT 2: DETAILS VALIDATOR (RELAXED) =====
 async function agent2_validateDetails(plans: GroupPlan[], config: any): Promise<{
   plans: GroupPlan[];
   inputCount: number;
   removed: number;
   changes: string[];
 }> {
-  const systemPrompt = `You validate ${config.cityName} venues.
+  const systemPrompt = `You validate ${config.cityName} venues with a RELAXED approach.
 
 KNOWN VENUES:
 ${config.venueDetails}
 
-REMOVE plans if venue doesn't exist or coordinates are wrong.
-Coordinates should be lat ${config.coordRange.lat[0]}-${config.coordRange.lat[1]}, lon ${config.coordRange.lon[0]}-${config.coordRange.lon[1]}.
+VALIDATION APPROACH - BE LENIENT:
+1. KEEP plans if venues are PLAUSIBLE for ${config.cityName} (real restaurants, bars, clubs, hotels, beaches, parks)
+2. KEEP plans if the venue TYPE exists in ${config.cityName} (e.g., "rooftop bar in Masaki" is plausible)
+3. ONLY REMOVE if the venue is clearly FICTIONAL or IMPOSSIBLE (e.g., "Hogwarts Castle")
+
+Coordinates should be roughly lat ${config.coordRange.lat[0]}-${config.coordRange.lat[1]}, lon ${config.coordRange.lon[0]}-${config.coordRange.lon[1]}.
+
+GOAL: Keep as many plans as possible while ensuring venues are realistic.
 
 RESPOND WITH VALID JSON ONLY.`;
 
@@ -492,7 +553,7 @@ Return JSON:
   return { plans: keptPlans, inputCount: plans.length, removed: plans.length - keptPlans.length, changes };
 }
 
-// ===== AGENT 3: ADDRESS VALIDATOR =====
+// ===== AGENT 3: ADDRESS VALIDATOR (RELAXED - CORRECT ONLY, NO REMOVE) =====
 async function agent3_validateAddresses(plans: GroupPlan[], config: any): Promise<{
   plans: GroupPlan[];
   inputCount: number;
@@ -502,10 +563,15 @@ async function agent3_validateAddresses(plans: GroupPlan[], config: any): Promis
 }> {
   const systemPrompt = `You are an address specialist for ${config.cityName}.
 
-CORRECT ADDRESSES:
+YOUR JOB: CORRECT addresses, NEVER REMOVE plans.
+- If address is wrong, provide the CORRECT address and coordinates
+- If address format is incomplete, COMPLETE it with neighborhood and city
+- If you're unsure of exact address, use a PLAUSIBLE address in the correct neighborhood
+
+REFERENCE VENUES:
 ${config.venueDetails}
 
-Triple-check and CORRECT addresses. REMOVE if unfixable.
+NEVER use "remove" action - always keep or keep_corrected.
 RESPOND WITH VALID JSON ONLY.`;
 
   const userPrompt = `Triple-check addresses:
