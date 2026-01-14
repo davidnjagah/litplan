@@ -13,14 +13,20 @@ struct CopyableAddressView: View {
     let address: String
     var coordinates: CLLocationCoordinate2D? = nil
     var venueName: String? = nil
+    var googleMapsUrl: URL? = nil  // Verified Google Maps URL from Places API
 
     @State private var showCopiedToast: Bool = false
     @State private var toastData: ToastData? = nil
 
+    /// Whether the address can be opened in Maps (has coordinates or Google Maps URL)
+    private var canOpenInMaps: Bool {
+        coordinates != nil || googleMapsUrl != nil
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: Spacing.sm) {
             // Address text - tappable to open in Maps
-            if coordinates != nil {
+            if canOpenInMaps {
                 Button(action: openInMaps) {
                     addressContent
                 }
@@ -50,7 +56,7 @@ struct CopyableAddressView: View {
 
     private var addressContent: some View {
         HStack(alignment: .top, spacing: Spacing.xs) {
-            if coordinates != nil {
+            if canOpenInMaps {
                 Image(systemName: "map.fill")
                     .font(.system(size: 14))
                     .foregroundColor(.accentPrimary)
@@ -60,11 +66,11 @@ struct CopyableAddressView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(address)
                     .font(.system(size: 14))
-                    .foregroundColor(coordinates != nil ? .accentPrimary : .textSecondary)
+                    .foregroundColor(canOpenInMaps ? .accentPrimary : .textSecondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
-                if coordinates != nil {
+                if canOpenInMaps {
                     Text("Tap to open in Maps")
                         .font(.system(size: 11))
                         .foregroundColor(.textTertiary)
@@ -72,7 +78,7 @@ struct CopyableAddressView: View {
             }
         }
         .accessibilityLabel(address)
-        .accessibilityHint(coordinates != nil ? "Double tap to open in Maps" : "")
+        .accessibilityHint(canOpenInMaps ? "Double tap to open in Maps" : "")
     }
 
     // MARK: - Actions
@@ -89,9 +95,16 @@ struct CopyableAddressView: View {
     }
 
     private func openInMaps() {
-        guard let coordinates = coordinates else { return }
-
         HapticManager.shared.medium()
+
+        // Prefer Google Maps URL if available (more accurate, verified address)
+        if let googleMapsUrl = googleMapsUrl {
+            UIApplication.shared.open(googleMapsUrl)
+            return
+        }
+
+        // Fallback to Apple Maps with coordinates
+        guard let coordinates = coordinates else { return }
 
         let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: coordinates))
         mapItem.name = venueName ?? "Location"
@@ -109,6 +122,7 @@ extension CopyableAddressView {
         self.address = address
         self.coordinates = nil
         self.venueName = nil
+        self.googleMapsUrl = nil
     }
 
     /// Initialize with address, coordinates, and optional venue name for Maps integration
@@ -116,6 +130,16 @@ extension CopyableAddressView {
         self.address = address
         self.coordinates = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         self.venueName = venueName
+        self.googleMapsUrl = nil
+    }
+
+    /// Initialize with address, coordinates, venue name, and Google Maps URL
+    /// The Google Maps URL takes priority over coordinates when opening in maps
+    init(address: String, latitude: Double, longitude: Double, venueName: String? = nil, googleMapsUrl: URL?) {
+        self.address = address
+        self.coordinates = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        self.venueName = venueName
+        self.googleMapsUrl = googleMapsUrl
     }
 }
 

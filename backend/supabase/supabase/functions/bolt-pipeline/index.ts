@@ -26,6 +26,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { gptRequest, parseGPTJSON } from '../_shared/gpt-client.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { searchVenue, VerifiedVenue } from '../_shared/google-places-client.ts';
 
 // In-depth theme definitions for AI context
 const THEME_DEFINITIONS: Record<string, string> = {
@@ -62,6 +63,11 @@ interface Activity {
   duration: number;
   description: string;
   order: number;
+  // Google Places verified fields
+  googlePlaceId?: string;
+  googleMapsUrl?: string;
+  isAddressVerified?: boolean;
+  addressConfidence?: 'high' | 'medium' | 'low' | 'not_found';
 }
 
 interface GroupPlan {
@@ -124,11 +130,15 @@ serve(async (req: Request) => {
       });
     }
 
-    // ===== STEP 2: ENHANCE DESCRIPTIONS =====
-    console.log(`[BOLT] Enhancing descriptions...`);
-    const enhancedPlan = await enhanceDescriptions(plan, city, theme);
+    // ===== STEP 2: VALIDATE ADDRESSES WITH GOOGLE PLACES =====
+    console.log(`[BOLT] Validating venue addresses with Google Places...`);
+    const validatedPlan = await validateVenueAddresses(plan, city, country);
 
-    // ===== STEP 3: STORE IN DATABASE =====
+    // ===== STEP 3: ENHANCE DESCRIPTIONS =====
+    console.log(`[BOLT] Enhancing descriptions...`);
+    const enhancedPlan = await enhanceDescriptions(validatedPlan, city, theme);
+
+    // ===== STEP 4: STORE IN DATABASE =====
     console.log(`[BOLT] Storing plan in database...`);
     const supabase = createServiceClient();
 
@@ -200,6 +210,8 @@ serve(async (req: Request) => {
         latitude: activity.coordinates.latitude,
         longitude: activity.coordinates.longitude,
         address: activity.address,
+        googlePlaceId: activity.googlePlaceId || null,
+        googleMapsUrl: activity.googleMapsUrl || null,
         neighborhood: 'City Center',
         priceRange: '$$',
         entryFee: 0,
@@ -249,7 +261,11 @@ serve(async (req: Request) => {
             coordinates: {
               latitude: a.coordinates.latitude,
               longitude: a.coordinates.longitude
-            }
+            },
+            googlePlaceId: a.googlePlaceId || null,
+            googleMapsUrl: a.googleMapsUrl || null,
+            isVerified: a.isAddressVerified || false,
+            confidence: a.addressConfidence || 'not_found'
           },
           openingHours: a.openingHours || null,
           startTime: a.startTime,
@@ -375,6 +391,75 @@ Create exactly 3 activities. Verify each venue's opening hours and ensure startT
     console.error('[BOLT] Generation error:', error);
     return null;
   }
+}
+
+// ===== VALIDATE VENUE ADDRESSES WITH GOOGLE PLACES =====
+async function validateVenueAddresses(
+  plan: GroupPlan,
+  city: string,
+  country?: string
+): Promise<GroupPlan> {
+  const validatedActivities: Activity[] = [];
+
+  for (const activity of plan.activities) {
+    try {
+      console.log(`[BOLT] Validating: ${activity.venueName}`);
+
+      // Search for the venue using Google Places API
+      const verified = await searchVenue(activity.venueName, city, country);
+
+      if (verified && verified.isVerified) {
+        // Update activity with verified data
+        validatedActivities.push({
+          ...activity,
+          venueName: verified.venueName, // Use Google's name (may be more accurate)
+          address: verified.address,
+          coordinates: {
+            latitude: verified.coordinates.latitude,
+            longitude: verified.coordinates.longitude
+          },
+          googlePlaceId: verified.googlePlaceId,
+          googleMapsUrl: verified.googleMapsUrl,
+          isAddressVerified: true,
+          addressConfidence: verified.confidence
+        });
+
+        console.log(`[BOLT] ✓ Verified: ${verified.venueName} (${verified.confidence} confidence)`);
+      } else {
+        // Keep original data but add Google Maps search URL
+        const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
+
+        validatedActivities.push({
+          ...activity,
+          googleMapsUrl: fallbackUrl,
+          isAddressVerified: false,
+          addressConfidence: 'not_found'
+        });
+
+        console.log(`[BOLT] ✗ Not verified: ${activity.venueName} (using fallback search URL)`);
+      }
+    } catch (error) {
+      console.error(`[BOLT] Error validating ${activity.venueName}:`, error);
+
+      // Keep original data with fallback URL
+      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
+
+      validatedActivities.push({
+        ...activity,
+        googleMapsUrl: fallbackUrl,
+        isAddressVerified: false,
+        addressConfidence: 'not_found'
+      });
+    }
+
+    // Small delay between API calls to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  return {
+    ...plan,
+    activities: validatedActivities
+  };
 }
 
 // ===== ENHANCE DESCRIPTIONS =====

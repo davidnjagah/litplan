@@ -313,7 +313,7 @@ struct DetailedGroupFlowView: View {
                 // Difficulty - always visible
                 badgePill(
                     text: groupFlow.difficulty.capitalized,
-                    color: difficultyColor,
+                    color: groupFlow.difficultyColor,
                     icon: "flame.fill"
                 )
 
@@ -372,19 +372,6 @@ struct DetailedGroupFlowView: View {
                 }
                 .accessibilityLabel("Share group plan")
             }
-        }
-    }
-
-    private var difficultyColor: Color {
-        switch groupFlow.difficulty {
-        case "easy":
-            return .success
-        case "moderate":
-            return .warning
-        case "intense":
-            return .error
-        default:
-            return .textSecondary
         }
     }
 
@@ -478,11 +465,13 @@ struct DetailedGroupFlowView: View {
                     .foregroundColor(.textPrimary)
 
                 // Copyable address with Maps integration
+                // Uses verified Google Maps URL when available for accurate navigation
                 CopyableAddressView(
                     address: activity.location.address,
                     latitude: activity.location.coordinates.latitude,
                     longitude: activity.location.coordinates.longitude,
-                    venueName: activity.venueName
+                    venueName: activity.venueName,
+                    googleMapsUrl: activity.location.mapsUrl
                 )
 
                 Text(activity.description)
@@ -515,16 +504,68 @@ struct DetailedGroupFlowView: View {
     }
 
     private func stepLabel(for order: Int) -> String {
-        switch order {
-        case 1:
-            return "Pre-Game"
-        case 2:
-            return "Main Event"
-        case 3:
-            return "After Party"
-        default:
-            return "Step \(order)"
+        // Use plan type and time to determine appropriate labels
+        let planType = groupFlow.planType?.lowercased() ?? ""
+        let isNightPlan = isNightlifePlan()
+
+        // Night plans use Pre-Game/Main Event/After Party
+        if isNightPlan {
+            switch order {
+            case 1: return "Pre-Game"
+            case 2: return "Main Event"
+            case 3: return "After Party"
+            default: return "Stop \(order)"
+            }
         }
+
+        // Family/daytime plans use different labels
+        if planType.contains("family") || planType.contains("free") {
+            switch order {
+            case 1: return "First Stop"
+            case 2: return "Main Activity"
+            case 3: return "Wrap Up"
+            default: return "Stop \(order)"
+            }
+        }
+
+        // Adventure/exploration plans
+        if groupFlow.title.lowercased().contains("adventure") ||
+           groupFlow.title.lowercased().contains("explor") ||
+           groupFlow.title.lowercased().contains("conquering") {
+            switch order {
+            case 1: return "Kickoff"
+            case 2: return "Adventure"
+            case 3: return "Finale"
+            default: return "Stop \(order)"
+            }
+        }
+
+        // Couples/romantic plans
+        if planType.contains("couple") || planType.contains("romantic") {
+            switch order {
+            case 1: return "Begin"
+            case 2: return "Highlight"
+            case 3: return "Nightcap"
+            default: return "Stop \(order)"
+            }
+        }
+
+        // Default generic labels
+        switch order {
+        case 1: return "Start"
+        case 2: return "Main"
+        case 3: return "Finish"
+        default: return "Stop \(order)"
+        }
+    }
+
+    /// Check if this is a nightlife plan based on start time
+    private func isNightlifePlan() -> Bool {
+        guard let firstActivity = groupFlow.sortedActivities.first else { return false }
+        let components = firstActivity.startTime.split(separator: ":")
+        guard let hour = Int(components.first ?? "") else { return false }
+        // If first activity starts at 6pm or later, it's a night plan
+        return hour >= 18
     }
 
     // MARK: - Tags Section
@@ -575,7 +616,7 @@ struct DetailedGroupFlowView: View {
                         .font(.system(size: 14))
                         .foregroundColor(.textSecondary)
 
-                    Text("Entry + 2-3 drinks")
+                    Text(groupFlow.estimatedCost.includesText)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.textPrimary)
                 }
