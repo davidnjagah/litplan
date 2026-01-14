@@ -5,7 +5,8 @@
 //  Created by UI Designer Agent on 01/13/26.
 //  Sprint 16 - Token system for Bolt group plan generation
 //
-//  Pro users get 5 tokens per week that refresh every Monday at midnight.
+//  Pro users get 5 tokens per week that refresh based on their subscription start date.
+//  Each user's tokens refresh 7 days after their subscription began (personalized cycle).
 //  Tokens are synced with the database for cross-device tracking.
 //  Falls back to local storage if offline.
 //
@@ -16,7 +17,7 @@ import UIKit
 
 /// Manages Bolt generation tokens for Pro users
 /// - Pro users get 5 tokens per week
-/// - Tokens refresh every Monday at midnight
+/// - Tokens refresh every 7 days from user's subscription start date (personalized)
 /// - Syncs with Supabase database for tracking
 /// - Free users have 0 tokens (cannot generate)
 @MainActor
@@ -28,11 +29,15 @@ class BoltTokenManager: ObservableObject {
     /// Maximum tokens per week for Pro users
     static let maxTokensPerWeek = 5
 
+    /// Token refresh cycle in days
+    static let refreshCycleDays = 7
+
     /// UserDefaults keys (fallback for offline)
     private let tokenCountKey = "bolt_token_count"
     private let lastRefreshKey = "bolt_token_last_refresh"
     private let totalGenerationsKey = "bolt_total_generations"
     private let pendingSyncKey = "bolt_pending_sync"
+    private let subscriptionStartKey = "bolt_subscription_start_date"
 
     // MARK: - Published Properties
 
@@ -48,6 +53,9 @@ class BoltTokenManager: ObservableObject {
     /// Whether we're syncing with database
     @Published var isSyncing: Bool = false
 
+    /// User's subscription start date (for personalized refresh cycle)
+    @Published var subscriptionStartDate: Date?
+
     // MARK: - Private Properties
 
     /// Pending operations to sync when online
@@ -61,51 +69,94 @@ class BoltTokenManager: ObservableObject {
         return tokenCount > 0
     }
 
-    /// Days until next token refresh
+    /// Days until next token refresh (based on user's subscription start date)
     var daysUntilRefresh: Int {
+        guard let startDate = subscriptionStartDate else {
+            // Fallback: if no subscription start date, use 7 days from now
+            return Self.refreshCycleDays
+        }
+
         let calendar = Calendar.current
         let now = Date()
 
-        // Find next Monday
-        var components = DateComponents()
-        components.weekday = 2 // Monday
+        // Calculate days since subscription start
+        let daysSinceStart = calendar.dateComponents([.day], from: startDate, to: now).day ?? 0
 
-        guard let nextMonday = calendar.nextDate(
-            after: now,
-            matching: components,
-            matchingPolicy: .nextTime
-        ) else {
-            return 7
-        }
+        // Calculate days into current cycle (0-6)
+        let daysIntoCycle = daysSinceStart % Self.refreshCycleDays
 
-        let days = calendar.dateComponents([.day], from: now, to: nextMonday).day ?? 7
-        return max(0, days)
+        // Days until next refresh
+        let daysUntil = Self.refreshCycleDays - daysIntoCycle
+
+        return daysUntil == Self.refreshCycleDays ? 0 : daysUntil
     }
 
-    /// Formatted next refresh date
+    /// Formatted next refresh date (based on user's subscription cycle)
     var nextRefreshDate: String {
-        let calendar = Calendar.current
-        var components = DateComponents()
-        components.weekday = 2 // Monday
+        guard let startDate = subscriptionStartDate else {
+            return "in \(Self.refreshCycleDays) days"
+        }
 
-        guard let nextMonday = calendar.nextDate(
-            after: Date(),
-            matching: components,
-            matchingPolicy: .nextTime
-        ) else {
-            return "Next Monday"
+        let calendar = Calendar.current
+        let now = Date()
+
+        // Calculate days since subscription start
+        let daysSinceStart = calendar.dateComponents([.day], from: startDate, to: now).day ?? 0
+
+        // Calculate days into current cycle
+        let daysIntoCycle = daysSinceStart % Self.refreshCycleDays
+
+        // Days until next refresh
+        let daysUntil = Self.refreshCycleDays - daysIntoCycle
+
+        // Calculate next refresh date
+        guard let nextRefresh = calendar.date(byAdding: .day, value: daysUntil, to: now) else {
+            return "in \(daysUntil) days"
         }
 
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d"
-        return formatter.string(from: nextMonday)
+        return formatter.string(from: nextRefresh)
     }
 
     // MARK: - Initialization
 
     private init() {
         loadPendingOperations()
+        loadSubscriptionStartDate()
         setupWeeklyRefreshCheck()
+    }
+
+    /// Load subscription start date from local storage
+    private func loadSubscriptionStartDate() {
+        subscriptionStartDate = UserDefaults.standard.object(forKey: subscriptionStartKey) as? Date
+    }
+
+    /// Save subscription start date to local storage
+    private func saveSubscriptionStartDate(_ date: Date) {
+        subscriptionStartDate = date
+        UserDefaults.standard.set(date, forKey: subscriptionStartKey)
+    }
+
+    /// Set subscription start date (called when user first subscribes)
+    func setSubscriptionStartDate(_ date: Date) {
+        // Only set if not already set (preserve original start date)
+        if subscriptionStartDate == nil {
+            saveSubscriptionStartDate(date)
+            print("[BoltTokenManager] Subscription start date set: \(date)")
+        }
+    }
+
+    /// Initialize subscription start date if not set (for existing Pro users)
+    func initializeSubscriptionStartDateIfNeeded() {
+        guard SubscriptionManager.shared.isProUser else { return }
+
+        if subscriptionStartDate == nil {
+            // For existing users without a start date, use now as their start date
+            // This gives them a fresh 7-day cycle from today
+            saveSubscriptionStartDate(Date())
+            print("[BoltTokenManager] Initialized subscription start date for existing user")
+        }
     }
 
     // MARK: - Public Methods
@@ -133,13 +184,23 @@ class BoltTokenManager: ObservableObject {
             tokenCount = tokens.tokenCount
             totalGenerations = tokens.totalGenerations
 
+            // Set subscription start date from database if available
+            if let cycleStartDate = tokens.cycleStartDate {
+                if subscriptionStartDate == nil {
+                    saveSubscriptionStartDate(cycleStartDate)
+                }
+            } else {
+                // Initialize for existing users
+                initializeSubscriptionStartDateIfNeeded()
+            }
+
             // Save to local as backup
             saveTokensToLocal()
 
             // Sync any pending operations
             await syncPendingOperations()
 
-            print("[BoltTokenManager] Loaded from database: \(tokenCount) tokens, \(totalGenerations) total")
+            print("[BoltTokenManager] Loaded from database: \(tokenCount) tokens, \(totalGenerations) total, cycle start: \(subscriptionStartDate?.description ?? "nil")")
         } catch {
             print("[BoltTokenManager] Database load failed, using local: \(error)")
             loadTokensFromLocal()
@@ -201,8 +262,10 @@ class BoltTokenManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: lastRefreshKey)
         UserDefaults.standard.removeObject(forKey: totalGenerationsKey)
         UserDefaults.standard.removeObject(forKey: pendingSyncKey)
+        UserDefaults.standard.removeObject(forKey: subscriptionStartKey)
         tokenCount = Self.maxTokensPerWeek
         totalGenerations = 0
+        subscriptionStartDate = nil
         pendingOperations = []
         isLoaded = false
     }
@@ -210,7 +273,7 @@ class BoltTokenManager: ObservableObject {
     // MARK: - Database Operations
 
     /// Fetch tokens from Supabase database
-    private func fetchTokensFromDatabase(userId: String) async throws -> (tokenCount: Int, totalGenerations: Int) {
+    private func fetchTokensFromDatabase(userId: String) async throws -> (tokenCount: Int, totalGenerations: Int, cycleStartDate: Date?) {
         let client = SupabaseManager.shared.client!
 
         // Call the get_or_create_bolt_tokens function
@@ -223,7 +286,15 @@ class BoltTokenManager: ObservableObject {
             throw TokenError.noData
         }
 
-        return (result.token_count, result.total_generations)
+        // Parse cycle start date if available
+        var cycleStartDate: Date?
+        if let dateString = result.cycle_start_date {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            cycleStartDate = formatter.date(from: dateString)
+        }
+
+        return (result.token_count, result.total_generations, cycleStartDate)
     }
 
     /// Consume token in database
@@ -311,24 +382,41 @@ class BoltTokenManager: ObservableObject {
         UserDefaults.standard.set(Date(), forKey: lastRefreshKey)
     }
 
-    /// Check if tokens should be refreshed (Monday midnight)
+    /// Check if tokens should be refreshed (based on personalized 7-day cycle)
     private func shouldRefreshTokens(lastRefresh: Date?) -> Bool {
         guard let lastRefresh = lastRefresh else { return true }
+
+        // Initialize subscription start date if needed (for existing Pro users)
+        initializeSubscriptionStartDateIfNeeded()
+
+        guard let startDate = subscriptionStartDate else {
+            // Fallback to calendar week if no subscription start date
+            let calendar = Calendar.current
+            let now = Date()
+            let currentWeekStart = calendar.date(from: calendar.dateComponents(
+                [.yearForWeekOfYear, .weekOfYear],
+                from: now
+            ))
+            let lastRefreshWeekStart = calendar.date(from: calendar.dateComponents(
+                [.yearForWeekOfYear, .weekOfYear],
+                from: lastRefresh
+            ))
+            return currentWeekStart != lastRefreshWeekStart
+        }
 
         let calendar = Calendar.current
         let now = Date()
 
-        let currentWeekStart = calendar.date(from: calendar.dateComponents(
-            [.yearForWeekOfYear, .weekOfYear],
-            from: now
-        ))
+        // Calculate which cycle the last refresh was in
+        let daysSinceStartToLastRefresh = calendar.dateComponents([.day], from: startDate, to: lastRefresh).day ?? 0
+        let lastRefreshCycle = daysSinceStartToLastRefresh / Self.refreshCycleDays
 
-        let lastRefreshWeekStart = calendar.date(from: calendar.dateComponents(
-            [.yearForWeekOfYear, .weekOfYear],
-            from: lastRefresh
-        ))
+        // Calculate which cycle we're currently in
+        let daysSinceStartToNow = calendar.dateComponents([.day], from: startDate, to: now).day ?? 0
+        let currentCycle = daysSinceStartToNow / Self.refreshCycleDays
 
-        return currentWeekStart != lastRefreshWeekStart
+        // Refresh if we're in a new cycle
+        return currentCycle > lastRefreshCycle
     }
 
     // MARK: - Pending Operations (Offline Support)
@@ -427,6 +515,7 @@ private struct TokenResponse: Codable {
     let token_count: Int
     let week_start_date: String
     let total_generations: Int
+    let cycle_start_date: String?
 }
 
 /// Response from consume_bolt_token function

@@ -4,7 +4,7 @@
 <dict>
     <!-- App Display Name -->
     <key>CFBundleDisplayName</key>
-    <string>LitPlanZ</string>
+    <string>LitPlanz</string>
 
     <!-- URL Schemes for OAuth callbacks -->
     <key>CFBundleURLTypes</key>

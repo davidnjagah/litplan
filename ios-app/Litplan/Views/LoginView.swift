@@ -75,7 +75,7 @@ struct LoginView: View {
                 .frame(width: 120, height: 120)
                 .padding(.top, Spacing.xxl)
 
-            Text("LitPlanZ")
+            Text("LitPlanz")
                 .font(.displayLarge)
                 .foregroundColor(.textPrimary)
 
