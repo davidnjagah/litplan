@@ -73,21 +73,29 @@ struct ContentView: View {
                 }
                 .tag(1)
 
+            // Bolt Tab (NEW - Center position with 3D card)
+            BoltView()
+                .tabItem {
+                    Image(systemName: selectedTab == 2 ? "bolt.fill" : "bolt")
+                    Text("Bolt")
+                }
+                .tag(2)
+
             // Saved / My Plans Tab
             MyPlansView()
                 .tabItem {
-                    Image(systemName: selectedTab == 2 ? "heart.fill" : "heart")
+                    Image(systemName: selectedTab == 3 ? "heart.fill" : "heart")
                     Text("Saved")
                 }
-                .tag(2)
+                .tag(3)
 
             // Profile Tab
             ProfileView()
                 .tabItem {
-                    Image(systemName: selectedTab == 3 ? "person.fill" : "person")
+                    Image(systemName: selectedTab == 4 ? "person.fill" : "person")
                     Text("Profile")
                 }
-                .tag(3)
+                .tag(4)
         }
         .accentColor(.accentPrimary) // Electric Cyan for active tab
         .overlay(alignment: .top) {

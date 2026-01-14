@@ -4,6 +4,7 @@
 //
 //  Created by UI Designer Agent on 12/28/25.
 //  Sprint 4, Day 17 - Toast notification component for non-critical feedback
+//  Updated: Sprint 16 - Bolt-themed centered popup style
 //
 
 import SwiftUI
@@ -25,20 +26,20 @@ enum ToastType {
         case .error:
             return "xmark.circle.fill"
         case .info:
-            return "info.circle.fill"
+            return "bolt.circle.fill"
         }
     }
 
     var iconColor: Color {
         switch self {
         case .success:
-            return .success
+            return .green
         case .warning:
-            return .warning
+            return .boltGradientStart
         case .error:
-            return .error
+            return .red
         case .info:
-            return .accentPrimary
+            return .boltGradientEnd
         }
     }
 }
@@ -55,59 +56,105 @@ struct ToastData: Identifiable, Equatable {
     }
 }
 
-// MARK: - Toast View
+// MARK: - Bolt-Themed Toast View (Centered Popup)
 
 struct ToastView: View {
     let toast: ToastData
     let onDismiss: () -> Void
 
-    @State private var offsetY: CGFloat = -100
+    @State private var scale: CGFloat = 0.5
     @State private var opacity: Double = 0
 
     var body: some View {
-        HStack(spacing: Spacing.sm) {
-            // Icon
-            Image(systemName: toast.type.icon)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(toast.type.iconColor)
-                .accessibilityHidden(true)
+        VStack(spacing: 16) {
+            // Icon with glow effect
+            ZStack {
+                // Glow behind icon
+                Circle()
+                    .fill(toast.type.iconColor.opacity(0.3))
+                    .frame(width: 70, height: 70)
+                    .blur(radius: 15)
+
+                // Icon
+                Image(systemName: toast.type.icon)
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [toast.type.iconColor, toast.type.iconColor.opacity(0.7)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
 
             // Message
             Text(toast.message)
-                .font(.body)
-                .fontWeight(.medium)
-                .foregroundColor(.textPrimary)
-                .lineLimit(2)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-
-            Spacer()
-
-            // Dismiss button
-            Button(action: {
-                dismissToast()
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.textSecondary)
-                    .frame(width: 24, height: 24)
-            }
-            .accessibilityLabel("Dismiss notification")
-            .accessibilityHint("Tap to dismiss")
         }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
+        .padding(.horizontal, 32)
+        .padding(.vertical, 28)
+        .frame(minWidth: 200, maxWidth: 280)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.surfacePrimary)
-                .shadow(color: Color.black.opacity(0.3), radius: 12, x: 0, y: 4)
+            ZStack {
+                // Translucent blur background
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.6)
+
+                // Dark gradient overlay
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.12, green: 0.05, blue: 0.2).opacity(0.6),
+                                Color(red: 0.06, green: 0.02, blue: 0.1).opacity(0.6)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                // Subtle glow overlay
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                toast.type.iconColor.opacity(0.2),
+                                Color.clear
+                            ],
+                            center: .top,
+                            startRadius: 0,
+                            endRadius: 150
+                        )
+                    )
+
+                // Border
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                toast.type.iconColor.opacity(0.6),
+                                toast.type.iconColor.opacity(0.3)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+            }
         )
-        .padding(.horizontal, Spacing.md)
-        .offset(y: offsetY)
+        .shadow(color: toast.type.iconColor.opacity(0.4), radius: 30, x: 0, y: 10)
+        .shadow(color: Color.black.opacity(0.5), radius: 20, x: 0, y: 15)
+        .scaleEffect(scale)
         .opacity(opacity)
         .onAppear {
-            // Slide in animation with ease-out timing
-            withAnimation(.easeOut(duration: 0.3)) {
-                offsetY = 0
+            // Pop in animation
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                scale = 1.0
                 opacity = 1
             }
 
@@ -117,7 +164,6 @@ struct ToastView: View {
             }
         }
         .onTapGesture {
-            // Tap to dismiss
             dismissToast()
         }
         .accessibilityElement(children: .combine)
@@ -130,18 +176,17 @@ struct ToastView: View {
 
     private func dismissToast() {
         withAnimation(.easeIn(duration: 0.2)) {
-            offsetY = -100
+            scale = 0.5
             opacity = 0
         }
 
-        // Call onDismiss after animation completes
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             onDismiss()
         }
     }
 }
 
-// MARK: - Toast Modifier
+// MARK: - Toast Modifier (Centered)
 
 struct ToastModifier: ViewModifier {
     @Binding var toast: ToastData?
@@ -150,19 +195,28 @@ struct ToastModifier: ViewModifier {
         ZStack {
             content
 
-            // Toast overlay
+            // Centered toast overlay
             if let toast = toast {
-                VStack {
-                    ToastView(toast: toast) {
-                        self.toast = nil
+                // Dim background
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        dismissToast()
                     }
-                    .padding(.top, Spacing.md)
 
-                    Spacer()
+                // Centered popup
+                ToastView(toast: toast) {
+                    self.toast = nil
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .zIndex(999)
+                .zIndex(1001)
             }
+        }
+        .animation(.easeInOut(duration: 0.25), value: toast != nil)
+    }
+
+    private func dismissToast() {
+        withAnimation(.easeIn(duration: 0.2)) {
+            toast = nil
         }
     }
 }
@@ -183,10 +237,6 @@ extension View {
     ZStack {
         Color.appBackground
             .ignoresSafeArea()
-
-        VStack {
-            Spacer()
-        }
     }
     .toast(.constant(ToastData(type: .success, message: "Plan saved successfully")))
 }
@@ -195,34 +245,22 @@ extension View {
     ZStack {
         Color.appBackground
             .ignoresSafeArea()
-
-        VStack {
-            Spacer()
-        }
     }
-    .toast(.constant(ToastData(type: .warning, message: "Connection restored")))
+    .toast(.constant(ToastData(type: .warning, message: "Select a city and theme to generate")))
 }
 
 #Preview("Error Toast") {
     ZStack {
         Color.appBackground
             .ignoresSafeArea()
-
-        VStack {
-            Spacer()
-        }
     }
-    .toast(.constant(ToastData(type: .error, message: "Failed to save plan. Please try again.")))
+    .toast(.constant(ToastData(type: .error, message: "Failed to generate plan")))
 }
 
 #Preview("Info Toast") {
     ZStack {
         Color.appBackground
             .ignoresSafeArea()
-
-        VStack {
-            Spacer()
-        }
     }
-    .toast(.constant(ToastData(type: .info, message: "Purchase successful! Welcome to Litplan Pro.")))
+    .toast(.constant(ToastData(type: .info, message: "No tokens remaining")))
 }

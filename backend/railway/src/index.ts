@@ -493,6 +493,71 @@ app.post('/api/pipeline/test-relaxed', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Bolt Pipeline - Custom theme-based group plan generation
+ * POST /api/pipeline/bolt
+ * Body: {
+ *   city: string,
+ *   country: string,
+ *   theme: string,
+ *   themeDefinition?: string,
+ *   userId: string
+ * }
+ *
+ * Generates a custom 3-activity group plan for any city/theme combination.
+ * Used by the iOS app's Bolt feature for Pro users with token system.
+ */
+app.post('/api/pipeline/bolt', async (req: Request, res: Response) => {
+  const startTime = Date.now();
+
+  try {
+    const { city, country, theme, themeDefinition, userId = 'anonymous' } = req.body;
+
+    if (!city || !theme) {
+      return res.status(400).json({
+        success: false,
+        error: 'city and theme are required',
+      });
+    }
+
+    console.log(`[bolt] Starting bolt pipeline for ${city}, ${country} - Theme: ${theme}`);
+    console.log(`[bolt] User: ${userId}`);
+
+    // Call the bolt-pipeline Supabase Edge Function
+    const boltResult = await callSupabaseFunction('bolt-pipeline', {
+      city,
+      country: country || '',
+      theme,
+      themeDefinition,
+      userId,
+    });
+
+    if (!boltResult.success) {
+      throw new Error(`Bolt pipeline failed: ${boltResult.error}`);
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    console.log(`[bolt] Complete for ${city}/${theme} in ${durationMs}ms`);
+
+    // Return the data in the format iOS expects
+    res.json({
+      success: true,
+      data: boltResult.data,
+      aiModel: 'GPT-4o',
+      duration: durationMs,
+    });
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    console.error('[bolt] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      durationMs,
+    });
+  }
+});
+
 // Internal pipeline runners
 async function runIndividualPipeline(city: CityInput): Promise<PipelineResult> {
   const startTime = Date.now();
@@ -792,6 +857,7 @@ app.listen(PORT, () => {
 ║  Pipelines:                                                   ║
 ║  • Individual Plans: Claude (search-agent)                    ║
 ║  • Group Plans: GPT-4o 7-agent (group-7agent-pipeline)        ║
+║  • Bolt Plans: GPT-4o custom theme (bolt-pipeline)            ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║  Endpoints:                                                   ║
 ║  GET  /health                - Health check                   ║
@@ -800,6 +866,7 @@ app.listen(PORT, () => {
 ║  POST /api/pipeline/full       - Full pipeline                ║
 ║  POST /api/pipeline/batch      - Batch processing             ║
 ║  POST /api/pipeline/test-relaxed - Test relaxed validation    ║
+║  POST /api/pipeline/bolt       - Bolt custom theme plans      ║
 ╚═══════════════════════════════════════════════════════════════╝
   `);
 });

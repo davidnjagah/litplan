@@ -43,6 +43,11 @@ enum Config {
         return "https://us-central1-litplan-ai.cloudfunctions.net/api"
     }
 
+    /// Railway API base URL (for AI pipelines with longer timeouts)
+    static var railwayAPIBaseURL: String {
+        return "https://litplan-production.up.railway.app"
+    }
+
     // MARK: - API Endpoints
 
     enum Endpoints {
@@ -111,6 +116,13 @@ enum Config {
         /// Discovers and creates new cities on-demand using AI validation
         static var cityDiscover: String {
             return "\(apiBaseURL)/cities-discover"
+        }
+
+        /// Bolt pipeline endpoint - Railway AI Agent
+        /// Generates custom group plans for any city/theme combination
+        /// Uses Railway instead of Supabase Edge Function for longer timeout support
+        static var boltPipeline: String {
+            return "\(railwayAPIBaseURL)/api/pipeline/bolt"
         }
     }
 

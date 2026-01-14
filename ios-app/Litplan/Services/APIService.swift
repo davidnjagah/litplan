@@ -354,6 +354,52 @@ class APIService: ObservableObject {
         return response.groupFlows
     }
 
+    /// Generate a custom group flow using the Bolt pipeline
+    /// - Parameters:
+    ///   - city: City name (e.g., "Tokyo")
+    ///   - country: Country name (e.g., "Japan")
+    ///   - theme: Theme name from ThemeTag (e.g., "Nightlife")
+    ///   - themeDefinition: Optional detailed definition of the theme
+    ///   - userId: User ID for tracking
+    /// - Returns: Generated GroupFlow
+    func generateCustomGroupFlow(
+        city: String,
+        country: String,
+        theme: String,
+        themeDefinition: String?,
+        userId: String
+    ) async throws -> GroupFlow {
+        let requestBody = BoltPipelineRequest(
+            city: city,
+            country: country,
+            theme: theme,
+            themeDefinition: themeDefinition,
+            userId: userId
+        )
+
+        if Config.enableDebugLogging {
+            print("[APIService] 🔥 Calling bolt-pipeline for \(city), theme: \(theme)")
+        }
+
+        let response: BoltPipelineResponse = try await request(
+            endpoint: Config.Endpoints.boltPipeline,
+            method: .POST,
+            body: requestBody,
+            requiresAuth: true
+        )
+
+        guard response.success, let groupFlow = response.data else {
+            let errorMessage = response.error ?? "Failed to generate group flow"
+            throw APIError.serverError(500, errorMessage)
+        }
+
+        if Config.enableDebugLogging {
+            print("[APIService] ✅ Bolt pipeline returned group flow: \(groupFlow.title)")
+        }
+
+        return groupFlow
+    }
+
     /// Fetch group flows with fallback to local cache
     /// Priority: 1. API (online) -> cache response, 2. Local cache (offline/error)
     func fetchGroupFlowsWithFallback(cityId: String) async -> [GroupFlow] {
@@ -580,6 +626,22 @@ struct PlanResponse: Codable {
 struct GroupFlowsResponse: Codable {
     let groupFlows: [GroupFlow]
     let total: Int?
+}
+
+// MARK: - Bolt Pipeline Models
+
+struct BoltPipelineRequest: Codable {
+    let city: String
+    let country: String
+    let theme: String
+    let themeDefinition: String?
+    let userId: String
+}
+
+struct BoltPipelineResponse: Codable {
+    let success: Bool
+    let data: GroupFlow?  // Backend returns GroupFlow directly in data
+    let error: String?
 }
 
 struct UserSyncRequest: Codable {
