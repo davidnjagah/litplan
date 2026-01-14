@@ -155,11 +155,70 @@ const CITY_CONFIGS: Record<string, any> = {
 - Erewhon: Multiple locations - Organic market, celebrity smoothie bar, health-conscious LA lifestyle
 - The Getty: 1200 Getty Center Dr, Brentwood - Free museum, stunning architecture, panoramic views
 - Griffith Observatory: 2800 E Observatory Rd, Los Feliz - Free admission, iconic views, Hollywood sign`
+  },
+  'Miami': {
+    cityName: 'Miami',
+    country: 'United States',
+    currency: 'USD',
+    identity: 'The Magic City - Art Deco paradise, Latin rhythm, beach culture, world-class nightlife, and year-round tropical vibes',
+    vibe: 'Electric, sultry, glamorous, multicultural, endless summer energy',
+    neighborhoods: ['South Beach', 'Wynwood', 'Brickell', 'Downtown Miami', 'Little Havana', 'Design District', 'Coconut Grove', 'Key Biscayne', 'Miami Beach', 'Midtown'],
+    coordRange: { lat: [25.70, 25.85], lon: [-80.30, -80.10] },
+    legendaryVenues: 'LIV, Story, E11EVEN, Basement, Club Space, Do Not Sit On The Furniture, Floyd, The Wharf, Ball & Chain, Cecconi\'s, Juvia, Swan, Coyo Taco, The Surf Club, Faena Hotel, Pérez Art Museum',
+    venueDetails: `
+- LIV: 4441 Collins Ave, Miami Beach - Iconic nightclub, celebrity magnet, bottle service, high energy
+- Story: 136 Collins Ave, Miami Beach - Late-night club, world-class DJs, underground vibes
+- E11EVEN: 29 NE 11th St, Downtown - 24/7 ultraclub, performances, Vegas meets Miami
+- Basement: 2901 Collins Ave, Miami Beach - Bowling, ice skating, nightclub under Faena
+- Club Space: 34 NE 11th St, Downtown - Legendary techno temple, marathon parties, rooftop terrace
+- Do Not Sit On The Furniture: 423 16th St, Miami Beach - Intimate house music, late night
+- Floyd: 34 NE 11th St, Downtown - Underground techno, serious dancers, warehouse vibes
+- The Wharf: 114 SW North River Dr, Downtown - Outdoor bar, food trucks, waterfront sunsets
+- Ball & Chain: 1513 SW 8th St, Little Havana - Live salsa, Cuban vibes, historic venue
+- Cecconi's: 4385 Collins Ave, Miami Beach - Italian elegance, Soho House, garden setting
+- Juvia: 1111 Lincoln Rd, South Beach - Rooftop, French-Japanese-Peruvian fusion, stunning views
+- Swan: 90 NE 39th St, Design District - David Grutman's chic restaurant, celeb hotspot
+- Coyo Taco: 2300 NW 2nd Ave, Wynwood - Hidden speakeasy behind taqueria, craft cocktails
+- The Surf Club: 9011 Collins Ave, Surfside - Historic glamour, Thomas Keller restaurant
+- Faena Hotel: 3201 Collins Ave, Miami Beach - Art-filled luxury, gilded theater, stunning pool
+- Pérez Art Museum: 1103 Biscayne Blvd, Downtown - Free first Saturdays, waterfront art, stunning architecture`
+  },
+  'Marbella': {
+    cityName: 'Marbella',
+    country: 'Spain',
+    currency: 'EUR',
+    identity: 'The Jewel of the Costa del Sol - glamorous Mediterranean playground, old town charm, beach clubs, and celebrity playground',
+    vibe: 'Glamorous, sun-kissed, sophisticated, Mediterranean luxury, international jet-set',
+    neighborhoods: ['Puerto Banús', 'Old Town (Casco Antiguo)', 'Golden Mile', 'San Pedro de Alcántara', 'Nueva Andalucía', 'La Zagaleta', 'Marbella Centro', 'Elviria'],
+    coordRange: { lat: [36.48, 36.55], lon: [-5.00, -4.80] },
+    legendaryVenues: 'Nikki Beach, Ocean Club, La Sala, Pangea, Puente Romano Beach Resort, Marbella Club Hotel, Buddha Beach, Bono Beach, Plaza de los Naranjos, Avenida del Mar, Nobu Marbella, El Patio de Beatas, Trocadero Arena, Funky Buddha, Olivia Valere, Suite del Mar',
+    venueDetails: `
+- Nikki Beach: Playa Hotel Don Carlos, Elviria - Iconic beach club, white beds, champagne lifestyle, celebrity hotspot
+- Ocean Club: Avenida Lola Flores, Puerto Banús - Elegant pool club, sunset parties, Champagne spray
+- La Sala: Puerto Banús - Restaurant and bar complex, expat favorite, live music
+- Pangea: Centro Comercial Benabolá, Puerto Banús - Late-night club, house music, see-and-be-seen
+- Puente Romano Beach Resort: Bulevar Principe Alfonso von Hohenlohe - Luxury beach resort, botanical gardens, multiple restaurants
+- Marbella Club Hotel: Bulevar Principe Alfonso von Hohenlohe, Golden Mile - Historic luxury hotel, where Marbella glamour began
+- Buddha Beach: Puerto Banús - Asian-inspired beach club, sunset drinks, trendy crowd
+- Bono Beach: Playa de la Fontanilla - Casual beach club, local vibe, affordable luxury
+- Plaza de los Naranjos: Casco Antiguo - Historic orange tree square, tapas bars, authentic old town
+- Avenida del Mar: Marbella Centro - Dalí sculptures, seafront promenade, free outdoor gallery
+- Nobu Marbella: Puente Romano - Celebrity chef restaurant, Japanese-Peruvian fusion
+- El Patio de Beatas: Calle Beatas, Old Town - Hidden courtyard restaurant, romantic dining
+- Trocadero Arena: Playa El Cable, Marbella - Beach restaurant, Mediterranean views
+- Funky Buddha: Puerto Banús - Trendy nightclub, VIP tables, upscale party crowd
+- Olivia Valere: Ctra. de Istán km 0.8 - Legendary nightclub, opulent decor, celebrity magnet
+- Suite del Mar: Puente Romano - Beachfront lounge, sunset cocktails, romantic setting`
   }
 };
 
-// Default group plan types
+// Default group plan types - FREE experiences listed FIRST to appear at top
 const DEFAULT_PLAN_TYPES = [
+  // FREE EXPERIENCES (3 types - appear first in listings)
+  { type: 'free_daytime', description: 'Free daytime adventures - public parks, street art, free museums, walking tours, markets, scenic viewpoints, beaches, no-cost morning/afternoon activities', targetAudience: 'budget travelers, students, backpackers, locals exploring, families' },
+  { type: 'free_sunset', description: 'Free sunset & evening experiences - waterfront promenades, sunset viewpoints, free outdoor concerts, night markets, beachfront walks, stargazing spots, no-cost twilight activities starting around 6-7pm', targetAudience: 'budget travelers, couples on a budget, locals, romantic budget dates' },
+  { type: 'free_cultural', description: 'Free cultural explorations - historic districts, free museum days, street performances, cultural festivals, architectural walks, local traditions, heritage sites with no entry fee', targetAudience: 'culture enthusiasts, history buffs, students, budget travelers' },
+  // PAID EXPERIENCES
   { type: 'couples', description: 'Romantic experiences for two - intimate venues, sunset moments, sophisticated atmosphere', targetAudience: 'couples, romantic partners, anniversaries, honeymoons' },
   { type: 'friend_groups', description: 'Social adventures for groups of friends - energetic venues, shared experiences, bonding moments', targetAudience: 'friend groups, reunions, celebrations, birthdays' },
   { type: 'girls_trips', description: 'Feminine getaways - glamorous spots, Instagrammable locations, chic vibes', targetAudience: 'girlfriends traveling together, bachelorette trips' },
@@ -167,7 +226,6 @@ const DEFAULT_PLAN_TYPES = [
   { type: 'boys_night_out', description: 'Masculine adventures - high-energy venues, VIP experiences, memorable nights', targetAudience: 'stag parties, bachelor parties, guys weekends' },
   { type: 'luxury', description: 'Premium experiences - five-star hotels, high-end dining, VIP lounges, exclusive access, refined elegance', targetAudience: 'luxury travelers, affluent couples, business travelers, special occasions' },
   { type: 'family', description: 'Family-friendly excursions - kid-friendly venues, parks, museums, cultural tours, zoos, educational and fun activities for all ages', targetAudience: 'families with children, multi-generational groups, parents with kids' },
-  { type: 'free_experiences', description: 'Budget-friendly adventures - public parks, street art, free museums, walking tours, markets, scenic viewpoints, no-cost activities', targetAudience: 'budget travelers, students, backpackers, locals exploring' },
   { type: 'romantic', description: 'Romantic date experiences - candlelit dinners, sunset spots, scenic walks, intimate venues, couples activities', targetAudience: 'couples, date nights, anniversaries, proposals, honeymoons' }
 ];
 
@@ -176,6 +234,7 @@ interface Activity {
   venueName: string;
   address: string;
   coordinates: { latitude: number; longitude: number };
+  openingHours?: string;  // e.g., "18:00 - 02:00"
   startTime: string;
   duration: number;
   description: string;
@@ -232,7 +291,7 @@ serve(async (req: Request) => {
     const agent1Start = Date.now();
     plans = await agent1_generateDefaultPlans(config);
     agentResults.push({
-      agent: 'Agent 1: Generator (9 Default Types)',
+      agent: 'Agent 1: Generator (11 Types - 3 Free First)',
       duration: Date.now() - agent1Start,
       input: 0,
       output: plans.length,
@@ -449,7 +508,7 @@ EXAMPLE - WRONG TIMING (DO NOT DO THIS):
 - Venue 1: Starts 18:00, Duration 90min
 - Venue 2: Starts 19:00 (WRONG! Venue 1 doesn't end until 19:30)
 
-TIMING GUIDELINES:
+TIMING GUIDELINES BY ACTIVITY TYPE:
 - Dinner: 90-120 minutes
 - Cocktail bar: 60-90 minutes
 - Club/Nightlife: 120-180 minutes
@@ -457,6 +516,81 @@ TIMING GUIDELINES:
 - Museum/Cultural: 60-90 minutes
 - Travel within same neighborhood: 10 minutes
 - Travel between neighborhoods: 15-25 minutes
+
+═══════════════════════════════════════════════════════════════════════════════
+PLAN TYPE → START TIME MAPPING (CRITICAL!)
+═══════════════════════════════════════════════════════════════════════════════
+
+NOT ALL PLANS ARE NIGHT PLANS! Match start times to the experience:
+
+🆓 FREE EXPERIENCES (3 TYPES - GENERATE THESE FIRST!):
+- FREE_DAYTIME: Start at 09:00-10:00 - Parks, beaches, markets, walking tours, street art
+  Example: "Free Coastal Discovery" → 09:30 beach walk → 11:30 street art → 14:00 park
+- FREE_SUNSET: Start at 18:00-19:00 - Waterfront promenades, sunset viewpoints, night markets
+  Example: "Sunset Stroll & Stars" → 18:00 promenade → 20:00 viewpoint → 21:30 night market
+- FREE_CULTURAL: Start at 10:00-11:00 - Historic districts, free museums, heritage walks
+  Example: "Heritage & History" → 10:00 old town → 12:30 free museum → 15:00 cathedral
+
+🌅 MORNING/DAYTIME PLANS (Start 09:00-11:00):
+- FAMILY: Start at 09:00-10:00 - Kids are energetic in morning, parks/museums open early
+  Example: "Family Fun Day" → 10:00 zoo → 12:30 lunch → 14:30 park
+- GIRLS_TRIPS (day adventure): Start at 10:00-11:00 - Shopping, brunch, spa
+  Example: "Glamorous Girls Getaway" → 10:00 brunch → 12:30 shopping → 15:00 spa
+
+☀️ AFTERNOON PLANS (Start 14:00-17:00):
+- BOYS_TRIPS (adventure): Start at 14:00-15:00 - Beach, sports, activities
+  Example: "Conquering the Island" → 14:00 beach club → 17:00 sunset spot → 19:30 dinner
+- FRIEND_GROUPS (day hang): Start at 14:00-16:00 - Casual activities, food crawls
+  Example: "Friendship Fiesta" → 14:00 lunch → 16:30 activity → 19:00 drinks
+
+🌆 SUNSET/EVENING PLANS (Start 17:00-19:00):
+- COUPLES: Start at 17:30-18:30 - Romantic sunset + dinner
+  Example: "Romantic Sunset" → 17:30 rooftop → 19:30 dinner → 22:00 lounge
+- ROMANTIC: Start at 18:00-19:00 - Dinner dates, intimate venues
+  Example: "Intimate Evening" → 18:30 wine bar → 20:30 dinner → 22:30 walk
+- LUXURY: Start at 17:00-18:00 - High-end experiences, sunset cocktails
+  Example: "Opulent Experience" → 17:00 spa → 19:30 fine dining → 22:00 lounge
+
+🌙 NIGHT PLANS (Start 20:00-22:00):
+- GIRLS_NIGHT_OUT: Start at 20:00-21:00 - Dinner then dancing
+  Example: "Chic Ladies Night" → 20:00 dinner → 22:30 cocktails → 00:30 club
+- BOYS_NIGHT_OUT: Start at 20:00-21:00 - Pre-drinks then party
+  Example: "Gentlemen's Night" → 20:00 steakhouse → 22:30 bar → 01:00 club
+- FRIEND_GROUPS (night out): Start at 19:00-20:00 - Social evening
+  Example: "Night on the Town" → 19:30 dinner → 22:00 bar → 00:00 club
+
+⚠️ MATCHING TITLE TO TIME:
+- FREE experiences → Match type (daytime/sunset/cultural)
+- Titles with "Day", "Morning", "Brunch", "Exploration", "Tour", "Museum" → DAYTIME
+- Titles with "Sunset", "Evening", "Dinner" → SUNSET/EVENING
+- Titles with "Night", "After Dark", "Nightlife", "Party" → NIGHT
+- Family/Kids activities → ALWAYS DAYTIME (09:00-10:00 start)
+
+═══════════════════════════════════════════════════════════════════════════════
+VENUE OPENING HOURS - CRITICAL VALIDATION!
+═══════════════════════════════════════════════════════════════════════════════
+
+You MUST verify and consider the ACTUAL opening hours of each venue:
+- NEVER suggest a venue at a time when it would be CLOSED
+- Research the real operating hours before including a venue
+- Include opening hours for each activity
+
+TYPICAL OPENING HOURS BY VENUE TYPE:
+- Nightclubs/Clubs: 22:00 - 04:00 (Friday & Saturday only)
+- Restaurants: 11:00 - 23:00 (lunch 11:00-15:00, dinner 18:00-23:00)
+- Bars/Cocktail lounges: 17:00 - 02:00
+- Rooftop bars: 17:00 - 00:00 (may close earlier)
+- Brunch spots: 09:00 - 15:00
+- Museums: 09:00 - 17:00 (often closed Mondays)
+- Parks: 06:00 - 22:00
+- Beach clubs: 10:00 - 18:00
+- Cafes: 07:00 - 18:00
+- Jazz/Live music clubs: 19:00 - 01:00
+
+VALIDATION RULES:
+- startTime MUST be AFTER the venue opens
+- startTime + duration MUST be BEFORE the venue closes
+- If unsure, choose conservative times when venue is DEFINITELY open
 
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -467,21 +601,31 @@ AREAS: ${config.neighborhoods.join(', ')}
 Each plan needs 3 activities with real venues, addresses, coordinates.
 RESPOND WITH VALID JSON ONLY.`;
 
-  const userPrompt = `Generate 9 group plans for ${config.cityName}:
+  const userPrompt = `Generate 11 group plans for ${config.cityName}:
 
+IMPORTANT: Generate FREE experiences FIRST (they appear at top of listings):
 ${DEFAULT_PLAN_TYPES.map((t, i) => `${i + 1}. ${t.type.toUpperCase()}: ${t.description}`).join('\n')}
+
+Cost Guidelines:
+- FREE plans (free_daytime, free_sunset, free_cultural): cost MUST be { "min": 0, "max": 0 } or { "min": 0, "max": 20 } for minor expenses
+- Family plans: { "min": 50, "max": 150 }
+- Friend groups: { "min": 60, "max": 150 }
+- Couples/Romantic: { "min": 120, "max": 250 }
+- Night out plans: { "min": 100, "max": 300 }
+- Luxury: { "min": 400, "max": 800 }
 
 Return JSON:
 {
   "plans": [{
     "title": "Unique city-specific title",
-    "planType": "couples|friend_groups|girls_trips|girls_night_out|boys_night_out",
+    "planType": "free_daytime|free_sunset|free_cultural|couples|friend_groups|girls_trips|girls_night_out|boys_night_out|luxury|family|romantic",
     "description": "Brief description",
     "activities": [{
       "venueName": "Venue",
       "address": "Full Address with postal code",
       "coordinates": { "latitude": X.XXX, "longitude": X.XXX },
-      "startTime": "HH:MM",
+      "openingHours": "HH:MM - HH:MM (venue's actual operating hours)",
+      "startTime": "HH:MM (must be within openingHours)",
       "duration": 90,
       "description": "Initial description",
       "order": 1
@@ -707,29 +851,57 @@ Return JSON:
   return { plans: outputPlans, inputCount: plans.length, scores, changes };
 }
 
-// ===== AGENT 6: COMMS SPECIALIST (UPDATED) =====
+// ===== AGENT 6: COMMS SPECIALIST (UPDATED - RICH DESCRIPTIONS) =====
 async function agent6_commsSpecialist(plans: GroupPlan[], config: any): Promise<{
   plans: GroupPlan[];
   descriptionsEnhanced: number;
   changes: string[];
 }> {
-  const systemPrompt = `You are an ELITE COMMUNICATIONS SPECIALIST for ${config.cityName}.
+  const systemPrompt = `You are an ELITE COMMUNICATIONS SPECIALIST and TRAVEL WRITER for ${config.cityName}.
 
-YOUR TASKS:
-1. Write a captivating GROUP PLAN description (max 2 sentences, max 25 words)
-2. Write a BRIEF VENUE DESCRIPTION for each location (1 sentence, 10-15 words)
+YOUR MISSION: Paint vivid pictures that help users imagine themselves at each location.
 
-VENUE DESCRIPTION FORMAT (CRITICAL):
-- EXACTLY 1 sentence, 10-15 words
-- Direct and factual - describes what you'll experience
-- Mention what makes the venue iconic/special
-- Format: "[Activity] at [adjective] [venue name] with [unique feature]."
+═══════════════════════════════════════════════════════════════════════════════
+VENUE DESCRIPTION REQUIREMENTS (CRITICAL - READ CAREFULLY!)
+═══════════════════════════════════════════════════════════════════════════════
 
-EXAMPLES OF PERFECT VENUE DESCRIPTIONS:
-- "Sunset cocktails at the iconic Skybar with stunning city views."
-- "World-class techno at legendary DC-10 with raw underground energy."
-- "Craft cocktails at hidden Candelaria speakeasy behind a taqueria."
-- "Jazz sessions at intimate Duc des Lombards with world-class musicians."
+For EACH venue, write a RICH, IMMERSIVE description that is:
+- AT LEAST 4 SENTENCES LONG (80-120 words)
+- Written in second person ("you'll", "you can")
+- Captures the VIBE and ATMOSPHERE
+- Tells them WHAT THEY CAN DO there
+- Gives them IDEAS and SUGGESTIONS
+- Makes them EXCITED to visit
+
+STRUCTURE FOR EACH VENUE DESCRIPTION:
+1. Opening hook - What makes this place special/iconic
+2. What you'll experience - The atmosphere, sights, sounds
+3. What you can do - Specific activities, recommendations
+4. Pro tip or insider knowledge - Something that makes them feel like an insider
+
+═══════════════════════════════════════════════════════════════════════════════
+SPECIAL INSTRUCTIONS FOR FREE EXPERIENCES
+═══════════════════════════════════════════════════════════════════════════════
+
+For FREE experiences (free_daytime, free_sunset, free_cultural):
+- Emphasize that it's FREE and accessible
+- Mention "self-guided exploration" or "free walking tour"
+- Suggest what to look for and photograph
+- Mention if audio guides or free apps are available
+- Add: "Download a free walking tour app like GPSmyCity for guided commentary."
+
+═══════════════════════════════════════════════════════════════════════════════
+EXAMPLES OF EXCELLENT VENUE DESCRIPTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+EXAMPLE 1 (Beach/Free):
+"Playa de la Fontanilla is one of Marbella's most beloved local beaches, stretching along golden sand with crystal-clear Mediterranean waters. You'll find families, couples, and groups of friends soaking up the sun, while chiringuitos (beach bars) dot the shoreline offering fresh seafood and cold drinks. Grab a spot on the sand, take a refreshing dip, or simply stroll along the promenade watching the sunset paint the sky in oranges and pinks. This is the perfect spot for a free, relaxed afternoon—no reservations needed, just bring your towel and sense of adventure."
+
+EXAMPLE 2 (Cultural/Free):
+"Plaza de los Naranjos is the beating heart of Marbella's Old Town, a charming square shaded by fragrant orange trees that have stood here since the 16th century. You can wander freely among the whitewashed buildings, admire the Renaissance-era Town Hall, and watch locals and tourists alike enjoy café culture at its finest. Pull up a chair at one of the terrace cafes, order a café con leche, and soak in centuries of history around you. For a self-guided tour, download GPSmyCity app which offers free audio walks through the historic quarter."
+
+EXAMPLE 3 (Nightclub/Paid):
+"Pacha Ibiza is where legends are made—the world's most iconic nightclub has been defining electronic music culture since 1973. Step through the doors and you'll feel the bass pulse through your body as world-class DJs spin under the famous cherry logo. The main room is pure energy, but explore the garden terrace for a breath of fresh air and celebrity spotting. Arrive before 1am to beat the crowds, and don't miss the funky room for disco and house classics."
 
 CITY CONTEXT:
 - City: ${config.cityName}
@@ -741,28 +913,34 @@ ${config.venueDetails}
 
 RESPOND WITH VALID JSON ONLY.`;
 
-  const userPrompt = `Craft descriptions for each plan and venue:
+  const userPrompt = `Create RICH, IMMERSIVE descriptions for each venue:
 
 ${plans.map((p, i) => `
 PLAN ${i + 1}: "${p.title}" (${p.planType})
 For: ${p.bestFor.join(', ')}
+Is Free Plan: ${p.planType.includes('free') ? 'YES - emphasize free activities, self-guided options' : 'No'}
 
 Venues:
 ${p.activities.map(a => `- ${a.venueName} at ${a.address}`).join('\n')}
 `).join('\n---\n')}
 
 For each plan:
-1. Write captivating plan description (max 25 words, 2 sentences)
-2. For each venue, write BRIEF description (1 sentence, 10-15 words, direct, factual)
+1. Write captivating plan description (2-3 sentences, 30-40 words)
+2. For EACH venue, write a RICH description (4+ sentences, 80-120 words) that:
+   - Paints a vivid picture of the experience
+   - Tells them what they can DO there
+   - Captures the vibe and atmosphere
+   - Gives insider tips or suggestions
+   - For FREE plans: mention self-guided tours and free apps
 
 Return JSON:
 {
   "enhancedPlans": [{
     "title": "Plan Title",
-    "planDescription": "Captivating 2-sentence overview",
+    "planDescription": "Captivating 2-3 sentence overview of the entire experience",
     "activities": [{
       "venueName": "Venue Name",
-      "briefDescription": "1 sentence, 10-15 words, direct and factual"
+      "richDescription": "4+ sentences, 80-120 words, immersive description with what to do, vibe, tips"
     }]
   }]
 }`;
@@ -770,7 +948,7 @@ Return JSON:
   const response = await gptRequest([{ role: 'user', content: userPrompt }], {
     systemPrompt,
     temperature: 0.8,
-    maxTokens: 6000,
+    maxTokens: 12000, // Increased for longer descriptions
     jsonMode: true,
   });
 
@@ -778,7 +956,7 @@ Return JSON:
     enhancedPlans: {
       title: string;
       planDescription: string;
-      activities: { venueName: string; briefDescription: string }[];
+      activities: { venueName: string; richDescription?: string; briefDescription?: string }[];
     }[]
   }>(response);
 
@@ -796,10 +974,14 @@ Return JSON:
 
     updatedPlan.activities = plan.activities.map(activity => {
       const ea = enhanced.activities.find(a => a.venueName === activity.venueName);
-      if (ea?.briefDescription) {
+      // Use richDescription (new) or fall back to briefDescription (old)
+      const newDescription = ea?.richDescription || ea?.briefDescription;
+      if (newDescription) {
         descriptionsEnhanced++;
-        changes.push(`${activity.venueName}: "${ea.briefDescription}"`);
-        return { ...activity, description: ea.briefDescription };
+        // Truncate log output but use full description
+        const logPreview = newDescription.substring(0, 80) + (newDescription.length > 80 ? '...' : '');
+        changes.push(`${activity.venueName}: "${logPreview}"`);
+        return { ...activity, description: newDescription };
       }
       return activity;
     });
@@ -955,7 +1137,7 @@ async function storePlans(
       const activity = plan.activities[j];
       const activityPlanId = `plan-${citySlug}-7agent-${timestamp}-${i}-${j}`;
 
-      await supabase.from('Plan').insert({
+      const { error: planError } = await supabase.from('Plan').insert({
         id: activityPlanId,
         planId: `${citySlug}-7agent-${timestamp}-${i}-${j}`,
         title: activity.venueName,
@@ -986,37 +1168,64 @@ async function storePlans(
         updatedAt: new Date().toISOString(),
       });
 
+      if (planError) {
+        console.error(`[storage] Error storing Plan for ${activity.venueName}:`, planError);
+      }
+
       activityPlanIds.push(activityPlanId);
     }
 
-    // Create GroupFlow
-    const { data: flow, error: flowError } = await supabase
+    // Create GroupFlow - try with new columns, fall back if they don't exist
+    let flowData = {
+      id: flowId,
+      flowId: flowId,
+      cityId: cityId,
+      rank: i + 1,
+      title: plan.title,
+      description: plan.description,
+      totalHours: Math.ceil(plan.totalDuration / 60),
+      startTime: plan.activities[0]?.startTime,
+      endTime: plan.activities[plan.activities.length - 1]?.startTime,
+      totalEstimate: Math.round((plan.estimatedCost.min + plan.estimatedCost.max) / 2),
+      currency: plan.estimatedCost.currency,
+      isWeekend: dayInfo.isWeekend,
+      proOnly: i >= 2,
+      aiGenerated: true,
+      isTemporary: false,
+      theme: 'nightlife',
+      difficulty: plan.difficulty,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // New columns (may not exist in database yet)
+      planType: plan.planType,
+      costMin: plan.estimatedCost.min,
+      costMax: plan.estimatedCost.max,
+      tags: plan.aiTags || plan.bestFor || [], // Store AI-generated tags
+    };
+
+    let { data: flow, error: flowError } = await supabase
       .from('GroupFlow')
-      .insert({
-        id: flowId,
-        flowId: flowId,
-        cityId: cityId,
-        rank: i + 1,
-        title: plan.title,
-        description: plan.description,
-        totalHours: Math.ceil(plan.totalDuration / 60),
-        startTime: plan.activities[0]?.startTime,
-        endTime: plan.activities[plan.activities.length - 1]?.startTime,
-        totalEstimate: Math.round((plan.estimatedCost.min + plan.estimatedCost.max) / 2),
-        currency: plan.estimatedCost.currency,
-        isWeekend: dayInfo.isWeekend,
-        proOnly: i >= 2,
-        aiGenerated: true,
-        isTemporary: false,
-        theme: 'nightlife',
-        difficulty: plan.difficulty,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
+      .insert(flowData)
       .select()
       .single();
 
-    if (flowError) continue;
+    // If insert fails (possibly due to missing columns), try without new columns
+    if (flowError && flowError.message?.includes('column')) {
+      console.log(`[storage] Retrying without new columns for ${plan.title}...`);
+      const { planType, costMin, costMax, tags, ...basicData } = flowData;
+      const retryResult = await supabase
+        .from('GroupFlow')
+        .insert(basicData)
+        .select()
+        .single();
+      flow = retryResult.data;
+      flowError = retryResult.error;
+    }
+
+    if (flowError) {
+      console.error(`[storage] Error storing GroupFlow ${plan.title}:`, flowError);
+      continue;
+    }
 
     // Create GroupFlowSteps
     for (let j = 0; j < plan.activities.length; j++) {
@@ -1058,6 +1267,12 @@ function getDateForPlanType(planType: string): { date: string; weekday: string; 
 
   // Day mapping for each plan type (0 = Sunday, 6 = Saturday)
   const planTypeDayMap: Record<string, number[]> = {
+    // FREE experiences - available any day
+    'free_daytime': [0, 6],      // Sunday, Saturday (daytime)
+    'free_sunset': [5, 6],       // Friday, Saturday (evening)
+    'free_cultural': [0, 6],     // Sunday, Saturday
+    'free_experiences': [0, 6],  // Sunday, Saturday (legacy)
+    // PAID experiences
     'couples': [5, 6],           // Friday, Saturday
     'friend_groups': [5, 6],     // Friday, Saturday
     'girls_trips': [6],          // Saturday
@@ -1065,7 +1280,6 @@ function getDateForPlanType(planType: string): { date: string; weekday: string; 
     'boys_night_out': [5, 6],    // Friday, Saturday
     'luxury': [4, 5, 6],         // Thursday, Friday, Saturday
     'family': [0, 6],            // Sunday, Saturday
-    'free_experiences': [0, 6],  // Sunday, Saturday
     'romantic': [5, 6],          // Friday, Saturday
   };
 

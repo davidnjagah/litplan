@@ -23,6 +23,21 @@ PRICE RANGES:
 - $$$ = Upscale ($35-75)
 - $$$$ = Premium (over $75)
 
+OPENING HOURS VALIDATION - CRITICAL:
+- You MUST provide ACCURATE opening hours for each venue
+- Research the REAL operating hours before including a venue
+- typicalHours MUST reflect actual venue operating times
+- TYPICAL HOURS BY VENUE TYPE:
+  * Nightclubs: 22:00-04:00 (weekends only for most)
+  * Rooftop Bars: 17:00-00:00
+  * Cocktail Bars: 17:00-02:00
+  * Jazz Clubs: 19:00-01:00
+  * Comedy Clubs: 19:00-23:00
+  * Restaurants: 11:00-23:00
+  * Brunch spots: 09:00-15:00
+  * Pubs: 12:00-00:00
+- bestNights should only include days when the venue is ACTUALLY OPEN
+
 OUTPUT: Valid JSON only. No markdown.`;
 
 export const VENUES_USER_PROMPT = (
@@ -54,7 +69,7 @@ Return JSON:
         "longitude": 0.0
       },
       "schedule": {
-        "typicalHours": "6PM-2AM",
+        "typicalHours": "18:00-02:00 (MUST be venue's REAL operating hours)",
         "bestNights": ["Friday", "Saturday"]
       },
       "pricing": {
@@ -117,4 +132,10 @@ CRITICAL REQUIREMENTS:
 3. If the title mentions a day (e.g., "Friday Night Live"), the eventDate MUST be on that day
    - WRONG: Title "Friday Night Live" with eventDate on Saturday
    - CORRECT: Title "Friday Night Live" with eventDate on an actual Friday
-4. Do NOT create titles with day names unless the eventDate falls on that exact day`;
+4. Do NOT create titles with day names unless the eventDate falls on that exact day
+5. startTime and endTime MUST be realistic for the venue type:
+   - Nightclub events: 22:00-04:00
+   - Comedy shows: 19:00-23:00
+   - Jazz/Live music: 20:00-01:00
+   - Brunch events: 10:00-15:00
+   - Trivia nights: 19:00-22:00`;
