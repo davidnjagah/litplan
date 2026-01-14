@@ -57,6 +57,7 @@ interface Activity {
   venueName: string;
   address: string;
   coordinates: { latitude: number; longitude: number };
+  openingHours?: string;  // e.g., "18:00 - 02:00"
   startTime: string;
   duration: number;
   description: string;
@@ -250,6 +251,7 @@ serve(async (req: Request) => {
               longitude: a.coordinates.longitude
             }
           },
+          openingHours: a.openingHours || null,
           startTime: a.startTime,
           duration: a.duration,
           description: a.description,
@@ -302,14 +304,30 @@ IMPORTANT RULES:
 5. Times should be appropriate for the activity type
 ${isLowBudget ? '6. CRITICAL: Total cost must be under $50 per person. Focus on free entry venues, happy hours, and affordable local spots.' : ''}
 
+CRITICAL - OPENING HOURS VALIDATION:
+- You MUST verify and consider the ACTUAL opening hours of each venue
+- NEVER suggest a venue at a time when it would be CLOSED
+- Research the real operating hours before including a venue
+- Nightclubs typically open 22:00-04:00, NOT during daytime
+- Restaurants typically open 11:00-23:00
+- Bars typically open 17:00-02:00
+- Brunch spots typically open 09:00-15:00
+- Jazz clubs typically open 19:00-01:00
+- Rooftop bars may close earlier (around midnight)
+- Include the venue's actual opening hours in your response
+- If unsure about a venue's hours, choose a conservative time when it's DEFINITELY open
+
 TIMING GUIDELINES:
 - Account for travel time between venues (10-20 min)
 - Each venue duration should be realistic
 - Total duration should be 3-6 hours
+- Ensure each activity starts AFTER the venue opens and ends BEFORE it closes
 
 RESPOND WITH VALID JSON ONLY.`;
 
   const userPrompt = `Create a ${theme} group plan for ${city}${country ? `, ${country}` : ''}.
+
+IMPORTANT: Verify opening hours for each venue and only schedule activities when venues are OPEN.
 
 Return JSON:
 {
@@ -322,7 +340,8 @@ Return JSON:
         "venueName": "Real venue name",
         "address": "Full street address, ${city}",
         "coordinates": { "latitude": XX.XXXX, "longitude": XX.XXXX },
-        "startTime": "HH:MM",
+        "openingHours": "HH:MM - HH:MM (e.g., 18:00 - 02:00)",
+        "startTime": "HH:MM (must be AFTER venue opens)",
         "duration": 90,
         "description": "What you'll do here",
         "order": 1
@@ -340,7 +359,7 @@ Return JSON:
   }
 }
 
-Create exactly 3 activities. Make it special and memorable!`;
+Create exactly 3 activities. Verify each venue's opening hours and ensure startTime falls within those hours!`;
 
   try {
     const response = await gptRequest([{ role: 'user', content: userPrompt }], {
