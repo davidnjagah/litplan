@@ -63,7 +63,7 @@ struct BoltThemeSelector: View {
                             .foregroundColor(.white.opacity(0.6))
                     }
                 } else {
-                    Text("Select Theme")
+                    Text("Select Vibe")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
 
@@ -138,7 +138,7 @@ struct BoltThemeSelector: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Select Theme")
+                Text("What Vibe are you looking for?")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
 

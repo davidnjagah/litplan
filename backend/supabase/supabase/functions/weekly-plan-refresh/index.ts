@@ -1,10 +1,14 @@
 /**
- * Weekly Plan Refresh Edge Function
- * Runs on Sunday 11pm CET (10pm UTC) to:
- * 1. Search for top venues and weekly events
+ * Monthly Plan Refresh Edge Function
+ * Runs on the 1st of every month at 11pm CET (10pm UTC) to:
+ * 1. Search for top venues and events
  * 2. Run QA checks on results
  * 3. Update/create plans in database
  * 4. Generate GroupFlows
+ *
+ * Cost Optimization: Changed from weekly to monthly to reduce AI API costs by 75%
+ * - Weekly: ~$520/month (12,000 API calls)
+ * - Monthly: ~$130/month (3,000 API calls)
  *
  * Triggered by pg_cron or manual invocation
  */
@@ -65,7 +69,7 @@ serve(async (req: Request) => {
 
     // Calculate current week info
     const weekInfo = getWeekInfo();
-    console.log(`[weekly-refresh] Starting refresh for ${weekInfo.yearWeek} (${weekInfo.weekStartDate} to ${weekInfo.weekEndDate})`);
+    console.log(`[monthly-refresh] Starting refresh for ${weekInfo.yearWeek} (${weekInfo.weekStartDate} to ${weekInfo.weekEndDate})`);
 
     // Create job log entry
     const { data: jobLog, error: logError } = await supabase
@@ -79,7 +83,7 @@ serve(async (req: Request) => {
       .single();
 
     if (logError) {
-      console.error('[weekly-refresh] Failed to create job log:', logError);
+      console.error('[monthly-refresh] Failed to create job log:', logError);
     }
 
     const results: RefreshResults = {
@@ -110,7 +114,7 @@ serve(async (req: Request) => {
     const { data: citiesData, error: citiesError } = await citiesQuery;
 
     if (citiesError) {
-      console.error('[weekly-refresh] Failed to fetch cities:', citiesError);
+      console.error('[monthly-refresh] Failed to fetch cities:', citiesError);
       return errorResponse('Failed to fetch cities', 500, 'DATABASE_ERROR');
     }
 
@@ -122,14 +126,14 @@ serve(async (req: Request) => {
       currency: 'USD',
     }));
 
-    console.log(`[weekly-refresh] Processing ${cities.length} cities`);
-    console.log(`[weekly-refresh] Cities data: ${JSON.stringify(cities)}`);
+    console.log(`[monthly-refresh] Processing ${cities.length} cities`);
+    console.log(`[monthly-refresh] Cities data: ${JSON.stringify(cities)}`);
     debugInfo.push(`Cities found: ${cities.length}`);
 
     // Process each city - one city at a time, but individual and group plans run in parallel
     for (const city of cities) {
       try {
-        console.log(`[weekly-refresh] Starting city: ${city.name}`);
+        console.log(`[monthly-refresh] Starting city: ${city.name}`);
         debugInfo.push(`Processing city: ${city.name}`);
 
         // Run individual plans and group plans in PARALLEL for this city
@@ -151,7 +155,7 @@ serve(async (req: Request) => {
         await sleep(2000);
       } catch (error) {
         const errorMsg = `Error processing ${city.name}: ${(error as Error).message}`;
-        console.error(`[weekly-refresh] ${errorMsg}`);
+        console.error(`[monthly-refresh] ${errorMsg}`);
         results.errors.push(errorMsg);
       }
     }
@@ -187,8 +191,8 @@ serve(async (req: Request) => {
         updatedAt: new Date().toISOString(),
       });
 
-    console.log(`[weekly-refresh] Completed in ${executionTimeMs}ms`);
-    console.log(`[weekly-refresh] Results: ${JSON.stringify(results)}`);
+    console.log(`[monthly-refresh] Completed in ${executionTimeMs}ms`);
+    console.log(`[monthly-refresh] Results: ${JSON.stringify(results)}`);
 
     return jsonResponse({
       success: true,
@@ -200,7 +204,7 @@ serve(async (req: Request) => {
       },
     });
   } catch (error) {
-    console.error('[weekly-refresh] Fatal error:', error);
+    console.error('[monthly-refresh] Fatal error:', error);
     return errorResponse((error as Error).message || 'Internal server error', 500, 'SERVER_ERROR');
   }
 });
@@ -229,7 +233,7 @@ async function processIndividualPlansForCity(
     eventsCreated: 0,
   };
 
-  console.log(`[weekly-refresh] [INDIVIDUAL] Processing ${city.name}, ${city.country}`);
+  console.log(`[monthly-refresh] [INDIVIDUAL] Processing ${city.name}, ${city.country}`);
 
   // Delete ALL existing plans for this city (clean slate for fresh data)
   if (!dryRun) {
@@ -239,26 +243,26 @@ async function processIndividualPlansForCity(
       .eq('cityId', city.id);
 
     if (deleteError) {
-      console.error(`[weekly-refresh] [INDIVIDUAL] Error deleting old plans for ${city.name}:`, deleteError);
+      console.error(`[monthly-refresh] [INDIVIDUAL] Error deleting old plans for ${city.name}:`, deleteError);
     } else {
-      console.log(`[weekly-refresh] [INDIVIDUAL] Deleted existing plans for ${city.name}`);
+      console.log(`[monthly-refresh] [INDIVIDUAL] Deleted existing plans for ${city.name}`);
       debugInfo.push(`Deleted existing plans for ${city.name}`);
     }
   }
 
   // Call Search Agent
-  console.log(`[weekly-refresh] [INDIVIDUAL] Calling search-agent for ${city.name}`);
+  console.log(`[monthly-refresh] [INDIVIDUAL] Calling search-agent for ${city.name}`);
   debugInfo.push(`Calling search-agent for ${city.name}`);
   const searchResults = await callSearchAgent(city, weekInfo, debugInfo);
 
   if (!searchResults) {
-    console.error(`[weekly-refresh] [INDIVIDUAL] Search agent returned null for ${city.name}`);
+    console.error(`[monthly-refresh] [INDIVIDUAL] Search agent returned null for ${city.name}`);
     debugInfo.push(`Search agent returned null for ${city.name}`);
     return results;
   }
 
   debugInfo.push(`Search results: ${searchResults.venues.length} venues, ${searchResults.events.length} events`);
-  console.log(`[weekly-refresh] [INDIVIDUAL] Search results: ${searchResults.venues.length} venues, ${searchResults.events.length} events`);
+  console.log(`[monthly-refresh] [INDIVIDUAL] Search results: ${searchResults.venues.length} venues, ${searchResults.events.length} events`);
 
   // Process venues (permanent spots)
   for (const venue of searchResults.venues || []) {
@@ -267,7 +271,7 @@ async function processIndividualPlansForCity(
       if (!skipQA) {
         const qaResult = await callQAAgent(venue);
         if (!qaResult?.passed) {
-          console.log(`[weekly-refresh] [INDIVIDUAL] QA failed for ${venue.venueName}`);
+          console.log(`[monthly-refresh] [INDIVIDUAL] QA failed for ${venue.venueName}`);
           continue;
         }
       }
@@ -278,29 +282,29 @@ async function processIndividualPlansForCity(
       else if (planResult === 'updated') results.plansUpdated++;
       else results.plansUnchanged++;
     } catch (error) {
-      console.error(`[weekly-refresh] [INDIVIDUAL] Error processing venue ${venue.venueName}:`, error);
+      console.error(`[monthly-refresh] [INDIVIDUAL] Error processing venue ${venue.venueName}:`, error);
     }
   }
 
   // Process events
-  console.log(`[weekly-refresh] [INDIVIDUAL] Processing ${(searchResults.events || []).length} events for ${city.name}`);
+  console.log(`[monthly-refresh] [INDIVIDUAL] Processing ${(searchResults.events || []).length} events for ${city.name}`);
   for (const event of searchResults.events || []) {
     try {
-      console.log(`[weekly-refresh] [INDIVIDUAL] Processing event: ${event.eventName || event.venueName}`);
+      console.log(`[monthly-refresh] [INDIVIDUAL] Processing event: ${event.eventName || event.venueName}`);
       if (!skipQA) {
         const qaResult = await callQAAgent(event);
         if (!qaResult?.passed) {
-          console.log(`[weekly-refresh] [INDIVIDUAL] QA failed for ${event.eventName}`);
+          console.log(`[monthly-refresh] [INDIVIDUAL] QA failed for ${event.eventName}`);
           continue;
         }
       }
 
       // Create event plan
       const planResult = await upsertPlan(supabase, city, event, weekInfo, true, dryRun);
-      console.log(`[weekly-refresh] [INDIVIDUAL] Event upsert result: ${planResult}`);
+      console.log(`[monthly-refresh] [INDIVIDUAL] Event upsert result: ${planResult}`);
       if (planResult === 'created') results.eventsCreated++;
     } catch (error) {
-      console.error(`[weekly-refresh] [INDIVIDUAL] Error processing event ${event.eventName}:`, error);
+      console.error(`[monthly-refresh] [INDIVIDUAL] Error processing event ${event.eventName}:`, error);
     }
   }
 
@@ -313,12 +317,12 @@ async function processIndividualPlansForCity(
       .eq('cityId', city.id);
 
     if (count === 0) {
-      console.log(`[weekly-refresh] [INDIVIDUAL] No plans found for ${city.name} - marking as coming soon`);
+      console.log(`[monthly-refresh] [INDIVIDUAL] No plans found for ${city.name} - marking as coming soon`);
       await createComingSoonPlaceholder(supabase, city, weekInfo);
     }
   }
 
-  console.log(`[weekly-refresh] [INDIVIDUAL] ${city.name}: ${results.plansCreated} venues, ${results.eventsCreated} events`);
+  console.log(`[monthly-refresh] [INDIVIDUAL] ${city.name}: ${results.plansCreated} venues, ${results.eventsCreated} events`);
 
   return results;
 }
@@ -343,11 +347,11 @@ async function processGroupFlowsForCity(
   dryRun: boolean
 ): Promise<number> {
   if (dryRun) {
-    console.log(`[weekly-refresh] [GROUP] DRY RUN - skipping group flows for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] DRY RUN - skipping group flows for ${city.name}`);
     return 0;
   }
 
-  console.log(`[weekly-refresh] [GROUP] Starting 7-agent pipeline for ${city.name}`);
+  console.log(`[monthly-refresh] [GROUP] Starting 7-agent pipeline for ${city.name}`);
 
   const baseUrl = Deno.env.get('SUPABASE_URL') || '';
   const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -360,7 +364,7 @@ async function processGroupFlowsForCity(
 
   try {
     // ===== AGENT 1: GROUP PLAN GENERATOR =====
-    console.log(`[weekly-refresh] [GROUP] Agent 1: Generating group plans for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] Agent 1: Generating group plans for ${city.name}`);
     const agent1Response = await fetch(`${baseUrl}/functions/v1/group-plan-generator`, {
       method: 'POST',
       headers: {
@@ -378,16 +382,16 @@ async function processGroupFlowsForCity(
 
     if (!agent1Response.ok) {
       const errorText = await agent1Response.text();
-      console.error(`[weekly-refresh] [GROUP] Agent 1 failed: ${errorText.substring(0, 200)}`);
+      console.error(`[monthly-refresh] [GROUP] Agent 1 failed: ${errorText.substring(0, 200)}`);
       return await generateGroupFlowsLegacy(supabase, city, weekInfo);
     }
 
     const agent1Result = await agent1Response.json();
     const plansGenerated = agent1Result.data?.plansGenerated || 0;
-    console.log(`[weekly-refresh] [GROUP] Agent 1: Generated ${plansGenerated} plans`);
+    console.log(`[monthly-refresh] [GROUP] Agent 1: Generated ${plansGenerated} plans`);
 
     if (plansGenerated === 0) {
-      console.log(`[weekly-refresh] [GROUP] No plans generated, skipping remaining agents`);
+      console.log(`[monthly-refresh] [GROUP] No plans generated, skipping remaining agents`);
       return 0;
     }
 
@@ -395,7 +399,7 @@ async function processGroupFlowsForCity(
     await sleep(1000);
 
     // ===== AGENT 2: DETAILS VALIDATOR =====
-    console.log(`[weekly-refresh] [GROUP] Agent 2: Validating details for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] Agent 2: Validating details for ${city.name}`);
     const agent2Response = await fetch(`${baseUrl}/functions/v1/details-validator`, {
       method: 'POST',
       headers: {
@@ -408,15 +412,15 @@ async function processGroupFlowsForCity(
 
     if (agent2Response.ok) {
       const agent2Result = await agent2Response.json();
-      console.log(`[weekly-refresh] [GROUP] Agent 2: ${agent2Result.data?.validated || 0} validated, ${agent2Result.data?.removed || 0} removed`);
+      console.log(`[monthly-refresh] [GROUP] Agent 2: ${agent2Result.data?.validated || 0} validated, ${agent2Result.data?.removed || 0} removed`);
     } else {
-      console.error(`[weekly-refresh] [GROUP] Agent 2 failed, continuing...`);
+      console.error(`[monthly-refresh] [GROUP] Agent 2 failed, continuing...`);
     }
 
     await sleep(1000);
 
     // ===== AGENT 3: ADDRESS VALIDATOR =====
-    console.log(`[weekly-refresh] [GROUP] Agent 3: Validating addresses for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] Agent 3: Validating addresses for ${city.name}`);
     const agent3Response = await fetch(`${baseUrl}/functions/v1/address-validator`, {
       method: 'POST',
       headers: {
@@ -429,15 +433,15 @@ async function processGroupFlowsForCity(
 
     if (agent3Response.ok) {
       const agent3Result = await agent3Response.json();
-      console.log(`[weekly-refresh] [GROUP] Agent 3: ${agent3Result.data?.addressesValidated || 0} validated, ${agent3Result.data?.addressesCorrected || 0} corrected`);
+      console.log(`[monthly-refresh] [GROUP] Agent 3: ${agent3Result.data?.addressesValidated || 0} validated, ${agent3Result.data?.addressesCorrected || 0} corrected`);
     } else {
-      console.error(`[weekly-refresh] [GROUP] Agent 3 failed, continuing...`);
+      console.error(`[monthly-refresh] [GROUP] Agent 3 failed, continuing...`);
     }
 
     await sleep(1000);
 
     // ===== AGENT 4: DESCRIPTION EDITOR =====
-    console.log(`[weekly-refresh] [GROUP] Agent 4: Editing descriptions for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] Agent 4: Editing descriptions for ${city.name}`);
     const agent4Response = await fetch(`${baseUrl}/functions/v1/description-editor`, {
       method: 'POST',
       headers: {
@@ -450,15 +454,15 @@ async function processGroupFlowsForCity(
 
     if (agent4Response.ok) {
       const agent4Result = await agent4Response.json();
-      console.log(`[weekly-refresh] [GROUP] Agent 4: ${agent4Result.data?.descriptionsEdited || 0} descriptions edited`);
+      console.log(`[monthly-refresh] [GROUP] Agent 4: ${agent4Result.data?.descriptionsEdited || 0} descriptions edited`);
     } else {
-      console.error(`[weekly-refresh] [GROUP] Agent 4 failed, continuing...`);
+      console.error(`[monthly-refresh] [GROUP] Agent 4 failed, continuing...`);
     }
 
     await sleep(1000);
 
     // ===== AGENT 5: QUALITY GATE =====
-    console.log(`[weekly-refresh] [GROUP] Agent 5: Quality gate for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] Agent 5: Quality gate for ${city.name}`);
     const agent5Response = await fetch(`${baseUrl}/functions/v1/quality-gate`, {
       method: 'POST',
       headers: {
@@ -473,15 +477,15 @@ async function processGroupFlowsForCity(
     if (agent5Response.ok) {
       const agent5Result = await agent5Response.json();
       approvedCount = agent5Result.data?.approved || 0;
-      console.log(`[weekly-refresh] [GROUP] Agent 5: ${approvedCount} approved, ${agent5Result.data?.removed || 0} removed`);
+      console.log(`[monthly-refresh] [GROUP] Agent 5: ${approvedCount} approved, ${agent5Result.data?.removed || 0} removed`);
     } else {
-      console.error(`[weekly-refresh] [GROUP] Agent 5 failed, continuing...`);
+      console.error(`[monthly-refresh] [GROUP] Agent 5 failed, continuing...`);
     }
 
     await sleep(1000);
 
     // ===== AGENT 6: COMMS SPECIALIST =====
-    console.log(`[weekly-refresh] [GROUP] Agent 6: Comms specialist for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] Agent 6: Comms specialist for ${city.name}`);
     const agent6Response = await fetch(`${baseUrl}/functions/v1/comms-specialist`, {
       method: 'POST',
       headers: {
@@ -494,15 +498,15 @@ async function processGroupFlowsForCity(
 
     if (agent6Response.ok) {
       const agent6Result = await agent6Response.json();
-      console.log(`[weekly-refresh] [GROUP] Agent 6: ${agent6Result.data?.descriptionsEnhanced || 0} descriptions enhanced`);
+      console.log(`[monthly-refresh] [GROUP] Agent 6: ${agent6Result.data?.descriptionsEnhanced || 0} descriptions enhanced`);
     } else {
-      console.error(`[weekly-refresh] [GROUP] Agent 6 failed, continuing...`);
+      console.error(`[monthly-refresh] [GROUP] Agent 6 failed, continuing...`);
     }
 
     await sleep(1000);
 
     // ===== AGENT 7: TAG GENERATOR =====
-    console.log(`[weekly-refresh] [GROUP] Agent 7: Generating tags for ${city.name}`);
+    console.log(`[monthly-refresh] [GROUP] Agent 7: Generating tags for ${city.name}`);
     const agent7Response = await fetch(`${baseUrl}/functions/v1/tag-generator`, {
       method: 'POST',
       headers: {
@@ -518,9 +522,9 @@ async function processGroupFlowsForCity(
 
     if (agent7Response.ok) {
       const agent7Result = await agent7Response.json();
-      console.log(`[weekly-refresh] [GROUP] Agent 7: Tags generated for ${agent7Result.data?.plansTagged || 0} plans`);
+      console.log(`[monthly-refresh] [GROUP] Agent 7: Tags generated for ${agent7Result.data?.plansTagged || 0} plans`);
     } else {
-      console.error(`[weekly-refresh] [GROUP] Agent 7 failed, continuing...`);
+      console.error(`[monthly-refresh] [GROUP] Agent 7 failed, continuing...`);
     }
 
     // Mark remaining flows as complete
@@ -534,11 +538,11 @@ async function processGroupFlowsForCity(
       .eq('cityId', city.id)
       .gte('pipelineStep', 5);
 
-    console.log(`[weekly-refresh] [GROUP] 7-agent pipeline complete for ${city.name}: ${approvedCount} group flows approved`);
+    console.log(`[monthly-refresh] [GROUP] 7-agent pipeline complete for ${city.name}: ${approvedCount} group flows approved`);
     return approvedCount;
 
   } catch (error) {
-    console.error(`[weekly-refresh] [GROUP] Error in 7-agent pipeline for ${city.name}:`, error);
+    console.error(`[monthly-refresh] [GROUP] Error in 7-agent pipeline for ${city.name}:`, error);
     // Fallback to legacy generation
     return await generateGroupFlowsLegacy(supabase, city, weekInfo);
   }
@@ -587,7 +591,7 @@ async function callSearchAgent(
     const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
     const searchUrl = `${baseUrl}/functions/v1/search-agent`;
-    console.log(`[weekly-refresh] Calling search-agent at: ${searchUrl}`);
+    console.log(`[monthly-refresh] Calling search-agent at: ${searchUrl}`);
     debugInfo.push(`Search URL: ${searchUrl}`);
     debugInfo.push(`Service key present: ${serviceKey ? 'yes' : 'no'}`);
 
@@ -627,7 +631,7 @@ async function callSearchAgent(
   } catch (error) {
     const errorMsg = `Search agent error: ${(error as Error).message}`;
     debugInfo.push(`ERROR: ${errorMsg}`);
-    console.error('[weekly-refresh] Search agent error:', error);
+    console.error('[monthly-refresh] Search agent error:', error);
     return null;
   }
 }
@@ -663,7 +667,7 @@ async function callQAAgent(plan: any): Promise<{ passed: boolean; score: number 
       score: data.data?.overallScore || 0,
     };
   } catch (error) {
-    console.error('[weekly-refresh] QA agent error:', error);
+    console.error('[monthly-refresh] QA agent error:', error);
     return null;
   }
 }
@@ -778,7 +782,7 @@ async function upsertPlan(
   };
 
   if (dryRun) {
-    console.log(`[weekly-refresh] DRY RUN - Would create: ${venueName} for ${dayOfWeek} (${planDate})`);
+    console.log(`[monthly-refresh] DRY RUN - Would create: ${venueName} for ${dayOfWeek} (${planDate})`);
     return 'created';
   }
 
@@ -786,11 +790,11 @@ async function upsertPlan(
   const { error } = await supabase.from('Plan').insert(plan);
 
   if (error) {
-    console.error(`[weekly-refresh] Insert error for ${venueName}:`, error);
+    console.error(`[monthly-refresh] Insert error for ${venueName}:`, error);
     throw error;
   }
 
-  console.log(`[weekly-refresh] Created: ${venueName} for ${dayOfWeek} (${planDate})`);
+  console.log(`[monthly-refresh] Created: ${venueName} for ${dayOfWeek} (${planDate})`);
   return 'created';
 }
 
@@ -812,7 +816,7 @@ async function generateGroupFlows(
     const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
     // Call the Group Plan Agent
-    console.log(`[weekly-refresh] Calling group-plan-agent for ${city.name}`);
+    console.log(`[monthly-refresh] Calling group-plan-agent for ${city.name}`);
 
     const response = await fetch(`${baseUrl}/functions/v1/group-plan-agent`, {
       method: 'POST',
@@ -833,7 +837,7 @@ async function generateGroupFlows(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[weekly-refresh] Group plan agent error: ${response.status} - ${errorText.substring(0, 200)}`);
+      console.error(`[monthly-refresh] Group plan agent error: ${response.status} - ${errorText.substring(0, 200)}`);
 
       // Fallback to legacy group flow generation if agent fails
       return await generateGroupFlowsLegacy(supabase, city, weekInfo);
@@ -842,17 +846,17 @@ async function generateGroupFlows(
     const result = await response.json();
 
     if (!result.success) {
-      console.error(`[weekly-refresh] Group plan agent failed for ${city.name}`);
+      console.error(`[monthly-refresh] Group plan agent failed for ${city.name}`);
       return await generateGroupFlowsLegacy(supabase, city, weekInfo);
     }
 
     const { plansGenerated, plansUpdated, plansRemoved, existingFlows } = result.data;
 
-    console.log(`[weekly-refresh] ${city.name} group plans: ${plansGenerated} new, ${plansUpdated} updated, ${plansRemoved} removed, ${existingFlows} existing`);
+    console.log(`[monthly-refresh] ${city.name} group plans: ${plansGenerated} new, ${plansUpdated} updated, ${plansRemoved} removed, ${existingFlows} existing`);
 
     return plansGenerated + plansUpdated;
   } catch (error) {
-    console.error('[weekly-refresh] Error calling group-plan-agent:', error);
+    console.error('[monthly-refresh] Error calling group-plan-agent:', error);
     // Fallback to legacy generation
     return await generateGroupFlowsLegacy(supabase, city, weekInfo);
   }
@@ -868,7 +872,7 @@ async function generateGroupFlowsLegacy(
   weekInfo: WeekInfo
 ): Promise<number> {
   try {
-    console.log(`[weekly-refresh] Using legacy group flow generation for ${city.name}`);
+    console.log(`[monthly-refresh] Using legacy group flow generation for ${city.name}`);
 
     // Check existing permanent group flows
     const { data: existingFlows, count: existingCount } = await supabase
@@ -879,7 +883,7 @@ async function generateGroupFlowsLegacy(
 
     // If we already have enough permanent flows, skip generation
     if (existingCount && existingCount >= 3) {
-      console.log(`[weekly-refresh] ${city.name} already has ${existingCount} permanent group flows, skipping legacy generation`);
+      console.log(`[monthly-refresh] ${city.name} already has ${existingCount} permanent group flows, skipping legacy generation`);
       return 0;
     }
 
@@ -890,7 +894,7 @@ async function generateGroupFlowsLegacy(
       .eq('cityId', city.id);
 
     if (!plans || plans.length < 3) {
-      console.log(`[weekly-refresh] Not enough plans for GroupFlows in ${city.name}`);
+      console.log(`[monthly-refresh] Not enough plans for GroupFlows in ${city.name}`);
       return 0;
     }
 
@@ -898,7 +902,7 @@ async function generateGroupFlowsLegacy(
     const neededFlows = 3 - (existingCount || 0);
     if (neededFlows <= 0) return 0;
 
-    console.log(`[weekly-refresh] Creating ${neededFlows} legacy group flows for ${city.name}`);
+    console.log(`[monthly-refresh] Creating ${neededFlows} legacy group flows for ${city.name}`);
 
     // Categorize plans
     const barPlans = plans.filter((p: any) => ['BAR', 'Cocktail Bar', 'Rooftop Bar', 'Lounge', 'Wine Bar', 'Speakeasy'].includes(p.category));
@@ -990,7 +994,7 @@ async function generateGroupFlowsLegacy(
       const { error: flowError } = await supabase.from('GroupFlow').insert(flow);
 
       if (flowError) {
-        console.error(`[weekly-refresh] Error inserting legacy flow:`, flowError);
+        console.error(`[monthly-refresh] Error inserting legacy flow:`, flowError);
         continue;
       }
 
@@ -1008,12 +1012,12 @@ async function generateGroupFlowsLegacy(
       }
 
       flowsCreated++;
-      console.log(`[weekly-refresh] Created legacy flow: ${template.title}`);
+      console.log(`[monthly-refresh] Created legacy flow: ${template.title}`);
     }
 
     return flowsCreated;
   } catch (error) {
-    console.error('[weekly-refresh] Error in legacy GroupFlow generation:', error);
+    console.error('[monthly-refresh] Error in legacy GroupFlow generation:', error);
     return 0;
   }
 }
@@ -1089,9 +1093,9 @@ async function createComingSoonPlaceholder(
       await supabase.from('Plan').insert(placeholder);
     }
 
-    console.log(`[weekly-refresh] Created "Coming Soon" placeholder for ${city.name}`);
+    console.log(`[monthly-refresh] Created "Coming Soon" placeholder for ${city.name}`);
   } catch (error) {
-    console.error(`[weekly-refresh] Error creating coming soon placeholder for ${city.name}:`, error);
+    console.error(`[monthly-refresh] Error creating coming soon placeholder for ${city.name}:`, error);
   }
 }
 

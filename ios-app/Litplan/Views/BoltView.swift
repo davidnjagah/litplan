@@ -222,7 +222,9 @@ struct BoltView: View {
                 // Both selectors side by side - each handles its own overlay
                 HStack(spacing: 8) {
                     BoltCitySelector(selectedCity: $selectedCity)
+                        .disabled(!subscriptionManager.isProUser)
                     BoltThemeSelector(selectedTag: $selectedTheme)
+                        .disabled(!subscriptionManager.isProUser)
                 }
 
                 Spacer()
@@ -439,7 +441,7 @@ struct BoltView: View {
                     .font(.system(size: 40))
                     .foregroundColor(.boltGradientStart)
 
-                Text("Bolt is Pro Only")
+                Text("Vibez is Pro Only")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.white)
 

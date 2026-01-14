@@ -254,6 +254,12 @@ struct PaywallView: View {
                 title: "Group flow experiences",
                 description: "Full-night itineraries with multiple venues"
             )
+
+            BenefitRow(
+                icon: "bolt.fill",
+                title: "Vibez custom plans",
+                description: "Generate personalized plans for any vibe and city"
+            )
         }
         .padding(.vertical, Spacing.md)
     }

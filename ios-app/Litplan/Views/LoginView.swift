@@ -68,19 +68,14 @@ struct LoginView: View {
 
     private var headerSection: some View {
         VStack(spacing: Spacing.md) {
-            // App Icon/Logo placeholder
-            ZStack {
-                Circle()
-                    .fill(Color.accentPrimary.opacity(0.2))
-                    .frame(width: 100, height: 100)
+            // App Logo
+            Image("LoginLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120, height: 120)
+                .padding(.top, Spacing.xxl)
 
-                Image(systemName: "sparkles")
-                    .font(.system(size: 40))
-                    .foregroundColor(.accentPrimary)
-            }
-            .padding(.top, Spacing.xxl)
-
-            Text("Litplan")
+            Text("LitPlanZ")
                 .font(.displayLarge)
                 .foregroundColor(.textPrimary)
 

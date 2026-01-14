@@ -73,11 +73,11 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            // Bolt Tab (NEW - Center position with 3D card)
+            // Vibez Tab (Center position with 3D card)
             BoltView()
                 .tabItem {
                     Image(systemName: selectedTab == 2 ? "bolt.fill" : "bolt")
-                    Text("Bolt")
+                    Text("Vibez")
                 }
                 .tag(2)
 

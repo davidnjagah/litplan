@@ -1,13 +1,17 @@
 /**
- * Weekly Plan Refresh - Scheduled Function
+ * Monthly Plan Refresh - Scheduled Function
  *
- * This Cloud Function runs every Monday at 00:00 UTC to refresh nightlife plans
- * for all active cities using AI generation via Claude/Anthropic.
+ * This Cloud Function runs on the 1st of every month at 00:00 UTC to refresh
+ * nightlife plans for all active cities using AI generation via Claude/Anthropic.
  *
- * Schedule: Every Monday at 00:00 UTC (cron: '0 0 * * 1')
+ * Schedule: 1st of every month at 00:00 UTC (cron: '0 0 1 * *')
  * Purpose: Generate fresh, AI-powered nightlife plans and group flows
  *
- * Sprint 4, Day 16
+ * Cost Optimization: Changed from weekly to monthly to reduce AI API costs by 75%
+ * - Weekly: ~$520/month (12,000 API calls)
+ * - Monthly: ~$130/month (3,000 API calls)
+ *
+ * Sprint 4, Day 16 (Updated for monthly schedule)
  */
 
 import * as functions from 'firebase-functions';
@@ -143,10 +147,10 @@ interface AIGeneratedGroupFlow {
 
 /**
  * Main Scheduled Function
- * Runs every Monday at 00:00 UTC to refresh nightlife plans
+ * Runs on the 1st of every month at 00:00 UTC to refresh nightlife plans
  */
 export const weeklyPlanRefresh = functions.pubsub
-  .schedule('0 0 * * 1') // Every Monday at midnight UTC
+  .schedule('0 0 1 * *') // 1st of every month at midnight UTC
   .timeZone('UTC')
   .onRun(async (context): Promise<RefreshJobResult> => {
     const startTime = Date.now();
@@ -157,7 +161,7 @@ export const weeklyPlanRefresh = functions.pubsub
                      functions.config().refresh?.dry_run === 'true';
 
     console.log('========================================');
-    console.log('Starting weekly plan refresh job');
+    console.log('Starting monthly plan refresh job');
     console.log(`Timestamp: ${now.toISOString()}`);
     console.log(`Mode: ${isDryRun ? 'DRY RUN (no changes will be made)' : 'PRODUCTION'}`);
     console.log('========================================');
@@ -273,7 +277,7 @@ export const weeklyPlanRefresh = functions.pubsub
 
       // Final summary
       console.log('\n========================================');
-      console.log('Weekly plan refresh job completed');
+      console.log('Monthly plan refresh job completed');
       console.log(
         `Cities: ${citiesProcessed} succeeded, ${citiesFailed} failed, ${citiesSnapshot.size} total`
       );
@@ -309,7 +313,7 @@ export const weeklyPlanRefresh = functions.pubsub
     } catch (error) {
       const duration = Date.now() - startTime;
       console.error('========================================');
-      console.error('FATAL ERROR in weekly plan refresh job');
+      console.error('FATAL ERROR in monthly plan refresh job');
       console.error('Error:', error);
       console.error('Execution time:', (duration / 1000).toFixed(2), 's');
       console.error('========================================');
