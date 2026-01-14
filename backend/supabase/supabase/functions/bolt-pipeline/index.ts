@@ -339,11 +339,22 @@ TIMING GUIDELINES:
 - Total duration should be 3-6 hours
 - Ensure each activity starts AFTER the venue opens and ends BEFORE it closes
 
+LOCATION PROXIMITY - CRITICAL:
+- All venues MUST be within WALKING DISTANCE of each other (max 15 minutes walk between consecutive venues)
+- Choose venues in the same neighborhood or district
+- Users should be able to walk from one venue to the next easily
+- If walking distance venues are not available for the theme, ensure venues are within a 30-minute drive by car maximum
+- NEVER select venues that are far apart across the city
+- Consider the natural flow of moving between venues on foot
+- Prioritize areas with multiple suitable venues close together (e.g., entertainment districts, downtown areas, nightlife zones)
+
 RESPOND WITH VALID JSON ONLY.`;
 
   const userPrompt = `Create a ${theme} group plan for ${city}${country ? `, ${country}` : ''}.
 
-IMPORTANT: Verify opening hours for each venue and only schedule activities when venues are OPEN.
+IMPORTANT REQUIREMENTS:
+1. Verify opening hours for each venue and only schedule activities when venues are OPEN.
+2. ALL VENUES MUST BE WITHIN 15 MINUTES WALKING DISTANCE of each other. Choose venues in the same neighborhood/district. If no walkable options exist, ensure they are within 30 min drive maximum.
 
 Return JSON:
 {
