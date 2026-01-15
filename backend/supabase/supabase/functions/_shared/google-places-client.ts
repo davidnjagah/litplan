@@ -79,9 +79,12 @@ export async function searchVenue(
   const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
 
   if (!apiKey) {
-    console.error('[GooglePlaces] API key not configured');
+    console.error('[GooglePlaces] ❌ GOOGLE_PLACES_API_KEY not found in environment!');
+    console.error('[GooglePlaces] Set it in Supabase Dashboard > Edge Functions > Secrets');
     return null;
   }
+
+  console.log(`[GooglePlaces] API Key found (${apiKey.substring(0, 10)}...)`)
 
   try {
     // Build search query with venue name and location
@@ -96,8 +99,14 @@ export async function searchVenue(
     const response = await fetch(searchUrl);
     const data: TextSearchResponse = await response.json();
 
+    console.log(`[GooglePlaces] API Response Status: ${data.status}`);
+    console.log(`[GooglePlaces] Results count: ${data.results?.length || 0}`);
+
     if (data.status !== 'OK' || !data.results || data.results.length === 0) {
       console.log(`[GooglePlaces] No results for: "${venueName}" in ${city}`);
+      if (data.status !== 'OK') {
+        console.log(`[GooglePlaces] API Error Status: ${data.status}`);
+      }
       return {
         venueName,
         originalName: venueName,
@@ -184,8 +193,12 @@ async function getPlaceDetails(
 
 /**
  * Find the best matching place from search results
- * MORE LENIENT: Trust Google's relevance ranking - if it found results for
- * "venue name + city", the first result is usually correct.
+ *
+ * SIMPLE APPROACH: Trust Google's relevance ranking.
+ * When we search "venue name + city", Google returns the most relevant results first.
+ * We just use the first result - Google has already done the matching work.
+ *
+ * Only reject if Google returns NO results at all.
  */
 function findBestMatch(
   results: PlaceResult[],
@@ -193,98 +206,22 @@ function findBestMatch(
   city: string
 ): PlaceResult | null {
   if (!results || results.length === 0) {
+    console.log(`[GooglePlaces] No results returned for "${searchName}"`);
     return null;
   }
 
-  const normalizedSearch = normalizeString(searchName);
-  const normalizedCity = normalizeString(city);
+  // SIMPLE: Trust Google's first result
+  // Google's Text Search API is designed exactly for this - finding businesses by name
+  // When you search "Blue Note Jazz Club New York", Google knows what you want
+  const firstResult = results[0];
 
-  // Score each result
-  const scored = results.map(place => {
-    let score = 0;
-    const normalizedName = normalizeString(place.name);
-    const normalizedAddress = normalizeString(place.formatted_address);
-
-    // Exact name match
-    if (normalizedName === normalizedSearch) {
-      score += 100;
-    }
-    // Name contains search term or vice versa
-    else if (normalizedName.includes(normalizedSearch) || normalizedSearch.includes(normalizedName)) {
-      score += 80;
-    }
-    // Partial word match - more lenient
-    else {
-      const searchWords = normalizedSearch.split(' ').filter(w => w.length > 2);
-      const nameWords = normalizedName.split(' ').filter(w => w.length > 2);
-
-      // Check if ANY significant word matches
-      const hasAnyMatch = searchWords.some(sw =>
-        nameWords.some(nw => nw.includes(sw) || sw.includes(nw))
-      );
-
-      if (hasAnyMatch) {
-        score += 60;
-      }
-
-      // Calculate word overlap for additional scoring
-      const matchingWords = searchWords.filter(w =>
-        nameWords.some(nw => nw.includes(w) || w.includes(nw))
-      );
-      score += (matchingWords.length / Math.max(searchWords.length, 1)) * 30;
-    }
-
-    // City appears in address - big bonus
-    if (normalizedAddress.includes(normalizedCity)) {
-      score += 40;
-    }
-
-    // Has rating - indicates real, established venue
-    if (place.rating && place.rating > 0) {
-      score += 15;
-    }
-
-    // High rating bonus
-    if (place.rating && place.rating >= 4.0) {
-      score += 10;
-    }
-
-    // Prefer nightlife-related types
-    const nightlifeTypes = ['bar', 'night_club', 'restaurant', 'cafe', 'food', 'establishment', 'point_of_interest', 'lodging'];
-    if (place.types?.some(t => nightlifeTypes.includes(t))) {
-      score += 15;
-    }
-
-    return { place, score };
+  console.log(`[GooglePlaces] Found ${results.length} results for "${searchName}":`);
+  results.slice(0, 3).forEach((place, i) => {
+    console.log(`   ${i + 1}. "${place.name}" - ${place.formatted_address}${place.rating ? ` (${place.rating}★)` : ''}`);
   });
 
-  // Sort by score
-  scored.sort((a, b) => b.score - a.score);
-
-  console.log(`[GooglePlaces] Top matches for "${searchName}":`);
-  scored.slice(0, 3).forEach((s, i) => {
-    console.log(`   ${i + 1}. "${s.place.name}" (score: ${s.score})`);
-  });
-
-  // LENIENT: Accept if score >= 20 OR if it's the first result and has a rating
-  // Google's search already does relevance ranking, so first result is usually right
-  if (scored[0]) {
-    if (scored[0].score >= 20) {
-      return scored[0].place;
-    }
-    // Trust Google's first result if it has a rating (real business)
-    if (scored[0].place.rating && scored[0].place.rating > 0) {
-      console.log(`[GooglePlaces] Accepting first result with rating: ${scored[0].place.name}`);
-      return scored[0].place;
-    }
-    // Accept first result if address contains the city
-    if (normalizeString(scored[0].place.formatted_address).includes(normalizedCity)) {
-      console.log(`[GooglePlaces] Accepting first result in ${city}: ${scored[0].place.name}`);
-      return scored[0].place;
-    }
-  }
-
-  return null;
+  console.log(`[GooglePlaces] ✓ Using first result: "${firstResult.name}"`);
+  return firstResult;
 }
 
 /**
