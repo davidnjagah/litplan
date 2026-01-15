@@ -214,19 +214,21 @@ serve(async (req: Request) => {
       }
     }
 
-    // Check if we have any valid venues
-    if (validatedActivities.length === 0) {
-      console.log(`\n[AGENT 2] ❌ All venues rejected - no valid places found`);
+    // Check if we have enough valid venues (minimum 2 required)
+    if (validatedActivities.length < 2) {
+      console.log(`\n[AGENT 2] ❌ Not enough venues validated (${validatedActivities.length}/2 minimum)`);
       return jsonResponse({
         success: false,
-        error: `We couldn't verify any ${theme} venues in ${city}. The places we found may not exist or have moved. Please try again.`,
-        errorCode: 'NO_VALID_VENUES',
+        error: `We couldn't verify enough ${theme} venues in ${city}. Only ${validatedActivities.length} venue(s) passed validation. Please try again.`,
+        errorCode: 'INSUFFICIENT_VENUES',
         rejectedVenues: rejectedVenues,
+        validatedCount: validatedActivities.length,
+        minimumRequired: 2,
         retry: true
       });
     }
 
-    console.log(`\n[AGENT 2] ✅ ${validatedActivities.length}/${discoveredPlan.activities.length} venues validated`);
+    console.log(`\n[AGENT 2] ✅ ${validatedActivities.length}/${discoveredPlan.activities.length} venues validated (minimum 2 required)`);
 
     // ═══════════════════════════════════════════════════════════════════════
     // GOOGLE PLACES API - Verify addresses and get Maps URLs
