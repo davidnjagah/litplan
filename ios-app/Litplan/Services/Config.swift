@@ -118,11 +118,11 @@ enum Config {
             return "\(apiBaseURL)/cities-discover"
         }
 
-        /// Bolt pipeline endpoint - Railway AI Agent
+        /// Bolt pipeline endpoint - Supabase Edge Function (STRICT version)
         /// Generates custom group plans for any city/theme combination
-        /// Uses Railway instead of Supabase Edge Function for longer timeout support
+        /// Uses strict Google Places matching with score threshold
         static var boltPipeline: String {
-            return "\(railwayAPIBaseURL)/api/pipeline/bolt"
+            return "\(apiBaseURL)/bolt-pipeline-strict"
         }
     }
 
