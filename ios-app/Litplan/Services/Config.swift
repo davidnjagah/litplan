@@ -118,11 +118,11 @@ enum Config {
             return "\(apiBaseURL)/cities-discover"
         }
 
-        /// Bolt pipeline endpoint - Supabase Edge Function (STRICT version)
+        /// Bolt pipeline endpoint - Railway (longer timeout support)
         /// Generates custom group plans for any city/theme combination
-        /// Uses strict Google Places matching with score threshold
+        /// Uses Railway for longer-running AI pipeline requests
         static var boltPipeline: String {
-            return "\(apiBaseURL)/bolt-pipeline-strict"
+            return "\(railwayAPIBaseURL)/api/pipeline/bolt"
         }
     }
 
