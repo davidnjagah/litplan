@@ -1,25 +1,29 @@
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- * Bolt Pipeline - Premium 3-Agent Venue Discovery System
+ * Bolt Pipeline - Premium 4-Agent Venue Discovery System
  * ══════════════════════════════════════════════════════════════════════════════
  *
- * This pipeline uses 3 AI agents to ensure only the BEST, REAL venues are recommended:
+ * This pipeline uses 4 AI agents to ensure only the BEST, REAL venues are recommended:
  *
  * AGENT 1 - VENUE DISCOVERY:
  *   Finds the highest-rated, most popular venues for the theme.
  *   For rooftop: highest views. For nightlife: most popular clubs.
  *   Focuses on places with real reviews and recommendations.
  *
- * AGENT 2 - VENUE VALIDATOR:
- *   Critically examines each venue to confirm it's real.
- *   Checks for real reviews, ratings, and accurate addresses.
- *   Can REJECT fictional or unverified venues.
+ * AGENT 2 - RELEVANCE VALIDATOR (NEW):
+ *   Checks if each venue is actually relevant to the theme.
+ *   Filters out inappropriate venues (children's homes, hospitals, etc.)
+ *   Ensures venues are actual entertainment spots (bars, restaurants, clubs).
+ *   Can REJECT irrelevant venues before Google Places validation.
  *
- * AGENT 3 - NARRATIVE CREATOR:
+ * AGENT 3 - ADDRESS VALIDATOR (Google Places):
+ *   Uses Google Places API as the SOURCE OF TRUTH for addresses.
+ *   If venue found on Google → use Google's verified address.
+ *   If venue NOT found → REJECT it.
+ *
+ * AGENT 4 - NARRATIVE CREATOR:
  *   Only runs for validated venues.
  *   Creates immersive descriptions for the final plan.
- *
- * + GOOGLE PLACES API for address verification and Maps URLs.
  *
  * ══════════════════════════════════════════════════════════════════════════════
  */
@@ -143,7 +147,7 @@ serve(async (req: Request) => {
     }
 
     console.log(`\n${'═'.repeat(70)}`);
-    console.log(`BOLT PIPELINE - 3-AGENT SYSTEM`);
+    console.log(`BOLT PIPELINE - 4-AGENT SYSTEM`);
     console.log(`Theme: ${theme.toUpperCase()} | City: ${city}, ${country || 'Unknown'}`);
     console.log(`User: ${userId}`);
     console.log(`${'═'.repeat(70)}\n`);
@@ -177,17 +181,58 @@ serve(async (req: Request) => {
     });
 
     // ═══════════════════════════════════════════════════════════════════════
-    // AGENT 2: VENUE VALIDATOR (Google Places Powered)
+    // AGENT 2: RELEVANCE VALIDATOR
+    // Checks if venues are actually relevant to the theme
+    // Filters out inappropriate venues (children's homes, hospitals, etc.)
+    // Ensures venues are actual entertainment spots for the requested theme
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[AGENT 2] 🎯 RELEVANCE VALIDATOR - Checking venue appropriateness...`);
+
+    const relevanceResult = await agent2_validateRelevance(
+      discoveredPlan.activities,
+      theme,
+      finalThemeDefinition,
+      city
+    );
+
+    if (relevanceResult.approved.length === 0) {
+      console.log(`[AGENT 2] ❌ All venues rejected as irrelevant`);
+      return jsonResponse({
+        success: false,
+        error: `None of the discovered venues were appropriate for a ${theme} experience. Please try again.`,
+        errorCode: 'NO_RELEVANT_VENUES',
+        rejectedVenues: relevanceResult.rejected.map(v => v.name),
+        rejectionReasons: relevanceResult.rejected,
+        retry: true
+      });
+    }
+
+    console.log(`[AGENT 2] ✅ ${relevanceResult.approved.length}/${discoveredPlan.activities.length} venues passed relevance check`);
+    relevanceResult.approved.forEach((a, i) => {
+      console.log(`   ✓ ${a.venueName}`);
+    });
+    if (relevanceResult.rejected.length > 0) {
+      console.log(`   Rejected as irrelevant:`);
+      relevanceResult.rejected.forEach(r => {
+        console.log(`   ✗ ${r.name}: ${r.reason}`);
+      });
+    }
+
+    // Use only the approved venues for the next step
+    const relevantActivities = relevanceResult.approved;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AGENT 3: ADDRESS VALIDATOR (Google Places Powered)
     // Uses Google Places API as the SOURCE OF TRUTH for addresses
     // If venue found on Google → use Google's address
     // If venue NOT found → REJECT it
     // ═══════════════════════════════════════════════════════════════════════
-    console.log(`\n[AGENT 2] 🔎 VENUE VALIDATOR - Verifying venues with Google Places API...`);
+    console.log(`\n[AGENT 3] 🔎 ADDRESS VALIDATOR - Verifying venues with Google Places API...`);
 
     const validatedActivities: Activity[] = [];
     const rejectedVenues: { name: string; reason: string }[] = [];
 
-    for (const activity of discoveredPlan.activities) {
+    for (const activity of relevantActivities) {
       console.log(`\n   Checking: ${activity.venueName}`);
       console.log(`   AI provided address: ${activity.address}`);
 
@@ -252,10 +297,10 @@ serve(async (req: Request) => {
 
     // Check if we have enough valid venues (minimum 2 required)
     if (validatedActivities.length < 2) {
-      console.log(`\n[AGENT 2] ❌ Not enough venues verified (${validatedActivities.length}/2 minimum)`);
+      console.log(`\n[AGENT 3] ❌ Not enough venues verified (${validatedActivities.length}/2 minimum)`);
       return jsonResponse({
         success: false,
-        error: `We couldn't verify enough ${theme} venues in ${city}. Only ${validatedActivities.length} out of ${discoveredPlan.activities.length} venues were found on Google Maps. Please try again.`,
+        error: `We couldn't verify enough ${theme} venues in ${city}. Only ${validatedActivities.length} out of ${relevantActivities.length} relevant venues were found on Google Maps. Please try again.`,
         errorCode: 'INSUFFICIENT_VENUES',
         rejectedVenues: rejectedVenues.map(v => v.name),
         rejectionReasons: rejectedVenues,
@@ -265,13 +310,13 @@ serve(async (req: Request) => {
       });
     }
 
-    console.log(`\n[AGENT 2] ✅ ${validatedActivities.length}/${discoveredPlan.activities.length} venues verified on Google Places`);
+    console.log(`\n[AGENT 3] ✅ ${validatedActivities.length}/${relevantActivities.length} venues verified on Google Places`);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // AGENT 3: NARRATIVE CREATOR - Create immersive descriptions
+    // AGENT 4: NARRATIVE CREATOR - Create immersive descriptions
     // ═══════════════════════════════════════════════════════════════════════
-    console.log(`\n[AGENT 3] ✍️ NARRATIVE CREATOR - Crafting descriptions...`);
-    const finalPlan = await agent3_createNarrative(
+    console.log(`\n[AGENT 4] ✍️ NARRATIVE CREATOR - Crafting descriptions...`);
+    const finalPlan = await agent4_createNarrative(
       { ...discoveredPlan, activities: validatedActivities },
       city,
       theme,
@@ -555,15 +600,134 @@ Return JSON:
   }
 }
 
-// NOTE: Agent 2 validation is now integrated directly in the main flow
-// using Google Places API as the source of truth for addresses.
-// Venues not found on Google Places are rejected.
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGENT 2: RELEVANCE VALIDATOR
+// Checks if venues are actually appropriate for the theme
+// Filters out irrelevant places (children's homes, hospitals, offices, etc.)
+// ═══════════════════════════════════════════════════════════════════════════════
+interface RelevanceResult {
+  approved: Activity[];
+  rejected: { name: string; reason: string }[];
+}
+
+async function agent2_validateRelevance(
+  activities: Activity[],
+  theme: string,
+  themeDefinition: string,
+  city: string
+): Promise<RelevanceResult> {
+  const venueList = activities.map((a, i) => ({
+    index: i,
+    name: a.venueName,
+    description: a.description,
+    whyRecommended: a.whyRecommended
+  }));
+
+  const systemPrompt = `You are a strict venue relevance validator. Your job is to check if venues are ACTUALLY appropriate for a "${theme}" experience.
+
+THEME DEFINITION:
+${themeDefinition}
+
+WHAT COUNTS AS RELEVANT for "${theme}":
+- Bars, restaurants, clubs, lounges, rooftop venues
+- Entertainment venues (comedy clubs, music venues, theaters)
+- Cafes, breweries, wine bars, cocktail bars
+- Hotels with public bars/restaurants/rooftops
+- Event spaces, galleries, cultural centers (for art/culture themes)
+- Beach clubs, waterfront venues (for beach themes)
+
+WHAT IS NOT RELEVANT (REJECT THESE):
+- Children's homes, orphanages, daycare centers
+- Hospitals, clinics, medical facilities
+- Schools, universities (unless they have a public venue)
+- Office buildings, corporate headquarters
+- Residential buildings, apartments
+- Government buildings
+- Religious institutions (unless specifically a cultural venue)
+- Gyms, fitness centers (unless for adventure theme)
+- Retail stores (unless they have a bar/restaurant)
+- Places that are clearly NOT entertainment venues
+
+ALSO REJECT if the venue doesn't match the THEME:
+- For "Rooftop" theme: reject venues that are NOT elevated/rooftop locations
+- For "Nightlife" theme: reject venues that are NOT open late or for dancing/drinking
+- For "Jazz" theme: reject venues that don't feature jazz music
+- etc.
+
+Be STRICT. If a venue sounds suspicious or inappropriate, REJECT it.
+
+RESPOND WITH VALID JSON ONLY.`;
+
+  const userPrompt = `Review these venues for a "${theme}" experience in ${city}:
+
+${venueList.map(v => `${v.index + 1}. ${v.name}
+   Description: ${v.description || 'No description'}
+   Why recommended: ${v.whyRecommended || 'No reason'}`).join('\n\n')}
+
+For EACH venue, decide:
+- APPROVE if it's a legitimate entertainment venue appropriate for "${theme}"
+- REJECT if it's inappropriate, irrelevant, or doesn't match the theme
+
+Return JSON:
+{
+  "decisions": [
+    {
+      "index": 0,
+      "venueName": "Venue Name",
+      "approved": true,
+      "reason": "Why approved or rejected"
+    }
+  ]
+}`;
+
+  try {
+    const response = await gptRequest([{ role: 'user', content: userPrompt }], {
+      systemPrompt,
+      temperature: 0.3, // Low temperature for consistent decisions
+      maxTokens: 2048,
+      jsonMode: true,
+    });
+
+    const result = parseGPTJSON<{
+      decisions: Array<{
+        index: number;
+        venueName: string;
+        approved: boolean;
+        reason: string;
+      }>;
+    }>(response);
+
+    const approved: Activity[] = [];
+    const rejected: { name: string; reason: string }[] = [];
+
+    for (const decision of result.decisions) {
+      const activity = activities[decision.index];
+      if (!activity) continue;
+
+      if (decision.approved) {
+        approved.push(activity);
+      } else {
+        rejected.push({
+          name: decision.venueName || activity.venueName,
+          reason: decision.reason || 'Not relevant to theme'
+        });
+      }
+    }
+
+    return { approved, rejected };
+
+  } catch (error) {
+    console.error('[AGENT 2] Relevance validation error:', error);
+    // On error, pass all venues through (fail open)
+    return { approved: activities, rejected: [] };
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// AGENT 3: NARRATIVE CREATOR
+// AGENT 4: NARRATIVE CREATOR
 // Creates immersive descriptions for the validated venues
 // ═══════════════════════════════════════════════════════════════════════════════
-async function agent3_createNarrative(
+async function agent4_createNarrative(
   plan: GroupPlan,
   city: string,
   theme: string,
@@ -637,7 +801,7 @@ Return JSON:
       activities: enhancedActivities
     };
   } catch (error) {
-    console.error('[AGENT 3] Narrative error:', error);
+    console.error('[AGENT 4] Narrative error:', error);
     return plan;
   }
 }
