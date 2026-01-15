@@ -190,8 +190,15 @@ struct BoltView: View {
 
                 // Token indicator for Pro users
                 if subscriptionManager.isProUser {
-                    tokenIndicator
-                        .padding(.bottom, 8)
+                    VStack(spacing: 6) {
+                        tokenIndicator
+
+                        // Subtle disclaimer
+                        Text("Results are best with sizeable cities")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.35))
+                    }
+                    .padding(.bottom, 8)
                 }
 
                 // Bottom padding for tab bar
