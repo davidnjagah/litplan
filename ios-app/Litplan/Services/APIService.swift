@@ -385,7 +385,7 @@ class APIService: ObservableObject {
             endpoint: Config.Endpoints.boltPipeline,
             method: .POST,
             body: requestBody,
-            requiresAuth: true
+            requiresAuth: false  // Use anon key - userId is passed in body for tracking
         )
 
         guard response.success, let groupFlow = response.data else {
