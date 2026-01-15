@@ -743,12 +743,12 @@ YOUR STYLE:
 - Write in second person ("You'll discover...", "As you enter...")
 - Be vivid and sensory (sights, sounds, atmosphere)
 - Make readers EXCITED to visit
-- Each description: 3-4 sentences
-- Capture what makes each venue SPECIAL
+- Each VENUE description: ONE sentence only (punchy, captivating)
+- Capture the essence of each venue in that single sentence
 
 ALSO CREATE:
 - An exciting title that captures the essence of this experience
-- A compelling 2-3 sentence overview description
+- A compelling 2-3 sentence overview description (this can be longer)
 
 RESPOND WITH VALID JSON ONLY.`;
 
@@ -764,7 +764,7 @@ Return JSON:
   "venueDescriptions": [
     {
       "venueName": "Venue name",
-      "description": "Immersive 3-4 sentence description"
+      "description": "One captivating sentence about this venue"
     }
   ]
 }`;
