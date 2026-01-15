@@ -1,23 +1,25 @@
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- * Bolt Pipeline - Tag-Based Group Plan Generation
+ * Bolt Pipeline - Premium 3-Agent Venue Discovery System
  * ══════════════════════════════════════════════════════════════════════════════
  *
- * This pipeline generates custom group plans based on a specific theme tag.
- * Unlike the default 7-agent pipeline, this one:
- * - Only generates plans for the specified tag/theme
- * - Works for ANY city worldwide (not just predefined cities)
- * - Stores results linked to the requesting user
- * - Uses in-depth tag definitions for better AI context
+ * This pipeline uses 3 AI agents to ensure only the BEST, REAL venues are recommended:
  *
- * POST /bolt-pipeline
- * Body: {
- *   "city": "Tokyo",
- *   "country": "Japan",
- *   "theme": "Nightlife",
- *   "themeDefinition": "High-energy clubs, lounges...",
- *   "userId": "user-uuid"
- * }
+ * AGENT 1 - VENUE DISCOVERY:
+ *   Finds the highest-rated, most popular venues for the theme.
+ *   For rooftop: highest views. For nightlife: most popular clubs.
+ *   Focuses on places with real reviews and recommendations.
+ *
+ * AGENT 2 - VENUE VALIDATOR:
+ *   Critically examines each venue to confirm it's real.
+ *   Checks for real reviews, ratings, and accurate addresses.
+ *   Can REJECT fictional or unverified venues.
+ *
+ * AGENT 3 - NARRATIVE CREATOR:
+ *   Only runs for validated venues.
+ *   Creates immersive descriptions for the final plan.
+ *
+ * + GOOGLE PLACES API for address verification and Maps URLs.
  *
  * ══════════════════════════════════════════════════════════════════════════════
  */
@@ -27,6 +29,31 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { gptRequest, parseGPTJSON } from '../_shared/gpt-client.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { searchVenue, VerifiedVenue } from '../_shared/google-places-client.ts';
+
+// Theme-specific optimization hints for Agent 1
+const THEME_OPTIMIZATION: Record<string, string> = {
+  "Rooftop": "Find venues with the HIGHEST elevation and BEST panoramic views. Prioritize rooftops on tall buildings with unobstructed skyline views. Look for places featured in 'best rooftop bars' lists.",
+  "Nightlife": "Find the MOST POPULAR clubs with the best DJ lineups and atmosphere. Look for venues with long queues, celebrity sightings, or featured in nightlife guides.",
+  "Date Night": "Find the MOST ROMANTIC venues with the best ambiance. Look for places with candlelit settings, intimate seating, and excellent reviews for couples.",
+  "Bar Hopping": "Find the MOST ICONIC bars in the best bar district. Look for craft cocktail bars with award-winning bartenders or historic establishments.",
+  "Live Music": "Find venues hosting the BEST live performances. Look for places with great acoustics, notable past performers, and dedicated music crowds.",
+  "Foodie": "Find restaurants with the HIGHEST ratings and most authentic cuisine. Look for chef-owned establishments, Michelin mentions, or local institution status.",
+  "Brunch": "Find the MOST INSTAGRAM-WORTHY brunch spots with the best food quality. Look for places with lines out the door on weekends.",
+  "Jazz": "Find the MOST LEGENDARY jazz venues with the best musicians. Look for historic clubs or places where famous artists have performed.",
+  "Sunset": "Find locations with the BEST UNOBSTRUCTED WEST-FACING views. Prioritize waterfront or elevated spots known for sunset watching.",
+  "Speakeasy": "Find the MOST AUTHENTIC hidden bars with real secret entrances. Look for places that require reservations or have password entry.",
+  "Cocktails": "Find bars with AWARD-WINNING mixologists and most creative menus. Look for World's 50 Best Bars mentions or local awards.",
+  "Comedy": "Find comedy clubs with the BEST lineups and most famous alumni. Look for places where top comedians have performed.",
+  "Wine": "Find wine bars with the BEST selections and most knowledgeable sommeliers. Look for places with rare vintages or notable wine programs.",
+  "Dancing": "Find clubs with the BEST sound systems and dance floors. Look for venues known for specific dance styles or legendary DJ sets.",
+  "Beach": "Find the BEST beachfront venues with the most stunning views. Look for places directly on the sand with great food and drinks.",
+  "Art": "Find galleries and venues in the MOST VIBRANT art districts. Look for places hosting notable exhibitions or featuring emerging artists.",
+  "Culture": "Find the MOST AUTHENTIC cultural experiences with deep local roots. Look for places that locals genuinely frequent.",
+  "Adventure": "Find the MOST UNIQUE and memorable experiences. Look for places featured in 'unusual things to do' lists.",
+  "Chill": "Find the COZIEST spots with the best relaxed atmosphere. Look for places with comfortable seating and loyal regular crowds.",
+  "Party": "Find the BIGGEST party venues with the best energy. Look for places known for celebrations and VIP experiences.",
+  "Low Budget": "Find the BEST VALUE spots that locals love. Look for happy hours, free entry venues, and affordable gems with great atmosphere."
+};
 
 // In-depth theme definitions for AI context
 const THEME_DEFINITIONS: Record<string, string> = {
@@ -58,11 +85,19 @@ interface Activity {
   venueName: string;
   address: string;
   coordinates: { latitude: number; longitude: number };
-  openingHours?: string;  // e.g., "18:00 - 02:00"
+  openingHours?: string;
   startTime: string;
   duration: number;
   description: string;
   order: number;
+  // Credibility signals from Agent 1
+  whyRecommended?: string;
+  estimatedRating?: number;
+  popularitySignals?: string[];
+  // Validation status from Agent 2
+  isValidated?: boolean;
+  validationNotes?: string;
+  rejectionReason?: string;
   // Google Places verified fields
   googlePlaceId?: string;
   googleMapsUrl?: string;
@@ -80,6 +115,15 @@ interface GroupPlan {
   difficulty: string;
   bestFor: string[];
   aiTags: string[];
+}
+
+interface ValidationResult {
+  venueName: string;
+  isValid: boolean;
+  confidence: 'high' | 'medium' | 'low';
+  reasoning: string;
+  correctedName?: string;
+  correctedAddress?: string;
 }
 
 serve(async (req: Request) => {
@@ -105,94 +149,167 @@ serve(async (req: Request) => {
       return errorResponse('City and theme are required', 400, 'MISSING_FIELDS');
     }
 
-    console.log(`\n${'='.repeat(70)}`);
-    console.log(`BOLT PIPELINE - ${theme.toUpperCase()} in ${city}, ${country || 'Unknown'}`);
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`BOLT PIPELINE - 3-AGENT SYSTEM`);
+    console.log(`Theme: ${theme.toUpperCase()} | City: ${city}, ${country || 'Unknown'}`);
     console.log(`User: ${userId}`);
-    console.log(`${'='.repeat(70)}\n`);
+    console.log(`${'═'.repeat(70)}\n`);
 
     const startTime = Date.now();
 
-    // Get theme definition (use provided or fallback to our definitions)
+    // Get theme definition and optimization hints
     const finalThemeDefinition = themeDefinition || THEME_DEFINITIONS[theme] || theme;
-
-    // Determine currency based on country
+    const optimizationHint = THEME_OPTIMIZATION[theme] || "Find the BEST and most POPULAR venues for this experience.";
     const currency = getCurrencyForCountry(country);
 
-    // ===== STEP 1: GENERATE PLAN =====
-    console.log(`[BOLT] Generating ${theme} plan for ${city}...`);
-    const plan = await generatePlanForTheme(city, country, theme, finalThemeDefinition, currency);
+    // ═══════════════════════════════════════════════════════════════════════
+    // AGENT 1: VENUE DISCOVERY - Find the BEST venues
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[AGENT 1] 🔍 VENUE DISCOVERY - Finding the best ${theme} spots...`);
+    const discoveredPlan = await agent1_discoverVenues(city, country, theme, finalThemeDefinition, optimizationHint, currency);
 
-    if (!plan) {
+    if (!discoveredPlan || discoveredPlan.activities.length === 0) {
+      console.log(`[AGENT 1] ❌ Failed to discover venues`);
       return jsonResponse({
         success: false,
-        error: 'Failed to generate plan. Please try again.',
+        error: `We couldn't find suitable ${theme} venues in ${city}. Please try a different vibe or city.`,
+        errorCode: 'NO_VENUES_DISCOVERED',
         retry: true
       });
     }
 
-    // ===== STEP 2: VALIDATE ADDRESSES WITH GOOGLE PLACES =====
-    console.log(`[BOLT] Validating venue addresses with Google Places...`);
-    const validatedPlan = await validateVenueAddresses(plan, city, country);
+    console.log(`[AGENT 1] ✅ Discovered ${discoveredPlan.activities.length} potential venues`);
+    discoveredPlan.activities.forEach((a, i) => {
+      console.log(`   ${i + 1}. ${a.venueName} - ${a.whyRecommended || 'No reason provided'}`);
+    });
 
-    // ===== STEP 3: ENHANCE DESCRIPTIONS =====
-    console.log(`[BOLT] Enhancing descriptions...`);
-    const enhancedPlan = await enhanceDescriptions(validatedPlan, city, theme);
+    // ═══════════════════════════════════════════════════════════════════════
+    // AGENT 2: VENUE VALIDATOR - Confirm venues are real
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[AGENT 2] 🔎 VENUE VALIDATOR - Confirming venues exist...`);
+    const validationResults = await agent2_validateVenues(discoveredPlan.activities, city, country);
 
-    // ===== STEP 4: STORE IN DATABASE =====
-    console.log(`[BOLT] Storing plan in database...`);
+    // Filter to only validated venues
+    const validatedActivities: Activity[] = [];
+    const rejectedVenues: string[] = [];
+
+    for (const activity of discoveredPlan.activities) {
+      const validation = validationResults.find(v =>
+        v.venueName.toLowerCase() === activity.venueName.toLowerCase() ||
+        v.correctedName?.toLowerCase() === activity.venueName.toLowerCase()
+      );
+
+      if (validation && validation.isValid) {
+        validatedActivities.push({
+          ...activity,
+          venueName: validation.correctedName || activity.venueName,
+          address: validation.correctedAddress || activity.address,
+          isValidated: true,
+          validationNotes: validation.reasoning
+        });
+        console.log(`   ✅ VALID: ${activity.venueName} (${validation.confidence} confidence)`);
+      } else {
+        rejectedVenues.push(activity.venueName);
+        console.log(`   ❌ REJECTED: ${activity.venueName} - ${validation?.reasoning || 'Could not verify'}`);
+      }
+    }
+
+    // Check if we have any valid venues
+    if (validatedActivities.length === 0) {
+      console.log(`\n[AGENT 2] ❌ All venues rejected - no valid places found`);
+      return jsonResponse({
+        success: false,
+        error: `We couldn't verify any ${theme} venues in ${city}. The places we found may not exist or have moved. Please try again.`,
+        errorCode: 'NO_VALID_VENUES',
+        rejectedVenues: rejectedVenues,
+        retry: true
+      });
+    }
+
+    console.log(`\n[AGENT 2] ✅ ${validatedActivities.length}/${discoveredPlan.activities.length} venues validated`);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // GOOGLE PLACES API - Verify addresses and get Maps URLs
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[GOOGLE PLACES] 📍 Verifying addresses...`);
+    const addressVerifiedActivities = await verifyWithGooglePlaces(validatedActivities, city, country);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AGENT 3: NARRATIVE CREATOR - Create immersive descriptions
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[AGENT 3] ✍️ NARRATIVE CREATOR - Crafting descriptions...`);
+    const finalPlan = await agent3_createNarrative(
+      { ...discoveredPlan, activities: addressVerifiedActivities },
+      city,
+      theme,
+      validatedActivities.length < 3
+    );
+
+    // Renumber activities if some were rejected
+    finalPlan.activities = finalPlan.activities.map((a, index) => ({
+      ...a,
+      order: index + 1
+    }));
+
+    // Update total duration based on remaining activities
+    finalPlan.totalDuration = finalPlan.activities.reduce((sum, a) => sum + a.duration, 0) +
+      (finalPlan.activities.length - 1) * 15; // 15 min travel between venues
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // STORE IN DATABASE
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[DATABASE] 💾 Storing plan...`);
     const supabase = createServiceClient();
 
-    // Generate unique ID
     const timestamp = Date.now();
     const flowId = `bolt-${city.toLowerCase().replace(/\s+/g, '-')}-${theme.toLowerCase().replace(/\s+/g, '-')}-${timestamp}`;
 
-    // Store the GroupFlow
     const flowData = {
       id: flowId,
       flowId: flowId,
       cityId: city.toLowerCase().replace(/\s+/g, '-'),
       rank: 1,
-      title: enhancedPlan.title,
-      description: enhancedPlan.description,
-      totalHours: Math.ceil(enhancedPlan.totalDuration / 60),
-      startTime: enhancedPlan.activities[0]?.startTime,
-      endTime: enhancedPlan.activities[enhancedPlan.activities.length - 1]?.startTime,
-      totalEstimate: Math.round((enhancedPlan.estimatedCost.min + enhancedPlan.estimatedCost.max) / 2),
-      currency: enhancedPlan.estimatedCost.currency,
+      title: finalPlan.title,
+      description: finalPlan.description,
+      totalHours: Math.ceil(finalPlan.totalDuration / 60),
+      startTime: finalPlan.activities[0]?.startTime,
+      endTime: finalPlan.activities[finalPlan.activities.length - 1]?.startTime,
+      totalEstimate: Math.round((finalPlan.estimatedCost.min + finalPlan.estimatedCost.max) / 2),
+      currency: finalPlan.estimatedCost.currency,
       isWeekend: true,
       proOnly: false,
       aiGenerated: true,
       isTemporary: false,
       theme: theme.toLowerCase(),
-      difficulty: enhancedPlan.difficulty,
+      difficulty: finalPlan.difficulty,
       planType: theme.toLowerCase().replace(/\s+/g, '_'),
-      costMin: enhancedPlan.estimatedCost.min,
-      costMax: enhancedPlan.estimatedCost.max,
-      tags: enhancedPlan.aiTags,
+      costMin: finalPlan.estimatedCost.min,
+      costMax: finalPlan.estimatedCost.max,
+      tags: finalPlan.aiTags,
       generatedBy: userId,
       generatedCity: city,
       generatedCountry: country || '',
+      venuesValidated: validatedActivities.length,
+      venuesRejected: rejectedVenues.length,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    const { data: storedFlow, error: flowError } = await supabase
+    const { error: flowError } = await supabase
       .from('GroupFlow')
       .insert(flowData)
       .select()
       .single();
 
     if (flowError) {
-      console.error('[BOLT] Error storing GroupFlow:', flowError);
-      // Don't fail - return the plan anyway
+      console.error('[DATABASE] Error storing GroupFlow:', flowError);
     }
 
-    // Store GroupFlowSteps
-    for (let i = 0; i < enhancedPlan.activities.length; i++) {
-      const activity = enhancedPlan.activities[i];
+    // Store individual plans and steps
+    for (let i = 0; i < finalPlan.activities.length; i++) {
+      const activity = finalPlan.activities[i];
       const planId = `${flowId}-plan-${i}`;
 
-      // Store Plan record first
       await supabase.from('Plan').insert({
         id: planId,
         planId: planId,
@@ -218,7 +335,7 @@ serve(async (req: Request) => {
         freeEntry: theme === 'Low Budget',
         currency: currency,
         rank: i + 1,
-        source: 'bolt-pipeline',
+        source: 'bolt-pipeline-v2',
         aiGenerated: true,
         isIndividual: false,
         isGroup: true,
@@ -226,7 +343,6 @@ serve(async (req: Request) => {
         updatedAt: new Date().toISOString(),
       });
 
-      // Store GroupFlowStep
       await supabase.from('GroupFlowStep').insert({
         id: `${flowId}-step-${activity.order}`,
         flowId: flowId,
@@ -240,20 +356,21 @@ serve(async (req: Request) => {
 
     const totalDuration = Date.now() - startTime;
 
-    console.log(`\n${'='.repeat(70)}`);
+    console.log(`\n${'═'.repeat(70)}`);
     console.log(`BOLT PIPELINE COMPLETE`);
+    console.log(`Venues: ${finalPlan.activities.length} validated | ${rejectedVenues.length} rejected`);
     console.log(`Total time: ${Math.round(totalDuration / 1000)}s`);
-    console.log(`${'='.repeat(70)}\n`);
+    console.log(`${'═'.repeat(70)}\n`);
 
-    // Return the group flow in the format the iOS app expects
+    // Return response
     return jsonResponse({
       success: true,
       data: {
         groupFlowId: flowId,
         cityId: flowData.cityId,
-        title: enhancedPlan.title,
-        description: enhancedPlan.description,
-        activities: enhancedPlan.activities.map(a => ({
+        title: finalPlan.title,
+        description: finalPlan.description,
+        activities: finalPlan.activities.map(a => ({
           activityId: `${flowId}-activity-${a.order}`,
           venueName: a.venueName,
           location: {
@@ -273,15 +390,17 @@ serve(async (req: Request) => {
           description: a.description,
           order: a.order
         })),
-        totalDuration: enhancedPlan.totalDuration,
-        estimatedCost: enhancedPlan.estimatedCost,
-        difficulty: enhancedPlan.difficulty,
-        bestFor: enhancedPlan.bestFor,
-        aiTags: enhancedPlan.aiTags,
+        totalDuration: finalPlan.totalDuration,
+        estimatedCost: finalPlan.estimatedCost,
+        difficulty: finalPlan.difficulty,
+        bestFor: finalPlan.bestFor,
+        aiTags: finalPlan.aiTags,
         isLocked: false,
         isWeekend: true,
         weekday: 'Saturday',
-        planType: theme.toLowerCase().replace(/\s+/g, '_')
+        planType: theme.toLowerCase().replace(/\s+/g, '_'),
+        venueCount: finalPlan.activities.length,
+        rejectedVenues: rejectedVenues.length > 0 ? rejectedVenues : undefined
       }
     });
 
@@ -295,83 +414,83 @@ serve(async (req: Request) => {
   }
 });
 
-// ===== GENERATE PLAN FOR THEME =====
-async function generatePlanForTheme(
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGENT 1: VENUE DISCOVERY
+// Finds the BEST, most credible venues with highest ratings and popularity
+// ═══════════════════════════════════════════════════════════════════════════════
+async function agent1_discoverVenues(
   city: string,
   country: string,
   theme: string,
   themeDefinition: string,
+  optimizationHint: string,
   currency: string
 ): Promise<GroupPlan | null> {
   const isLowBudget = theme === 'Low Budget';
 
-  const systemPrompt = `You are an expert local guide and nightlife curator for ${city}${country ? `, ${country}` : ''}.
+  const systemPrompt = `You are an expert local guide for ${city}${country ? `, ${country}` : ''} with deep knowledge of the BEST venues.
 
-Your task is to create a curated group plan specifically for the "${theme}" experience.
+YOUR MISSION: Find the TOP 3 most CREDIBLE, REAL, and HIGHLY-RATED venues for a "${theme}" experience.
 
-THEME DEFINITION:
+THEME CONTEXT:
 ${themeDefinition}
 
-IMPORTANT RULES:
-1. All venues MUST be REAL places that exist in ${city}
-2. Provide REAL street addresses (research actual addresses)
-3. Coordinates must be accurate for ${city}
-4. Consider local culture and customs
-5. Times should be appropriate for the activity type
-${isLowBudget ? '6. CRITICAL: Total cost must be under $50 per person. Focus on free entry venues, happy hours, and affordable local spots.' : ''}
+OPTIMIZATION GOAL:
+${optimizationHint}
 
-CRITICAL - OPENING HOURS VALIDATION:
-- You MUST verify and consider the ACTUAL opening hours of each venue
-- NEVER suggest a venue at a time when it would be CLOSED
-- Research the real operating hours before including a venue
-- Nightclubs typically open 22:00-04:00, NOT during daytime
-- Restaurants typically open 11:00-23:00
-- Bars typically open 17:00-02:00
-- Brunch spots typically open 09:00-15:00
-- Jazz clubs typically open 19:00-01:00
-- Rooftop bars may close earlier (around midnight)
-- Include the venue's actual opening hours in your response
-- If unsure about a venue's hours, choose a conservative time when it's DEFINITELY open
+CRITICAL REQUIREMENTS - CREDIBILITY:
+1. ONLY recommend venues that ACTUALLY EXIST and are CURRENTLY OPERATING
+2. Choose places that appear in Google Maps, TripAdvisor, Yelp, or local guides
+3. Prioritize venues with HIGH RATINGS (4+ stars) and MANY REVIEWS
+4. Include venues that locals genuinely recommend
+5. Avoid generic or fictional-sounding names
+6. Each venue must have a REAL street address you're confident about
 
-TIMING GUIDELINES:
-- Account for travel time between venues (10-20 min)
-- Each venue duration should be realistic
-- Total duration should be 3-6 hours
-- Ensure each activity starts AFTER the venue opens and ends BEFORE it closes
+FOR EACH VENUE, EXPLAIN:
+- WHY you're recommending it (ratings, popularity, unique features)
+- What makes it the BEST for this theme
+- Popularity signals (famous for, featured in, known for)
 
-LOCATION PROXIMITY - CRITICAL:
-- All venues MUST be within WALKING DISTANCE of each other (max 15 minutes walk between consecutive venues)
-- Choose venues in the same neighborhood or district
-- Users should be able to walk from one venue to the next easily
-- If walking distance venues are not available for the theme, ensure venues are within a 30-minute drive by car maximum
-- NEVER select venues that are far apart across the city
-- Consider the natural flow of moving between venues on foot
-- Prioritize areas with multiple suitable venues close together (e.g., entertainment districts, downtown areas, nightlife zones)
+LOCATION REQUIREMENTS:
+- All 3 venues MUST be within 15 MINUTES WALKING DISTANCE of each other
+- Choose venues in the SAME neighborhood or entertainment district
+- If walking distance isn't possible, max 30 minutes by car
+- Prioritize walkable areas with multiple venue options
+
+OPENING HOURS:
+- Verify venues are OPEN at the suggested times
+- Nightclubs: typically 22:00-04:00
+- Restaurants: typically 11:00-23:00
+- Bars: typically 17:00-02:00
+- Brunch: typically 09:00-15:00
+
+${isLowBudget ? 'BUDGET: Total must be under $50/person. Focus on happy hours, free entry, affordable gems.' : ''}
 
 RESPOND WITH VALID JSON ONLY.`;
 
-  const userPrompt = `Create a ${theme} group plan for ${city}${country ? `, ${country}` : ''}.
+  const userPrompt = `Find the TOP 3 ${theme} venues in ${city}${country ? `, ${country}` : ''}.
 
-IMPORTANT REQUIREMENTS:
-1. Verify opening hours for each venue and only schedule activities when venues are OPEN.
-2. ALL VENUES MUST BE WITHIN 15 MINUTES WALKING DISTANCE of each other. Choose venues in the same neighborhood/district. If no walkable options exist, ensure they are within 30 min drive maximum.
+REMEMBER: Only recommend REAL places with REAL reviews and ratings. I will verify these exist.
 
 Return JSON:
 {
   "plan": {
-    "title": "Unique catchy title specific to ${city}",
-    "description": "2-3 sentence overview",
+    "title": "Catchy title for this ${theme} experience in ${city}",
+    "description": "2-3 sentences about this curated experience",
     "planType": "${theme.toLowerCase().replace(/\s+/g, '_')}",
     "activities": [
       {
-        "venueName": "Real venue name",
-        "address": "Full street address, ${city}",
+        "venueName": "Exact real venue name (as it appears on Google Maps)",
+        "address": "Full street address",
         "coordinates": { "latitude": XX.XXXX, "longitude": XX.XXXX },
-        "openingHours": "HH:MM - HH:MM (e.g., 18:00 - 02:00)",
-        "startTime": "HH:MM (must be AFTER venue opens)",
+        "openingHours": "HH:MM - HH:MM",
+        "startTime": "HH:MM",
         "duration": 90,
-        "description": "What you'll do here",
-        "order": 1
+        "description": "Brief description of what to expect",
+        "order": 1,
+        "whyRecommended": "Why this is one of the BEST (ratings, reviews, popularity)",
+        "estimatedRating": 4.5,
+        "popularitySignals": ["Featured in...", "Known for...", "Award-winning..."]
       }
     ],
     "totalDuration": 300,
@@ -382,16 +501,14 @@ Return JSON:
     },
     "difficulty": "moderate",
     "bestFor": ["friends", "groups"],
-    "aiTags": ["${theme}", "curated", "local"]
+    "aiTags": ["${theme}", "curated", "top-rated"]
   }
-}
-
-Create exactly 3 activities. Verify each venue's opening hours and ensure startTime falls within those hours!`;
+}`;
 
   try {
     const response = await gptRequest([{ role: 'user', content: userPrompt }], {
       systemPrompt,
-      temperature: 0.8,
+      temperature: 0.7,
       maxTokens: 4096,
       jsonMode: true,
     });
@@ -399,31 +516,110 @@ Create exactly 3 activities. Verify each venue's opening hours and ensure startT
     const result = parseGPTJSON<{ plan: GroupPlan }>(response);
     return result.plan || null;
   } catch (error) {
-    console.error('[BOLT] Generation error:', error);
+    console.error('[AGENT 1] Discovery error:', error);
     return null;
   }
 }
 
-// ===== VALIDATE VENUE ADDRESSES WITH GOOGLE PLACES =====
-async function validateVenueAddresses(
-  plan: GroupPlan,
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGENT 2: VENUE VALIDATOR
+// Critically examines each venue to confirm it's real and has genuine reviews
+// ═══════════════════════════════════════════════════════════════════════════════
+async function agent2_validateVenues(
+  activities: Activity[],
   city: string,
   country?: string
-): Promise<GroupPlan> {
-  const validatedActivities: Activity[] = [];
+): Promise<ValidationResult[]> {
+  const venueList = activities.map((a, i) =>
+    `${i + 1}. "${a.venueName}" at "${a.address}"
+    - Claimed rating: ${a.estimatedRating || 'unknown'}
+    - Why recommended: ${a.whyRecommended || 'not specified'}
+    - Popularity signals: ${a.popularitySignals?.join(', ') || 'none provided'}`
+  ).join('\n\n');
 
-  for (const activity of plan.activities) {
+  const systemPrompt = `You are a CRITICAL venue validator for ${city}${country ? `, ${country}` : ''}.
+
+YOUR JOB: Determine if each venue is REAL and CREDIBLE.
+
+VALIDATION CRITERIA:
+1. Does this venue ACTUALLY EXIST in ${city}? (Based on your knowledge)
+2. Is the name accurate (not misspelled or fictional)?
+3. Does the address seem correct for this venue?
+4. Is this a place that would have real reviews on Google/TripAdvisor/Yelp?
+5. Does it match the claimed rating and popularity?
+
+REJECT a venue if:
+- The name sounds made up or generic
+- You cannot confirm it exists in ${city}
+- The address seems wrong or impossible
+- It appears to be permanently closed
+- The claimed ratings seem fabricated
+
+APPROVE a venue if:
+- You recognize it as a real, operating venue
+- The name and address seem accurate
+- It's a credible recommendation
+
+BE STRICT: It's better to reject a questionable venue than recommend a fake one.
+
+RESPOND WITH VALID JSON ONLY.`;
+
+  const userPrompt = `Validate these ${activities.length} venues in ${city}:
+
+${venueList}
+
+For EACH venue, determine if it's REAL and provide your verdict.
+
+Return JSON:
+{
+  "validations": [
+    {
+      "venueName": "Original venue name",
+      "isValid": true or false,
+      "confidence": "high" | "medium" | "low",
+      "reasoning": "Why you approved or rejected this venue",
+      "correctedName": "Corrected spelling if needed (optional)",
+      "correctedAddress": "Corrected address if you know the real one (optional)"
+    }
+  ]
+}`;
+
+  try {
+    const response = await gptRequest([{ role: 'user', content: userPrompt }], {
+      systemPrompt,
+      temperature: 0.3, // Lower temperature for more consistent validation
+      maxTokens: 2048,
+      jsonMode: true,
+    });
+
+    const result = parseGPTJSON<{ validations: ValidationResult[] }>(response);
+    return result.validations || [];
+  } catch (error) {
+    console.error('[AGENT 2] Validation error:', error);
+    // On error, return empty array which will cause all venues to be treated as unvalidated
+    return [];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GOOGLE PLACES VERIFICATION
+// Verify addresses and get accurate Maps URLs
+// ═══════════════════════════════════════════════════════════════════════════════
+async function verifyWithGooglePlaces(
+  activities: Activity[],
+  city: string,
+  country?: string
+): Promise<Activity[]> {
+  const verifiedActivities: Activity[] = [];
+
+  for (const activity of activities) {
     try {
-      console.log(`[BOLT] Validating: ${activity.venueName}`);
-
-      // Search for the venue using Google Places API
       const verified = await searchVenue(activity.venueName, city, country);
 
-      if (verified && verified.isVerified) {
-        // Update activity with verified data
-        validatedActivities.push({
+      if (verified && verified.isVerified && verified.confidence !== 'not_found') {
+        verifiedActivities.push({
           ...activity,
-          venueName: verified.venueName, // Use Google's name (may be more accurate)
+          venueName: verified.venueName,
           address: verified.address,
           coordinates: {
             latitude: verified.coordinates.latitude,
@@ -434,90 +630,121 @@ async function validateVenueAddresses(
           isAddressVerified: true,
           addressConfidence: verified.confidence
         });
-
-        console.log(`[BOLT] ✓ Verified: ${verified.venueName} (${verified.confidence} confidence)`);
+        console.log(`   ✅ ${activity.venueName} - Address verified (${verified.confidence})`);
       } else {
-        // Keep original data but add Google Maps search URL
-        const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
-
-        validatedActivities.push({
+        // Keep the AI's address but add a search URL
+        const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
+        verifiedActivities.push({
           ...activity,
-          googleMapsUrl: fallbackUrl,
+          googleMapsUrl: searchUrl,
           isAddressVerified: false,
-          addressConfidence: 'not_found'
+          addressConfidence: 'low'
         });
-
-        console.log(`[BOLT] ✗ Not verified: ${activity.venueName} (using fallback search URL)`);
+        console.log(`   ⚠️ ${activity.venueName} - Using search URL (not found in Places API)`);
       }
+
+      await new Promise(resolve => setTimeout(resolve, 100));
     } catch (error) {
-      console.error(`[BOLT] Error validating ${activity.venueName}:`, error);
-
-      // Keep original data with fallback URL
-      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
-
-      validatedActivities.push({
+      console.error(`   ❌ Error verifying ${activity.venueName}:`, error);
+      const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
+      verifiedActivities.push({
         ...activity,
-        googleMapsUrl: fallbackUrl,
+        googleMapsUrl: searchUrl,
         isAddressVerified: false,
         addressConfidence: 'not_found'
       });
     }
-
-    // Small delay between API calls to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
-  return {
-    ...plan,
-    activities: validatedActivities
-  };
+  return verifiedActivities;
 }
 
-// ===== ENHANCE DESCRIPTIONS =====
-async function enhanceDescriptions(plan: GroupPlan, city: string, theme: string): Promise<GroupPlan> {
-  const systemPrompt = `You are a travel writer creating immersive descriptions for ${city}.
-Write engaging, second-person descriptions that make readers excited to visit.
-Each description should be 3-4 sentences, capturing atmosphere and what to expect.
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGENT 3: NARRATIVE CREATOR
+// Creates immersive descriptions for the validated venues
+// ═══════════════════════════════════════════════════════════════════════════════
+async function agent3_createNarrative(
+  plan: GroupPlan,
+  city: string,
+  theme: string,
+  hasFewerVenues: boolean
+): Promise<GroupPlan> {
+  const venueCount = plan.activities.length;
+
+  const systemPrompt = `You are an expert travel writer creating immersive, exciting descriptions for a ${theme} experience in ${city}.
+
+${hasFewerVenues ? `NOTE: This plan has ${venueCount} venue(s) instead of 3. Adjust the narrative to make it feel complete and exciting despite having fewer stops.` : ''}
+
+YOUR STYLE:
+- Write in second person ("You'll discover...", "As you enter...")
+- Be vivid and sensory (sights, sounds, atmosphere)
+- Make readers EXCITED to visit
+- Each description: 3-4 sentences
+- Capture what makes each venue SPECIAL
+
+ALSO CREATE:
+- An exciting title that captures the essence of this experience
+- A compelling 2-3 sentence overview description
+
 RESPOND WITH VALID JSON ONLY.`;
 
-  const userPrompt = `Enhance these venue descriptions for a ${theme} experience in ${city}:
+  const userPrompt = `Create an immersive narrative for this ${theme} experience in ${city}:
 
-${plan.activities.map(a => `- ${a.venueName}: "${a.description}"`).join('\n')}
+Venues:
+${plan.activities.map((a, i) => `${i + 1}. ${a.venueName} - ${a.description}`).join('\n')}
 
 Return JSON:
 {
-  "descriptions": [
-    { "venueName": "Name", "description": "Enhanced 3-4 sentence description" }
+  "title": "Exciting, unique title for this ${city} ${theme} experience",
+  "description": "Compelling 2-3 sentence overview that makes people want to go",
+  "venueDescriptions": [
+    {
+      "venueName": "Venue name",
+      "description": "Immersive 3-4 sentence description"
+    }
   ]
 }`;
 
   try {
     const response = await gptRequest([{ role: 'user', content: userPrompt }], {
       systemPrompt,
-      temperature: 0.7,
+      temperature: 0.8,
       maxTokens: 2048,
       jsonMode: true,
     });
 
-    const result = parseGPTJSON<{ descriptions: { venueName: string; description: string }[] }>(response);
+    const result = parseGPTJSON<{
+      title: string;
+      description: string;
+      venueDescriptions: { venueName: string; description: string }[];
+    }>(response);
 
-    // Merge enhanced descriptions
+    // Merge enhanced content
     const enhancedActivities = plan.activities.map(activity => {
-      const enhanced = result.descriptions.find(d => d.venueName === activity.venueName);
+      const enhanced = result.venueDescriptions.find(d =>
+        d.venueName.toLowerCase() === activity.venueName.toLowerCase()
+      );
       return {
         ...activity,
         description: enhanced?.description || activity.description
       };
     });
 
-    return { ...plan, activities: enhancedActivities };
+    return {
+      ...plan,
+      title: result.title || plan.title,
+      description: result.description || plan.description,
+      activities: enhancedActivities
+    };
   } catch (error) {
-    console.error('[BOLT] Enhancement error:', error);
+    console.error('[AGENT 3] Narrative error:', error);
     return plan;
   }
 }
 
-// ===== HELPERS =====
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function getCurrencyForCountry(country: string): string {
   const currencyMap: Record<string, string> = {
@@ -539,7 +766,6 @@ function getCurrencyForCountry(country: string): string {
     'Switzerland': 'CHF',
   };
 
-  // Default to EUR for European countries, USD otherwise
   if (!country) return 'USD';
 
   const europeanCountries = [
