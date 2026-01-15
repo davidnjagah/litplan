@@ -184,12 +184,18 @@ async function getPlaceDetails(
 
 /**
  * Find the best matching place from search results
+ * MORE LENIENT: Trust Google's relevance ranking - if it found results for
+ * "venue name + city", the first result is usually correct.
  */
 function findBestMatch(
   results: PlaceResult[],
   searchName: string,
   city: string
 ): PlaceResult | null {
+  if (!results || results.length === 0) {
+    return null;
+  }
+
   const normalizedSearch = normalizeString(searchName);
   const normalizedCity = normalizeString(city);
 
@@ -203,47 +209,79 @@ function findBestMatch(
     if (normalizedName === normalizedSearch) {
       score += 100;
     }
-    // Name contains search term
+    // Name contains search term or vice versa
     else if (normalizedName.includes(normalizedSearch) || normalizedSearch.includes(normalizedName)) {
-      score += 70;
+      score += 80;
     }
-    // Partial word match
+    // Partial word match - more lenient
     else {
-      const searchWords = normalizedSearch.split(' ');
-      const nameWords = normalizedName.split(' ');
-      const matchingWords = searchWords.filter(w => nameWords.some(nw => nw.includes(w) || w.includes(nw)));
-      score += (matchingWords.length / searchWords.length) * 50;
+      const searchWords = normalizedSearch.split(' ').filter(w => w.length > 2);
+      const nameWords = normalizedName.split(' ').filter(w => w.length > 2);
+
+      // Check if ANY significant word matches
+      const hasAnyMatch = searchWords.some(sw =>
+        nameWords.some(nw => nw.includes(sw) || sw.includes(nw))
+      );
+
+      if (hasAnyMatch) {
+        score += 60;
+      }
+
+      // Calculate word overlap for additional scoring
+      const matchingWords = searchWords.filter(w =>
+        nameWords.some(nw => nw.includes(w) || w.includes(nw))
+      );
+      score += (matchingWords.length / Math.max(searchWords.length, 1)) * 30;
     }
 
-    // City appears in address
+    // City appears in address - big bonus
     if (normalizedAddress.includes(normalizedCity)) {
-      score += 30;
+      score += 40;
     }
 
-    // Prefer places with ratings (indicates established venue)
+    // Has rating - indicates real, established venue
     if (place.rating && place.rating > 0) {
+      score += 15;
+    }
+
+    // High rating bonus
+    if (place.rating && place.rating >= 4.0) {
       score += 10;
     }
 
     // Prefer nightlife-related types
-    const nightlifeTypes = ['bar', 'night_club', 'restaurant', 'cafe', 'food', 'establishment'];
+    const nightlifeTypes = ['bar', 'night_club', 'restaurant', 'cafe', 'food', 'establishment', 'point_of_interest', 'lodging'];
     if (place.types?.some(t => nightlifeTypes.includes(t))) {
-      score += 10;
+      score += 15;
     }
 
     return { place, score };
   });
 
-  // Sort by score and return best match (if above threshold)
+  // Sort by score
   scored.sort((a, b) => b.score - a.score);
 
-  if (scored[0] && scored[0].score >= 30) {
-    return scored[0].place;
-  }
+  console.log(`[GooglePlaces] Top matches for "${searchName}":`);
+  scored.slice(0, 3).forEach((s, i) => {
+    console.log(`   ${i + 1}. "${s.place.name}" (score: ${s.score})`);
+  });
 
-  // Fallback to first result if it contains the city
-  if (results[0] && normalizeString(results[0].formatted_address).includes(normalizedCity)) {
-    return results[0];
+  // LENIENT: Accept if score >= 20 OR if it's the first result and has a rating
+  // Google's search already does relevance ranking, so first result is usually right
+  if (scored[0]) {
+    if (scored[0].score >= 20) {
+      return scored[0].place;
+    }
+    // Trust Google's first result if it has a rating (real business)
+    if (scored[0].place.rating && scored[0].place.rating > 0) {
+      console.log(`[GooglePlaces] Accepting first result with rating: ${scored[0].place.name}`);
+      return scored[0].place;
+    }
+    // Accept first result if address contains the city
+    if (normalizeString(scored[0].place.formatted_address).includes(normalizedCity)) {
+      console.log(`[GooglePlaces] Accepting first result in ${city}: ${scored[0].place.name}`);
+      return scored[0].place;
+    }
   }
 
   return null;
