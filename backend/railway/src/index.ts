@@ -523,8 +523,8 @@ app.post('/api/pipeline/bolt', async (req: Request, res: Response) => {
     console.log(`[bolt] Starting bolt pipeline for ${city}, ${country} - Theme: ${theme}`);
     console.log(`[bolt] User: ${userId}`);
 
-    // Call the bolt-pipeline Supabase Edge Function
-    const boltResult = await callSupabaseFunction('bolt-pipeline', {
+    // Call the bolt-pipeline-strict Supabase Edge Function (with strict Google Places validation)
+    const boltResult = await callSupabaseFunction('bolt-pipeline-strict', {
       city,
       country: country || '',
       theme,
