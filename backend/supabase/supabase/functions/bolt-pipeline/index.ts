@@ -117,14 +117,7 @@ interface GroupPlan {
   aiTags: string[];
 }
 
-interface ValidationResult {
-  venueName: string;
-  isValid: boolean;
-  confidence: 'high' | 'medium' | 'low';
-  reasoning: string;
-  correctedName?: string;
-  correctedAddress?: string;
-}
+// ValidationResult interface removed - validation now uses Google Places API directly
 
 serve(async (req: Request) => {
   const corsResponse = handleCors(req);
@@ -184,64 +177,102 @@ serve(async (req: Request) => {
     });
 
     // ═══════════════════════════════════════════════════════════════════════
-    // AGENT 2: VENUE VALIDATOR - Confirm venues are real
+    // AGENT 2: VENUE VALIDATOR (Google Places Powered)
+    // Uses Google Places API as the SOURCE OF TRUTH for addresses
+    // If venue found on Google → use Google's address
+    // If venue NOT found → REJECT it
     // ═══════════════════════════════════════════════════════════════════════
-    console.log(`\n[AGENT 2] 🔎 VENUE VALIDATOR - Confirming venues exist...`);
-    const validationResults = await agent2_validateVenues(discoveredPlan.activities, city, country);
+    console.log(`\n[AGENT 2] 🔎 VENUE VALIDATOR - Verifying venues with Google Places API...`);
 
-    // Filter to only validated venues
     const validatedActivities: Activity[] = [];
-    const rejectedVenues: string[] = [];
+    const rejectedVenues: { name: string; reason: string }[] = [];
 
     for (const activity of discoveredPlan.activities) {
-      const validation = validationResults.find(v =>
-        v.venueName.toLowerCase() === activity.venueName.toLowerCase() ||
-        v.correctedName?.toLowerCase() === activity.venueName.toLowerCase()
-      );
+      console.log(`\n   Checking: ${activity.venueName}`);
+      console.log(`   AI provided address: ${activity.address}`);
 
-      if (validation && validation.isValid) {
-        validatedActivities.push({
-          ...activity,
-          venueName: validation.correctedName || activity.venueName,
-          address: validation.correctedAddress || activity.address,
-          isValidated: true,
-          validationNotes: validation.reasoning
+      try {
+        // Search for venue on Google Places - this is the source of truth
+        const googleResult = await searchVenue(activity.venueName, city, country);
+
+        if (googleResult && googleResult.isVerified && googleResult.confidence !== 'not_found') {
+          // Venue found on Google Places - use Google's verified data
+          const addressMatches = activity.address.toLowerCase().includes(
+            googleResult.address.split(',')[0].toLowerCase()
+          );
+
+          if (!addressMatches) {
+            console.log(`   ⚠️ Address mismatch detected!`);
+            console.log(`   AI address: ${activity.address}`);
+            console.log(`   Google address: ${googleResult.address}`);
+            console.log(`   → Using Google's verified address`);
+          }
+
+          validatedActivities.push({
+            ...activity,
+            venueName: googleResult.venueName, // Use Google's official name
+            address: googleResult.address,      // Use Google's verified address
+            coordinates: {
+              latitude: googleResult.coordinates.latitude,
+              longitude: googleResult.coordinates.longitude
+            },
+            googlePlaceId: googleResult.googlePlaceId,
+            googleMapsUrl: googleResult.googleMapsUrl,
+            isAddressVerified: true,
+            addressConfidence: googleResult.confidence,
+            isValidated: true,
+            validationNotes: `Verified on Google Places (${googleResult.confidence} confidence)${googleResult.rating ? `, Rating: ${googleResult.rating}` : ''}`
+          });
+
+          console.log(`   ✅ VERIFIED: ${googleResult.venueName}`);
+          console.log(`   📍 Address: ${googleResult.address}`);
+          console.log(`   ⭐ Confidence: ${googleResult.confidence}`);
+
+        } else {
+          // Venue NOT found on Google Places - REJECT it
+          rejectedVenues.push({
+            name: activity.venueName,
+            reason: 'Not found on Google Places - venue may not exist or name is incorrect'
+          });
+          console.log(`   ❌ REJECTED: ${activity.venueName}`);
+          console.log(`   Reason: Not found on Google Places`);
+        }
+
+        // Small delay between API calls
+        await new Promise(resolve => setTimeout(resolve, 150));
+
+      } catch (error) {
+        console.error(`   ❌ Error validating ${activity.venueName}:`, error);
+        rejectedVenues.push({
+          name: activity.venueName,
+          reason: 'Google Places API error'
         });
-        console.log(`   ✅ VALID: ${activity.venueName} (${validation.confidence} confidence)`);
-      } else {
-        rejectedVenues.push(activity.venueName);
-        console.log(`   ❌ REJECTED: ${activity.venueName} - ${validation?.reasoning || 'Could not verify'}`);
       }
     }
 
     // Check if we have enough valid venues (minimum 2 required)
     if (validatedActivities.length < 2) {
-      console.log(`\n[AGENT 2] ❌ Not enough venues validated (${validatedActivities.length}/2 minimum)`);
+      console.log(`\n[AGENT 2] ❌ Not enough venues verified (${validatedActivities.length}/2 minimum)`);
       return jsonResponse({
         success: false,
-        error: `We couldn't verify enough ${theme} venues in ${city}. Only ${validatedActivities.length} venue(s) passed validation. Please try again.`,
+        error: `We couldn't verify enough ${theme} venues in ${city}. Only ${validatedActivities.length} out of ${discoveredPlan.activities.length} venues were found on Google Maps. Please try again.`,
         errorCode: 'INSUFFICIENT_VENUES',
-        rejectedVenues: rejectedVenues,
+        rejectedVenues: rejectedVenues.map(v => v.name),
+        rejectionReasons: rejectedVenues,
         validatedCount: validatedActivities.length,
         minimumRequired: 2,
         retry: true
       });
     }
 
-    console.log(`\n[AGENT 2] ✅ ${validatedActivities.length}/${discoveredPlan.activities.length} venues validated (minimum 2 required)`);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // GOOGLE PLACES API - Verify addresses and get Maps URLs
-    // ═══════════════════════════════════════════════════════════════════════
-    console.log(`\n[GOOGLE PLACES] 📍 Verifying addresses...`);
-    const addressVerifiedActivities = await verifyWithGooglePlaces(validatedActivities, city, country);
+    console.log(`\n[AGENT 2] ✅ ${validatedActivities.length}/${discoveredPlan.activities.length} venues verified on Google Places`);
 
     // ═══════════════════════════════════════════════════════════════════════
     // AGENT 3: NARRATIVE CREATOR - Create immersive descriptions
     // ═══════════════════════════════════════════════════════════════════════
     console.log(`\n[AGENT 3] ✍️ NARRATIVE CREATOR - Crafting descriptions...`);
     const finalPlan = await agent3_createNarrative(
-      { ...discoveredPlan, activities: addressVerifiedActivities },
+      { ...discoveredPlan, activities: validatedActivities },
       city,
       theme,
       validatedActivities.length < 3
@@ -293,6 +324,7 @@ serve(async (req: Request) => {
       generatedCountry: country || '',
       venuesValidated: validatedActivities.length,
       venuesRejected: rejectedVenues.length,
+      rejectedVenueNames: rejectedVenues.map(v => v.name).join(', ') || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -402,7 +434,7 @@ serve(async (req: Request) => {
         weekday: 'Saturday',
         planType: theme.toLowerCase().replace(/\s+/g, '_'),
         venueCount: finalPlan.activities.length,
-        rejectedVenues: rejectedVenues.length > 0 ? rejectedVenues : undefined
+        rejectedVenues: rejectedVenues.length > 0 ? rejectedVenues.map(v => v.name) : undefined
       }
     });
 
@@ -523,143 +555,9 @@ Return JSON:
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// AGENT 2: VENUE VALIDATOR
-// Critically examines each venue to confirm it's real and has genuine reviews
-// ═══════════════════════════════════════════════════════════════════════════════
-async function agent2_validateVenues(
-  activities: Activity[],
-  city: string,
-  country?: string
-): Promise<ValidationResult[]> {
-  const venueList = activities.map((a, i) =>
-    `${i + 1}. "${a.venueName}" at "${a.address}"
-    - Claimed rating: ${a.estimatedRating || 'unknown'}
-    - Why recommended: ${a.whyRecommended || 'not specified'}
-    - Popularity signals: ${a.popularitySignals?.join(', ') || 'none provided'}`
-  ).join('\n\n');
-
-  const systemPrompt = `You are a CRITICAL venue validator for ${city}${country ? `, ${country}` : ''}.
-
-YOUR JOB: Determine if each venue is REAL and CREDIBLE.
-
-VALIDATION CRITERIA:
-1. Does this venue ACTUALLY EXIST in ${city}? (Based on your knowledge)
-2. Is the name accurate (not misspelled or fictional)?
-3. Does the address seem correct for this venue?
-4. Is this a place that would have real reviews on Google/TripAdvisor/Yelp?
-5. Does it match the claimed rating and popularity?
-
-REJECT a venue if:
-- The name sounds made up or generic
-- You cannot confirm it exists in ${city}
-- The address seems wrong or impossible
-- It appears to be permanently closed
-- The claimed ratings seem fabricated
-
-APPROVE a venue if:
-- You recognize it as a real, operating venue
-- The name and address seem accurate
-- It's a credible recommendation
-
-BE STRICT: It's better to reject a questionable venue than recommend a fake one.
-
-RESPOND WITH VALID JSON ONLY.`;
-
-  const userPrompt = `Validate these ${activities.length} venues in ${city}:
-
-${venueList}
-
-For EACH venue, determine if it's REAL and provide your verdict.
-
-Return JSON:
-{
-  "validations": [
-    {
-      "venueName": "Original venue name",
-      "isValid": true or false,
-      "confidence": "high" | "medium" | "low",
-      "reasoning": "Why you approved or rejected this venue",
-      "correctedName": "Corrected spelling if needed (optional)",
-      "correctedAddress": "Corrected address if you know the real one (optional)"
-    }
-  ]
-}`;
-
-  try {
-    const response = await gptRequest([{ role: 'user', content: userPrompt }], {
-      systemPrompt,
-      temperature: 0.3, // Lower temperature for more consistent validation
-      maxTokens: 2048,
-      jsonMode: true,
-    });
-
-    const result = parseGPTJSON<{ validations: ValidationResult[] }>(response);
-    return result.validations || [];
-  } catch (error) {
-    console.error('[AGENT 2] Validation error:', error);
-    // On error, return empty array which will cause all venues to be treated as unvalidated
-    return [];
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// GOOGLE PLACES VERIFICATION
-// Verify addresses and get accurate Maps URLs
-// ═══════════════════════════════════════════════════════════════════════════════
-async function verifyWithGooglePlaces(
-  activities: Activity[],
-  city: string,
-  country?: string
-): Promise<Activity[]> {
-  const verifiedActivities: Activity[] = [];
-
-  for (const activity of activities) {
-    try {
-      const verified = await searchVenue(activity.venueName, city, country);
-
-      if (verified && verified.isVerified && verified.confidence !== 'not_found') {
-        verifiedActivities.push({
-          ...activity,
-          venueName: verified.venueName,
-          address: verified.address,
-          coordinates: {
-            latitude: verified.coordinates.latitude,
-            longitude: verified.coordinates.longitude
-          },
-          googlePlaceId: verified.googlePlaceId,
-          googleMapsUrl: verified.googleMapsUrl,
-          isAddressVerified: true,
-          addressConfidence: verified.confidence
-        });
-        console.log(`   ✅ ${activity.venueName} - Address verified (${verified.confidence})`);
-      } else {
-        // Keep the AI's address but add a search URL
-        const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
-        verifiedActivities.push({
-          ...activity,
-          googleMapsUrl: searchUrl,
-          isAddressVerified: false,
-          addressConfidence: 'low'
-        });
-        console.log(`   ⚠️ ${activity.venueName} - Using search URL (not found in Places API)`);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } catch (error) {
-      console.error(`   ❌ Error verifying ${activity.venueName}:`, error);
-      const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activity.venueName} ${city}${country ? ` ${country}` : ''}`)}`;
-      verifiedActivities.push({
-        ...activity,
-        googleMapsUrl: searchUrl,
-        isAddressVerified: false,
-        addressConfidence: 'not_found'
-      });
-    }
-  }
-
-  return verifiedActivities;
-}
+// NOTE: Agent 2 validation is now integrated directly in the main flow
+// using Google Places API as the source of truth for addresses.
+// Venues not found on Google Places are rejected.
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AGENT 3: NARRATIVE CREATOR
