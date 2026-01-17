@@ -399,11 +399,11 @@ serve(async (req: Request) => {
     console.log(`\n[AGENT 3] ✅ ${validatedActivities.length}/${relevantActivities.length} venues verified on Google Places`);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // AGENT 3.5: SCHEDULE OPTIMIZER
-    // Rearranges venues and adjusts timing based on actual opening hours
-    // Ensures the plan fits the theme while respecting venue availability
+    // AGENT 3.5: TIMING ADJUSTER
+    // Adjusts start times to fit actual opening hours (keeps venue order)
+    // Ensures each venue is visited when it's actually open
     // ═══════════════════════════════════════════════════════════════════════
-    console.log(`\n[AGENT 3.5] 🕐 SCHEDULE OPTIMIZER - Adjusting timing based on opening hours...`);
+    console.log(`\n[AGENT 3.5] 🕐 TIMING ADJUSTER - Adjusting times to fit opening hours...`);
     const scheduledActivities = await agent35_optimizeSchedule(
       validatedActivities,
       theme,
@@ -870,9 +870,9 @@ Return JSON:
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// AGENT 3.5: SCHEDULE OPTIMIZER
-// Rearranges venues and adjusts timing based on actual Google Places opening hours
-// Ensures the plan fits the theme while respecting venue availability
+// AGENT 3.5: TIMING ADJUSTER
+// Adjusts start times to fit actual Google Places opening hours
+// KEEPS venue order unchanged - only modifies timing
 // ═══════════════════════════════════════════════════════════════════════════════
 async function agent35_optimizeSchedule(
   activities: Activity[],
@@ -885,60 +885,66 @@ async function agent35_optimizeSchedule(
     if (a.openingHoursText && a.openingHoursText.length > 0) {
       hoursInfo = `Opening hours:\n${a.openingHoursText.map(h => `      ${h}`).join('\n')}`;
     }
-    return `${i + 1}. ${a.venueName}
+    return `Venue #${i + 1}: ${a.venueName}
    Current suggested time: ${a.startTime}
    Duration: ${a.duration} minutes
    ${hoursInfo}`;
   }).join('\n\n');
 
-  const systemPrompt = `You are a scheduling expert for ${city} nightlife and entertainment.
-Your job is to OPTIMIZE the order and timing of venues based on their ACTUAL opening hours.
+  const systemPrompt = `You are a timing specialist for ${city} entertainment plans.
+Your job is to ADJUST the start times of venues to fit their ACTUAL opening hours.
 
 THEME: "${theme}"
 
-CRITICAL RULES:
-1. Every venue MUST be visited during its ACTUAL opening hours from Google Places
-2. If a venue's opening hours are not available, use reasonable defaults for ${theme}:
+⚠️ CRITICAL: DO NOT change the ORDER of venues. Keep them in the EXACT same sequence.
+Only adjust the START TIMES to ensure each venue is visited when it's actually OPEN.
+
+RULES:
+1. Keep venues in their ORIGINAL ORDER (Venue #1 stays first, #2 stays second, etc.)
+2. Adjust start times so each venue is visited during its ACTUAL opening hours
+3. If a venue's opening hours are not available, use reasonable defaults:
    - Nightlife/Clubs: 22:00 - 04:00
    - Restaurants: 11:00 - 23:00
    - Bars: 17:00 - 02:00
    - Brunch spots: 09:00 - 15:00
    - Rooftop bars: 17:00 - 01:00
-3. The order of venues should make LOGICAL sense for the "${theme}" theme
-4. Allow 15-30 minutes travel time between venues
-5. Keep the flow natural - don't jump around in time unnecessarily
+4. Ensure there's 15-30 minutes travel time between venues
+5. The overall timing should still make sense for a "${theme}" experience
 
-THEME-SPECIFIC TIMING:
-- "Nightlife" → Start evening/night, build energy, peak at clubs
-- "Brunch" → Morning start, leisurely pace
-- "Date Night" → Evening start, romantic progression
-- "Bar Hopping" → Evening start, multiple short stops
-- "Rooftop" → Align with sunset timing if possible
-- "Jazz" → Evening start, build to headline performances
-
-OUTPUT: Provide optimized start times for each venue in the order they should be visited.
+THEME-SPECIFIC START TIMES:
+- "Nightlife" → Evening/night start (19:00-22:00)
+- "Brunch" → Morning start (09:00-11:00)
+- "Date Night" → Evening start (18:00-20:00)
+- "Bar Hopping" → Evening start (18:00-21:00)
+- "Rooftop" → Late afternoon/sunset (17:00-19:00)
+- "Jazz" → Evening start (19:00-21:00)
 
 RESPOND WITH VALID JSON ONLY.`;
 
-  const userPrompt = `Optimize the schedule for these ${activities.length} venues for a "${theme}" experience in ${city}:
+  const userPrompt = `Adjust the timing for these ${activities.length} venues for a "${theme}" experience in ${city}.
+
+IMPORTANT: Keep the venues in this EXACT order. Only change the start times.
 
 ${venueInfo}
 
-Based on the ACTUAL opening hours provided, suggest the optimal order and timing.
-If the current timing conflicts with opening hours, ADJUST it.
+For each venue, check if the current start time falls within the opening hours.
+If NOT, adjust the start time to when the venue IS open.
+Make sure the overall plan flows logically with travel time between venues.
 
 Return JSON:
 {
-  "schedule": [
+  "adjustedTimes": [
     {
       "venueIndex": 0,
       "venueName": "Venue Name",
-      "suggestedOrder": 1,
-      "startTime": "HH:MM",
-      "reason": "Why this timing works"
+      "originalTime": "HH:MM",
+      "adjustedTime": "HH:MM",
+      "reason": "Why this time (e.g., 'Opens at 18:00, adjusted from 16:00' or 'Within opening hours, no change')"
     }
   ],
-  "scheduleNotes": "Brief explanation of the overall schedule logic"
+  "planStartTime": "HH:MM",
+  "planEndTime": "HH:MM",
+  "timingNotes": "Brief explanation of the timing adjustments"
 }`;
 
   try {
@@ -950,54 +956,57 @@ Return JSON:
     });
 
     const result = parseGPTJSON<{
-      schedule: Array<{
+      adjustedTimes: Array<{
         venueIndex: number;
         venueName: string;
-        suggestedOrder: number;
-        startTime: string;
+        originalTime: string;
+        adjustedTime: string;
         reason: string;
       }>;
-      scheduleNotes?: string;
+      planStartTime?: string;
+      planEndTime?: string;
+      timingNotes?: string;
     }>(response);
 
-    if (result.scheduleNotes) {
-      console.log(`   📋 Schedule notes: ${result.scheduleNotes}`);
+    if (result.timingNotes) {
+      console.log(`   📋 Timing notes: ${result.timingNotes}`);
+    }
+    if (result.planStartTime && result.planEndTime) {
+      console.log(`   ⏰ Plan window: ${result.planStartTime} - ${result.planEndTime}`);
     }
 
-    // Sort by suggested order and apply new timings
-    const sortedSchedule = [...result.schedule].sort((a, b) => a.suggestedOrder - b.suggestedOrder);
+    // Apply adjusted times to activities (keeping original order)
+    const optimizedActivities: Activity[] = activities.map((activity, index) => {
+      const adjustment = result.adjustedTimes.find(a => a.venueIndex === index);
 
-    const optimizedActivities: Activity[] = sortedSchedule.map((scheduled, newIndex) => {
-      const originalActivity = activities[scheduled.venueIndex];
-      if (!originalActivity) {
-        console.error(`   ⚠️ Invalid venue index: ${scheduled.venueIndex}`);
-        return activities[newIndex] || activities[0];
+      if (!adjustment) {
+        console.log(`   ✓ ${activity.venueName}: ${activity.startTime} (no adjustment data)`);
+        return activity;
       }
 
-      const timeChanged = originalActivity.startTime !== scheduled.startTime;
-      const orderChanged = scheduled.venueIndex !== newIndex;
+      const timeChanged = adjustment.originalTime !== adjustment.adjustedTime;
 
-      if (timeChanged || orderChanged) {
-        console.log(`   🔄 ${scheduled.venueName}: ${originalActivity.startTime} → ${scheduled.startTime}${orderChanged ? ` (reordered to #${newIndex + 1})` : ''}`);
-        console.log(`      Reason: ${scheduled.reason}`);
+      if (timeChanged) {
+        console.log(`   🔄 ${adjustment.venueName}: ${adjustment.originalTime} → ${adjustment.adjustedTime}`);
+        console.log(`      ${adjustment.reason}`);
       } else {
-        console.log(`   ✓ ${scheduled.venueName}: ${scheduled.startTime} (no change needed)`);
+        console.log(`   ✓ ${adjustment.venueName}: ${adjustment.adjustedTime} (within opening hours)`);
       }
 
       return {
-        ...originalActivity,
-        startTime: scheduled.startTime,
-        order: newIndex + 1
+        ...activity,
+        startTime: adjustment.adjustedTime,
+        order: index + 1 // Keep original order
       };
     });
 
-    console.log(`\n[AGENT 3.5] ✅ Schedule optimized for ${optimizedActivities.length} venues`);
+    console.log(`\n[AGENT 3.5] ✅ Timing adjusted for ${optimizedActivities.length} venues`);
     return optimizedActivities;
 
   } catch (error) {
-    console.error('[AGENT 3.5] Schedule optimization error:', error);
+    console.error('[AGENT 3.5] Timing adjustment error:', error);
     // On error, return original activities unchanged
-    console.log('[AGENT 3.5] ⚠️ Using original schedule');
+    console.log('[AGENT 3.5] ⚠️ Using original timing');
     return activities;
   }
 }
