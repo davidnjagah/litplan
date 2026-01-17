@@ -235,6 +235,10 @@ serve(async (req: Request) => {
     // ═══════════════════════════════════════════════════════════════════════
     console.log(`\n[AGENT 3] 🔎 ADDRESS VALIDATOR - Verifying venues with Google Places API...`);
 
+    // Get local language name for the city (for address matching)
+    console.log(`\n   Getting local language name for ${city}...`);
+    const cityNames = await getCityLocalName(city, country);
+
     const validatedActivities: Activity[] = [];
     const rejectedVenues: { name: string; reason: string }[] = [];
 
@@ -273,15 +277,27 @@ serve(async (req: Request) => {
             continue;
           }
 
+          // CHECK: Verify city name appears in the Google address (English OR local language)
+          const cityCheck = addressContainsCity(googleResult.address, cityNames.english, cityNames.local);
+          if (!cityCheck.matches) {
+            rejectedVenues.push({
+              name: activity.venueName,
+              reason: `Address doesn't contain "${cityNames.english}" or "${cityNames.local}" - venue may be in wrong city`
+            });
+            console.log(`   ❌ REJECTED: ${activity.venueName}`);
+            console.log(`   Reason: Google address doesn't contain city name`);
+            console.log(`   Looking for: "${cityNames.english}" (English) or "${cityNames.local}" (Local)`);
+            console.log(`   Google address: ${googleResult.address}`);
+            continue;
+          }
+          console.log(`   ✓ City name match: "${cityCheck.matchedName}" found in address`);
+
           const addressMatches = activity.address.toLowerCase().includes(
             googleResult.address.split(',')[0].toLowerCase()
           );
 
           if (!addressMatches) {
-            console.log(`   ⚠️ Address mismatch detected!`);
-            console.log(`   AI address: ${activity.address}`);
-            console.log(`   Google address: ${googleResult.address}`);
-            console.log(`   → Using Google's verified address`);
+            console.log(`   ⚠️ Street address mismatch (using Google's verified address)`);
           }
 
           validatedActivities.push({
@@ -561,9 +577,16 @@ CRITICAL - CITY LOCATION REQUIREMENTS:
 ⚠️ ALL venues MUST be physically located WITHIN ${city} city limits.
 - Do NOT suggest venues in neighboring cities, suburbs, or other towns
 - Do NOT suggest venues that are "near" ${city} but technically in a different city
-- The venue's address MUST include "${city}" or be within the ${city} metropolitan area
+- The venue's address MUST include "${city}" (in English OR local language) or be within the ${city} metropolitan area
 - If you're unsure whether a venue is in ${city}, DO NOT include it
 - Example: If searching for "${city}", don't suggest venues in surrounding towns
+
+LOCAL LANGUAGE AWARENESS:
+- Be aware that city names may appear differently in local languages
+- Example: "Moscow" may appear as "Москва" in addresses
+- Example: "Tokyo" may appear as "東京" in addresses
+- Ensure the venue is genuinely in ${city}, not a similarly-named place elsewhere
+- Provide accurate coordinates for the venue's ACTUAL location in ${city}
 
 FOR EACH VENUE, EXPLAIN:
 - WHY you're recommending it (ratings, popularity, unique features)
@@ -922,6 +945,77 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
   const endHours = Math.floor(totalMinutes / 60) % 24;
   const endMinutes = totalMinutes % 60;
   return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Get the local language name of a city
+ * Returns both English and local names for matching
+ */
+async function getCityLocalName(city: string, country: string): Promise<{ english: string; local: string }> {
+  try {
+    const response = await gptRequest([{
+      role: 'user',
+      content: `What is the local language name for the city "${city}" in ${country || 'its country'}?
+
+Return ONLY a JSON object with no explanation:
+{
+  "english": "${city}",
+  "local": "local language name here",
+  "alternates": ["other common spellings or names"]
+}
+
+Examples:
+- Moscow, Russia → {"english": "Moscow", "local": "Москва", "alternates": ["Moskva"]}
+- Tokyo, Japan → {"english": "Tokyo", "local": "東京", "alternates": ["Tōkyō"]}
+- Paris, France → {"english": "Paris", "local": "Paris", "alternates": []}
+- Munich, Germany → {"english": "Munich", "local": "München", "alternates": ["Muenchen"]}
+- Nairobi, Kenya → {"english": "Nairobi", "local": "Nairobi", "alternates": []}
+- Cairo, Egypt → {"english": "Cairo", "local": "القاهرة", "alternates": ["Al-Qahira"]}
+`
+    }], {
+      systemPrompt: 'You are a geography expert. Return only valid JSON, no other text.',
+      temperature: 0.1,
+      maxTokens: 200,
+      jsonMode: true,
+    });
+
+    const result = parseGPTJSON<{ english: string; local: string; alternates?: string[] }>(response);
+    console.log(`   🌍 City names: English="${result.english}", Local="${result.local}"${result.alternates?.length ? `, Alternates=[${result.alternates.join(', ')}]` : ''}`);
+    return {
+      english: result.english || city,
+      local: result.local || city,
+    };
+  } catch (error) {
+    console.error('   ⚠️ Failed to get local city name, using English only:', error);
+    return { english: city, local: city };
+  }
+}
+
+/**
+ * Check if an address contains the city name (in English or local language)
+ */
+function addressContainsCity(
+  address: string,
+  cityEnglish: string,
+  cityLocal: string
+): { matches: boolean; matchedName: string | null } {
+  const addressLower = address.toLowerCase();
+  const englishLower = cityEnglish.toLowerCase();
+  const localLower = cityLocal.toLowerCase();
+
+  // Check English name
+  if (addressLower.includes(englishLower) || addressLower.includes(englishLower.replace(/\s+/g, ''))) {
+    return { matches: true, matchedName: cityEnglish };
+  }
+
+  // Check local name (if different from English)
+  if (cityLocal !== cityEnglish) {
+    if (addressLower.includes(localLower) || address.includes(cityLocal)) {
+      return { matches: true, matchedName: cityLocal };
+    }
+  }
+
+  return { matches: false, matchedName: null };
 }
 
 /**
