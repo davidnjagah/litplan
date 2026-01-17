@@ -249,27 +249,27 @@ serve(async (req: Request) => {
         if (googleResult && googleResult.isVerified && googleResult.confidence !== 'not_found') {
           // Venue found on Google Places - use Google's verified data
 
-          // CHECK: Verify venue is actually in the searched city
-          const addressLower = googleResult.address.toLowerCase();
-          const cityLower = city.toLowerCase();
-          const isInCity = addressLower.includes(cityLower) ||
-                           addressLower.includes(cityLower.replace(/\s+/g, '')) ||
-                           // Handle common city name variations
-                           (cityLower === 'new york' && (addressLower.includes('new york') || addressLower.includes('nyc') || addressLower.includes('manhattan') || addressLower.includes('brooklyn') || addressLower.includes('queens'))) ||
-                           (cityLower === 'los angeles' && (addressLower.includes('los angeles') || addressLower.includes('la,') || addressLower.includes('hollywood'))) ||
-                           (cityLower === 'london' && addressLower.includes('london')) ||
-                           (cityLower === 'paris' && addressLower.includes('paris')) ||
-                           (cityLower === 'nairobi' && addressLower.includes('nairobi'));
+          // CHECK: Verify venue is not too far from where AI said it should be
+          // This catches cases where Google finds a venue with similar name in a different city
+          const aiCoords = activity.coordinates;
+          const googleCoords = googleResult.coordinates;
+          const distanceKm = calculateDistanceKm(
+            aiCoords.latitude, aiCoords.longitude,
+            googleCoords.latitude, googleCoords.longitude
+          );
 
-          if (!isInCity) {
-            // Venue is outside the searched city - REJECT it
+          // If Google's location is more than 50km from AI's expected location, reject it
+          // This means Google found a different venue with a similar name in another city
+          const MAX_DISTANCE_KM = 50;
+          if (distanceKm > MAX_DISTANCE_KM) {
             rejectedVenues.push({
               name: activity.venueName,
-              reason: `Located outside ${city} - address: ${googleResult.address}`
+              reason: `Google found venue ${Math.round(distanceKm)}km away from ${city} - likely a different venue with similar name`
             });
             console.log(`   ❌ REJECTED: ${activity.venueName}`);
-            console.log(`   Reason: Venue is outside ${city}`);
-            console.log(`   Found at: ${googleResult.address}`);
+            console.log(`   Reason: Google Places found venue ${Math.round(distanceKm)}km away from expected location`);
+            console.log(`   AI expected: ${aiCoords.latitude}, ${aiCoords.longitude}`);
+            console.log(`   Google found: ${googleCoords.latitude}, ${googleCoords.longitude} (${googleResult.address})`);
             continue;
           }
 
@@ -302,7 +302,7 @@ serve(async (req: Request) => {
 
           console.log(`   ✅ VERIFIED: ${googleResult.venueName}`);
           console.log(`   📍 Address: ${googleResult.address}`);
-          console.log(`   🏙️ City: ${city} ✓`);
+          console.log(`   📏 Distance from expected: ${Math.round(distanceKm * 10) / 10}km (max ${MAX_DISTANCE_KM}km)`);
           console.log(`   ⭐ Confidence: ${googleResult.confidence}`);
 
         } else {
@@ -557,15 +557,23 @@ CRITICAL REQUIREMENTS - CREDIBILITY:
 5. Avoid generic or fictional-sounding names
 6. Each venue must have a REAL street address you're confident about
 
+CRITICAL - CITY LOCATION REQUIREMENTS:
+⚠️ ALL venues MUST be physically located WITHIN ${city} city limits.
+- Do NOT suggest venues in neighboring cities, suburbs, or other towns
+- Do NOT suggest venues that are "near" ${city} but technically in a different city
+- The venue's address MUST include "${city}" or be within the ${city} metropolitan area
+- If you're unsure whether a venue is in ${city}, DO NOT include it
+- Example: If searching for "${city}", don't suggest venues in surrounding towns
+
 FOR EACH VENUE, EXPLAIN:
 - WHY you're recommending it (ratings, popularity, unique features)
 - What makes it the BEST for this theme
 - Popularity signals (famous for, featured in, known for)
 
-LOCATION REQUIREMENTS:
+PROXIMITY REQUIREMENTS:
 - All 3 venues MUST be within 15 MINUTES WALKING DISTANCE of each other
-- Choose venues in the SAME neighborhood or entertainment district
-- If walking distance isn't possible, max 30 minutes by car
+- Choose venues in the SAME neighborhood or entertainment district within ${city}
+- If walking distance isn't possible, max 30 minutes by car WITHIN ${city}
 - Prioritize walkable areas with multiple venue options
 
 OPENING HOURS:
@@ -914,4 +922,27 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
   const endHours = Math.floor(totalMinutes / 60) % 24;
   const endMinutes = totalMinutes % 60;
   return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Calculate distance between two coordinates using Haversine formula
+ * Returns distance in kilometers
+ */
+function calculateDistanceKm(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRadians(degrees: number): number {
+  return degrees * (Math.PI / 180);
 }
