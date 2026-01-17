@@ -400,8 +400,8 @@ serve(async (req: Request) => {
 
     // ═══════════════════════════════════════════════════════════════════════
     // AGENT 3.5: TIMING ADJUSTER
-    // Adjusts start times to fit actual opening hours (keeps venue order)
-    // Ensures each venue is visited when it's actually open
+    // Adjusts start times to fit actual opening hours
+    // Reorders venues chronologically based on adjusted times
     // ═══════════════════════════════════════════════════════════════════════
     console.log(`\n[AGENT 3.5] 🕐 TIMING ADJUSTER - Adjusting times to fit opening hours...`);
     const scheduledActivities = await agent35_optimizeSchedule(
@@ -872,7 +872,7 @@ Return JSON:
 // ═══════════════════════════════════════════════════════════════════════════════
 // AGENT 3.5: TIMING ADJUSTER
 // Adjusts start times to fit actual Google Places opening hours
-// KEEPS venue order unchanged - only modifies timing
+// Can reorder venues chronologically based on the adjusted times
 // ═══════════════════════════════════════════════════════════════════════════════
 async function agent35_optimizeSchedule(
   activities: Activity[],
@@ -896,20 +896,22 @@ Your job is to ADJUST the start times of venues to fit their ACTUAL opening hour
 
 THEME: "${theme}"
 
-⚠️ CRITICAL: DO NOT change the ORDER of venues. Keep them in the EXACT same sequence.
-Only adjust the START TIMES to ensure each venue is visited when it's actually OPEN.
+YOUR TASKS:
+1. Adjust start times so each venue is visited during its ACTUAL opening hours
+2. If needed, REORDER venues to create a logical chronological flow based on the adjusted times
+3. The final order should follow the timeline (earliest start time first)
 
 RULES:
-1. Keep venues in their ORIGINAL ORDER (Venue #1 stays first, #2 stays second, etc.)
-2. Adjust start times so each venue is visited during its ACTUAL opening hours
-3. If a venue's opening hours are not available, use reasonable defaults:
+1. Every venue MUST be visited during its ACTUAL opening hours from Google Places
+2. If a venue's opening hours are not available, use reasonable defaults:
    - Nightlife/Clubs: 22:00 - 04:00
    - Restaurants: 11:00 - 23:00
    - Bars: 17:00 - 02:00
    - Brunch spots: 09:00 - 15:00
    - Rooftop bars: 17:00 - 01:00
-4. Ensure there's 15-30 minutes travel time between venues
-5. The overall timing should still make sense for a "${theme}" experience
+3. Ensure there's 15-30 minutes travel time between venues
+4. The overall timing should make sense for a "${theme}" experience
+5. After setting times, ORDER the venues chronologically (earliest to latest)
 
 THEME-SPECIFIC START TIMES:
 - "Nightlife" → Evening/night start (19:00-22:00)
@@ -923,13 +925,13 @@ RESPOND WITH VALID JSON ONLY.`;
 
   const userPrompt = `Adjust the timing for these ${activities.length} venues for a "${theme}" experience in ${city}.
 
-IMPORTANT: Keep the venues in this EXACT order. Only change the start times.
-
 ${venueInfo}
 
-For each venue, check if the current start time falls within the opening hours.
-If NOT, adjust the start time to when the venue IS open.
-Make sure the overall plan flows logically with travel time between venues.
+INSTRUCTIONS:
+1. For each venue, check if the current start time falls within the opening hours
+2. If NOT, adjust the start time to when the venue IS open
+3. After adjusting times, REORDER the venues chronologically (earliest time first)
+4. Make sure the overall plan flows logically with travel time between venues
 
 Return JSON:
 {
@@ -939,12 +941,13 @@ Return JSON:
       "venueName": "Venue Name",
       "originalTime": "HH:MM",
       "adjustedTime": "HH:MM",
+      "newOrder": 1,
       "reason": "Why this time (e.g., 'Opens at 18:00, adjusted from 16:00' or 'Within opening hours, no change')"
     }
   ],
   "planStartTime": "HH:MM",
   "planEndTime": "HH:MM",
-  "timingNotes": "Brief explanation of the timing adjustments"
+  "timingNotes": "Brief explanation of the timing adjustments and any reordering"
 }`;
 
   try {
@@ -961,6 +964,7 @@ Return JSON:
         venueName: string;
         originalTime: string;
         adjustedTime: string;
+        newOrder: number;
         reason: string;
       }>;
       planStartTime?: string;
@@ -975,28 +979,35 @@ Return JSON:
       console.log(`   ⏰ Plan window: ${result.planStartTime} - ${result.planEndTime}`);
     }
 
-    // Apply adjusted times to activities (keeping original order)
-    const optimizedActivities: Activity[] = activities.map((activity, index) => {
-      const adjustment = result.adjustedTimes.find(a => a.venueIndex === index);
+    // Sort by newOrder to get chronological sequence
+    const sortedAdjustments = [...result.adjustedTimes].sort((a, b) => (a.newOrder || 0) - (b.newOrder || 0));
 
-      if (!adjustment) {
-        console.log(`   ✓ ${activity.venueName}: ${activity.startTime} (no adjustment data)`);
-        return activity;
+    // Apply adjusted times and reorder activities
+    const optimizedActivities: Activity[] = sortedAdjustments.map((adjustment, newIndex) => {
+      const originalActivity = activities[adjustment.venueIndex];
+
+      if (!originalActivity) {
+        console.error(`   ⚠️ Invalid venue index: ${adjustment.venueIndex}`);
+        return activities[newIndex] || activities[0];
       }
 
       const timeChanged = adjustment.originalTime !== adjustment.adjustedTime;
+      const orderChanged = adjustment.venueIndex !== newIndex;
 
-      if (timeChanged) {
-        console.log(`   🔄 ${adjustment.venueName}: ${adjustment.originalTime} → ${adjustment.adjustedTime}`);
+      if (timeChanged || orderChanged) {
+        const changes = [];
+        if (timeChanged) changes.push(`${adjustment.originalTime} → ${adjustment.adjustedTime}`);
+        if (orderChanged) changes.push(`moved to #${newIndex + 1}`);
+        console.log(`   🔄 ${adjustment.venueName}: ${changes.join(', ')}`);
         console.log(`      ${adjustment.reason}`);
       } else {
-        console.log(`   ✓ ${adjustment.venueName}: ${adjustment.adjustedTime} (within opening hours)`);
+        console.log(`   ✓ ${adjustment.venueName}: ${adjustment.adjustedTime} (no change needed)`);
       }
 
       return {
-        ...activity,
+        ...originalActivity,
         startTime: adjustment.adjustedTime,
-        order: index + 1 // Keep original order
+        order: newIndex + 1
       };
     });
 
