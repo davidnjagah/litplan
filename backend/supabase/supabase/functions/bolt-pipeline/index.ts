@@ -90,12 +90,21 @@ const THEME_DEFINITIONS: Record<string, string> = {
   "Equestrian": "Hands-on horse riding experiences - riding schools offering lessons for beginners to advanced riders, equestrian centers with scenic trail rides, ranch experiences with horseback adventures, and immersive horse riding activities. For those who want to actually ride horses."
 };
 
+// Opening hours period structure (from Google Places)
+interface OpeningPeriod {
+  open: { day: number; time: string }; // day: 0=Sunday, time: "0900"
+  close?: { day: number; time: string };
+}
+
 // Interfaces
 interface Activity {
   venueName: string;
   address: string;
   coordinates: { latitude: number; longitude: number };
-  openingHours?: string;
+  openingHours?: string; // AI suggested hours
+  openingHoursText?: string[]; // Google Places human-readable ["Monday: 9:00 AM – 5:00 PM", ...]
+  openingHoursPeriods?: OpeningPeriod[]; // Google Places structured data
+  businessStatus?: 'OPERATIONAL' | 'CLOSED_TEMPORARILY' | 'CLOSED_PERMANENTLY';
   startTime: string;
   duration: number;
   description: string;
@@ -253,7 +262,27 @@ serve(async (req: Request) => {
         if (googleResult && googleResult.isVerified && googleResult.confidence !== 'not_found') {
           // Venue found on Google Places - use Google's verified data
 
-          // CHECK: Verify venue is not too far from where AI said it should be
+          // CHECK 1: Business status - reject closed venues
+          if (googleResult.businessStatus === 'CLOSED_PERMANENTLY') {
+            rejectedVenues.push({
+              name: activity.venueName,
+              reason: 'Permanently closed according to Google Places'
+            });
+            console.log(`   ❌ REJECTED: ${activity.venueName}`);
+            console.log(`   Reason: Venue is PERMANENTLY CLOSED`);
+            continue;
+          }
+          if (googleResult.businessStatus === 'CLOSED_TEMPORARILY') {
+            rejectedVenues.push({
+              name: activity.venueName,
+              reason: 'Temporarily closed according to Google Places'
+            });
+            console.log(`   ❌ REJECTED: ${activity.venueName}`);
+            console.log(`   Reason: Venue is TEMPORARILY CLOSED`);
+            continue;
+          }
+
+          // CHECK 2: Verify venue is not too far from where AI said it should be
           // This catches cases where Google finds a venue with similar name in a different city
           const aiCoords = activity.coordinates;
           const googleCoords = googleResult.coordinates;
@@ -310,6 +339,9 @@ serve(async (req: Request) => {
             },
             googlePlaceId: googleResult.googlePlaceId,
             googleMapsUrl: googleResult.googleMapsUrl,
+            openingHoursText: googleResult.openingHours, // Human-readable hours
+            openingHoursPeriods: googleResult.openingHoursPeriods, // Structured hours
+            businessStatus: googleResult.businessStatus,
             isAddressVerified: true,
             addressConfidence: googleResult.confidence,
             isValidated: true,
@@ -320,6 +352,12 @@ serve(async (req: Request) => {
           console.log(`   📍 Address: ${googleResult.address}`);
           console.log(`   📏 Distance from expected: ${Math.round(distanceKm * 10) / 10}km (max ${MAX_DISTANCE_KM}km)`);
           console.log(`   ⭐ Confidence: ${googleResult.confidence}`);
+          console.log(`   🏪 Business status: ${googleResult.businessStatus || 'Unknown'}`);
+          if (googleResult.openingHours && googleResult.openingHours.length > 0) {
+            console.log(`   🕐 Opening hours: ${googleResult.openingHours[0]} (+ ${googleResult.openingHours.length - 1} more days)`);
+          } else {
+            console.log(`   🕐 Opening hours: Not available`);
+          }
 
         } else {
           // Venue NOT found on Google Places - REJECT it
@@ -361,14 +399,26 @@ serve(async (req: Request) => {
     console.log(`\n[AGENT 3] ✅ ${validatedActivities.length}/${relevantActivities.length} venues verified on Google Places`);
 
     // ═══════════════════════════════════════════════════════════════════════
+    // AGENT 3.5: SCHEDULE OPTIMIZER
+    // Rearranges venues and adjusts timing based on actual opening hours
+    // Ensures the plan fits the theme while respecting venue availability
+    // ═══════════════════════════════════════════════════════════════════════
+    console.log(`\n[AGENT 3.5] 🕐 SCHEDULE OPTIMIZER - Adjusting timing based on opening hours...`);
+    const scheduledActivities = await agent35_optimizeSchedule(
+      validatedActivities,
+      theme,
+      city
+    );
+
+    // ═══════════════════════════════════════════════════════════════════════
     // AGENT 4: NARRATIVE CREATOR - Create immersive descriptions
     // ═══════════════════════════════════════════════════════════════════════
     console.log(`\n[AGENT 4] ✍️ NARRATIVE CREATOR - Crafting descriptions...`);
     const finalPlan = await agent4_createNarrative(
-      { ...discoveredPlan, activities: validatedActivities },
+      { ...discoveredPlan, activities: scheduledActivities },
       city,
       theme,
-      validatedActivities.length < 3
+      scheduledActivities.length < 3
     );
 
     // Renumber activities if some were rejected
@@ -816,6 +866,139 @@ Return JSON:
     console.error('[AGENT 2] Relevance validation error:', error);
     // On error, pass all venues through (fail open)
     return { approved: activities, rejected: [] };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGENT 3.5: SCHEDULE OPTIMIZER
+// Rearranges venues and adjusts timing based on actual Google Places opening hours
+// Ensures the plan fits the theme while respecting venue availability
+// ═══════════════════════════════════════════════════════════════════════════════
+async function agent35_optimizeSchedule(
+  activities: Activity[],
+  theme: string,
+  city: string
+): Promise<Activity[]> {
+  // Build venue info with opening hours for the AI
+  const venueInfo = activities.map((a, i) => {
+    let hoursInfo = 'Opening hours: Not available';
+    if (a.openingHoursText && a.openingHoursText.length > 0) {
+      hoursInfo = `Opening hours:\n${a.openingHoursText.map(h => `      ${h}`).join('\n')}`;
+    }
+    return `${i + 1}. ${a.venueName}
+   Current suggested time: ${a.startTime}
+   Duration: ${a.duration} minutes
+   ${hoursInfo}`;
+  }).join('\n\n');
+
+  const systemPrompt = `You are a scheduling expert for ${city} nightlife and entertainment.
+Your job is to OPTIMIZE the order and timing of venues based on their ACTUAL opening hours.
+
+THEME: "${theme}"
+
+CRITICAL RULES:
+1. Every venue MUST be visited during its ACTUAL opening hours from Google Places
+2. If a venue's opening hours are not available, use reasonable defaults for ${theme}:
+   - Nightlife/Clubs: 22:00 - 04:00
+   - Restaurants: 11:00 - 23:00
+   - Bars: 17:00 - 02:00
+   - Brunch spots: 09:00 - 15:00
+   - Rooftop bars: 17:00 - 01:00
+3. The order of venues should make LOGICAL sense for the "${theme}" theme
+4. Allow 15-30 minutes travel time between venues
+5. Keep the flow natural - don't jump around in time unnecessarily
+
+THEME-SPECIFIC TIMING:
+- "Nightlife" → Start evening/night, build energy, peak at clubs
+- "Brunch" → Morning start, leisurely pace
+- "Date Night" → Evening start, romantic progression
+- "Bar Hopping" → Evening start, multiple short stops
+- "Rooftop" → Align with sunset timing if possible
+- "Jazz" → Evening start, build to headline performances
+
+OUTPUT: Provide optimized start times for each venue in the order they should be visited.
+
+RESPOND WITH VALID JSON ONLY.`;
+
+  const userPrompt = `Optimize the schedule for these ${activities.length} venues for a "${theme}" experience in ${city}:
+
+${venueInfo}
+
+Based on the ACTUAL opening hours provided, suggest the optimal order and timing.
+If the current timing conflicts with opening hours, ADJUST it.
+
+Return JSON:
+{
+  "schedule": [
+    {
+      "venueIndex": 0,
+      "venueName": "Venue Name",
+      "suggestedOrder": 1,
+      "startTime": "HH:MM",
+      "reason": "Why this timing works"
+    }
+  ],
+  "scheduleNotes": "Brief explanation of the overall schedule logic"
+}`;
+
+  try {
+    const response = await gptRequest([{ role: 'user', content: userPrompt }], {
+      systemPrompt,
+      temperature: 0.3,
+      maxTokens: 2048,
+      jsonMode: true,
+    });
+
+    const result = parseGPTJSON<{
+      schedule: Array<{
+        venueIndex: number;
+        venueName: string;
+        suggestedOrder: number;
+        startTime: string;
+        reason: string;
+      }>;
+      scheduleNotes?: string;
+    }>(response);
+
+    if (result.scheduleNotes) {
+      console.log(`   📋 Schedule notes: ${result.scheduleNotes}`);
+    }
+
+    // Sort by suggested order and apply new timings
+    const sortedSchedule = [...result.schedule].sort((a, b) => a.suggestedOrder - b.suggestedOrder);
+
+    const optimizedActivities: Activity[] = sortedSchedule.map((scheduled, newIndex) => {
+      const originalActivity = activities[scheduled.venueIndex];
+      if (!originalActivity) {
+        console.error(`   ⚠️ Invalid venue index: ${scheduled.venueIndex}`);
+        return activities[newIndex] || activities[0];
+      }
+
+      const timeChanged = originalActivity.startTime !== scheduled.startTime;
+      const orderChanged = scheduled.venueIndex !== newIndex;
+
+      if (timeChanged || orderChanged) {
+        console.log(`   🔄 ${scheduled.venueName}: ${originalActivity.startTime} → ${scheduled.startTime}${orderChanged ? ` (reordered to #${newIndex + 1})` : ''}`);
+        console.log(`      Reason: ${scheduled.reason}`);
+      } else {
+        console.log(`   ✓ ${scheduled.venueName}: ${scheduled.startTime} (no change needed)`);
+      }
+
+      return {
+        ...originalActivity,
+        startTime: scheduled.startTime,
+        order: newIndex + 1
+      };
+    });
+
+    console.log(`\n[AGENT 3.5] ✅ Schedule optimized for ${optimizedActivities.length} venues`);
+    return optimizedActivities;
+
+  } catch (error) {
+    console.error('[AGENT 3.5] Schedule optimization error:', error);
+    // On error, return original activities unchanged
+    console.log('[AGENT 3.5] ⚠️ Using original schedule');
+    return activities;
   }
 }
 

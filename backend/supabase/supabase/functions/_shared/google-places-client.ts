@@ -10,6 +10,12 @@
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
+// Opening hours period structure
+export interface OpeningPeriod {
+  open: { day: number; time: string }; // day: 0=Sunday, time: "0900"
+  close?: { day: number; time: string };
+}
+
 // Verified venue data from Google Places
 export interface VerifiedVenue {
   venueName: string;
@@ -21,7 +27,9 @@ export interface VerifiedVenue {
   };
   googlePlaceId: string;
   googleMapsUrl: string;
-  openingHours?: string[];
+  openingHours?: string[]; // Human-readable: ["Monday: 9:00 AM – 5:00 PM", ...]
+  openingHoursPeriods?: OpeningPeriod[]; // Structured for programmatic use
+  businessStatus?: 'OPERATIONAL' | 'CLOSED_TEMPORARILY' | 'CLOSED_PERMANENTLY';
   rating?: number;
   priceLevel?: number;
   isVerified: boolean;
@@ -41,7 +49,9 @@ interface PlaceResult {
   };
   opening_hours?: {
     weekday_text?: string[];
+    periods?: OpeningPeriod[];
   };
+  business_status?: 'OPERATIONAL' | 'CLOSED_TEMPORARILY' | 'CLOSED_PERMANENTLY';
   rating?: number;
   price_level?: number;
   types?: string[];
@@ -56,11 +66,9 @@ interface PlaceDetailsResponse {
   result: PlaceResult & {
     opening_hours?: {
       weekday_text?: string[];
-      periods?: Array<{
-        open: { day: number; time: string };
-        close?: { day: number; time: string };
-      }>;
+      periods?: OpeningPeriod[];
     };
+    business_status?: 'OPERATIONAL' | 'CLOSED_TEMPORARILY' | 'CLOSED_PERMANENTLY';
     url?: string;
     website?: string;
     formatted_phone_number?: string;
@@ -152,6 +160,8 @@ export async function searchVenue(
       googlePlaceId: place.place_id,
       googleMapsUrl: buildGoogleMapsUrl(place.place_id, place.name),
       openingHours: details?.opening_hours?.weekday_text,
+      openingHoursPeriods: details?.opening_hours?.periods,
+      businessStatus: details?.business_status,
       rating: place.rating,
       priceLevel: place.price_level,
       isVerified: true,
@@ -159,6 +169,12 @@ export async function searchVenue(
     };
 
     console.log(`[GooglePlaces] Found: "${place.name}" at ${place.formatted_address} (confidence: ${confidence})`);
+    if (details?.business_status) {
+      console.log(`[GooglePlaces] Business status: ${details.business_status}`);
+    }
+    if (details?.opening_hours?.weekday_text) {
+      console.log(`[GooglePlaces] Opening hours available: ${details.opening_hours.weekday_text.length} days`);
+    }
 
     return result;
   } catch (error) {
@@ -175,7 +191,7 @@ async function getPlaceDetails(
   apiKey: string
 ): Promise<PlaceDetailsResponse['result'] | null> {
   try {
-    const fields = 'name,formatted_address,geometry,opening_hours,rating,price_level,url';
+    const fields = 'name,formatted_address,geometry,opening_hours,business_status,rating,price_level,url';
     const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
 
     const response = await fetch(detailsUrl);
