@@ -16,7 +16,7 @@ struct ThemeTag: Identifiable, Equatable {
     let id = UUID()
     let name: String
 
-    /// 21 curated theme suggestions with in-depth definitions for AI
+    /// 26 curated theme suggestions with in-depth definitions for AI
     static let suggestions: [ThemeTag] = [
         ThemeTag(name: "Nightlife"),
         ThemeTag(name: "Date Night"),
@@ -24,8 +24,10 @@ struct ThemeTag: Identifiable, Equatable {
         ThemeTag(name: "Live Music"),
         ThemeTag(name: "Foodie"),
         ThemeTag(name: "Brunch"),
-        ThemeTag(name: "Rooftop"),
         ThemeTag(name: "Jazz"),
+        ThemeTag(name: "Afro House"),
+        ThemeTag(name: "Rooftop"),
+        ThemeTag(name: "Afro Beats"),
         ThemeTag(name: "Adventure"),
         ThemeTag(name: "Chill"),
         ThemeTag(name: "Culture"),
@@ -38,6 +40,9 @@ struct ThemeTag: Identifiable, Equatable {
         ThemeTag(name: "Beach"),
         ThemeTag(name: "Party"),
         ThemeTag(name: "Speakeasy"),
+        ThemeTag(name: "Equestrian"),
+        ThemeTag(name: "Excitement"),
+        ThemeTag(name: "Activities"),
         ThemeTag(name: "Low Budget")
     ]
 
@@ -63,6 +68,11 @@ struct ThemeTag: Identifiable, Equatable {
         "Beach": "Coastal venues - beach bars, seaside restaurants, and waterfront experiences. Sand, surf, and sea breeze.",
         "Party": "High-energy celebration mode - birthday worthy venues, champagne, confetti, and maximum fun. Go big or go home.",
         "Speakeasy": "Hidden bars, secret entrances, password-required venues, and prohibition-era themed experiences. Mystery and exclusivity.",
+        "Afro House": "Afro house music experiences - clubs and bars playing afro house, amapiano, and African electronic music. African restaurants, afro house DJ events happening this week, dance parties with African beats, and venues known for African music culture.",
+        "Afro Beats": "Afrobeats music experiences - clubs playing Nigerian and West African pop music, afrobeats dance nights, venues hosting afrobeats artists, African nightlife spots, and parties featuring Burna Boy, Wizkid, Davido style music. High-energy African pop culture vibes.",
+        "Equestrian": "Horse riding experiences and equestrian culture - riding schools offering lessons, equestrian centers with trail rides, ranch experiences, and horseback adventures. For hands-on riding experiences.",
+        "Excitement": "Thrilling daytime and evening experiences - amusement parks, fun fairs, circuses, gondola rides, ferris wheels, theme parks, water parks, and unique city attractions. Perfect for groups wanting excitement and Instagram-worthy moments.",
+        "Activities": "Interactive group activities - 2 fun competitive activities like bowling, paintball, laser tag, escape rooms, go-karting, mini golf, or arcades. Plus 1 final venue for winding down with drinks or a nice meal.",
         "Low Budget": "Budget-friendly experiences under $50 per person - happy hours, free entry venues, affordable eats, public spaces, free events, and wallet-friendly fun without sacrificing quality."
     ]
 }
@@ -146,7 +156,7 @@ struct DynamicIslandTabSelector: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("Select Theme")
+                Text("What's your vibe this week?")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
 
