@@ -120,7 +120,7 @@ enum Config {
 
         /// Bolt pipeline endpoint - Railway (longer timeout support)
         /// Generates custom group plans for any city/theme combination
-        /// Uses Railway for longer-running AI pipeline requests
+        /// Uses Railway for longer-running AI pipeline requests (non-strict validation)
         static var boltPipeline: String {
             return "\(railwayAPIBaseURL)/api/pipeline/bolt"
         }

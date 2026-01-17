@@ -56,7 +56,10 @@ const THEME_OPTIMIZATION: Record<string, string> = {
   "Adventure": "Find the MOST UNIQUE and memorable experiences. Look for places featured in 'unusual things to do' lists.",
   "Chill": "Find the COZIEST spots with the best relaxed atmosphere. Look for places with comfortable seating and loyal regular crowds.",
   "Party": "Find the BIGGEST party venues with the best energy. Look for places known for celebrations and VIP experiences.",
-  "Low Budget": "Find the BEST VALUE spots that locals love. Look for happy hours, free entry venues, and affordable gems with great atmosphere."
+  "Low Budget": "Find the BEST VALUE spots that locals love. Look for happy hours, free entry venues, and affordable gems with great atmosphere.",
+  "Afro House": "Find the BEST afro house and amapiano music venues. Look for clubs hosting afro house nights THIS WEEK, bars known for African electronic music, African restaurants with good vibes, and DJ events featuring afro house artists.",
+  "Afro Beats": "Find the BEST afrobeats music venues. Look for clubs hosting afrobeats nights, venues playing Nigerian and West African pop music, parties featuring Burna Boy/Wizkid/Davido style music, and African nightlife with high-energy vibes.",
+  "Equestrian": "Find the BEST horse riding experiences. Look for riding schools with lessons, equestrian centers with trail rides, ranch experiences, and horseback adventures for hands-on participation."
 };
 
 // In-depth theme definitions for AI context
@@ -81,7 +84,10 @@ const THEME_DEFINITIONS: Record<string, string> = {
   "Beach": "Coastal venues - beach bars with sand between your toes, seaside restaurants with ocean views, and waterfront experiences. Sand, surf, sea breeze, and laid-back atmosphere.",
   "Party": "High-energy celebration mode - birthday-worthy venues, champagne popping, confetti, and maximum fun. Go big or go home. VIP experiences and memorable nights.",
   "Speakeasy": "Hidden bars with secret entrances, password-required venues, and prohibition-era themed experiences. Mystery, exclusivity, and the thrill of discovery.",
-  "Low Budget": "Budget-friendly experiences under $50 per person total - happy hours with deals, free entry venues, affordable local eats, public spaces with atmosphere, free events and festivals, and wallet-friendly fun without sacrificing quality or experience."
+  "Low Budget": "Budget-friendly experiences under $50 per person total - happy hours with deals, free entry venues, affordable local eats, public spaces with atmosphere, free events and festivals, and wallet-friendly fun without sacrificing quality or experience.",
+  "Afro House": "Afro house and amapiano music experiences - nightclubs hosting afro house DJ nights, bars playing African electronic music, African restaurants with vibrant atmosphere, dance parties featuring amapiano and afrobeats, and venues known for the African music scene. Look for events happening THIS WEEK with specific DJ lineups or themed nights.",
+  "Afro Beats": "Afrobeats music experiences - clubs and venues playing Nigerian, Ghanaian, and West African pop music. Afrobeats dance nights, parties featuring music in the style of Burna Boy, Wizkid, Davido, Tems, and Rema. High-energy African pop culture vibes, African nightlife spots, and venues known for West African music scenes.",
+  "Equestrian": "Hands-on horse riding experiences - riding schools offering lessons for beginners to advanced riders, equestrian centers with scenic trail rides, ranch experiences with horseback adventures, and immersive horse riding activities. For those who want to actually ride horses."
 };
 
 // Interfaces
@@ -242,6 +248,31 @@ serve(async (req: Request) => {
 
         if (googleResult && googleResult.isVerified && googleResult.confidence !== 'not_found') {
           // Venue found on Google Places - use Google's verified data
+
+          // CHECK: Verify venue is actually in the searched city
+          const addressLower = googleResult.address.toLowerCase();
+          const cityLower = city.toLowerCase();
+          const isInCity = addressLower.includes(cityLower) ||
+                           addressLower.includes(cityLower.replace(/\s+/g, '')) ||
+                           // Handle common city name variations
+                           (cityLower === 'new york' && (addressLower.includes('new york') || addressLower.includes('nyc') || addressLower.includes('manhattan') || addressLower.includes('brooklyn') || addressLower.includes('queens'))) ||
+                           (cityLower === 'los angeles' && (addressLower.includes('los angeles') || addressLower.includes('la,') || addressLower.includes('hollywood'))) ||
+                           (cityLower === 'london' && addressLower.includes('london')) ||
+                           (cityLower === 'paris' && addressLower.includes('paris')) ||
+                           (cityLower === 'nairobi' && addressLower.includes('nairobi'));
+
+          if (!isInCity) {
+            // Venue is outside the searched city - REJECT it
+            rejectedVenues.push({
+              name: activity.venueName,
+              reason: `Located outside ${city} - address: ${googleResult.address}`
+            });
+            console.log(`   ❌ REJECTED: ${activity.venueName}`);
+            console.log(`   Reason: Venue is outside ${city}`);
+            console.log(`   Found at: ${googleResult.address}`);
+            continue;
+          }
+
           const addressMatches = activity.address.toLowerCase().includes(
             googleResult.address.split(',')[0].toLowerCase()
           );
@@ -271,6 +302,7 @@ serve(async (req: Request) => {
 
           console.log(`   ✅ VERIFIED: ${googleResult.venueName}`);
           console.log(`   📍 Address: ${googleResult.address}`);
+          console.log(`   🏙️ City: ${city} ✓`);
           console.log(`   ⭐ Confidence: ${googleResult.confidence}`);
 
         } else {
@@ -295,17 +327,17 @@ serve(async (req: Request) => {
       }
     }
 
-    // Check if we have enough valid venues (minimum 2 required)
-    if (validatedActivities.length < 2) {
-      console.log(`\n[AGENT 3] ❌ Not enough venues verified (${validatedActivities.length}/2 minimum)`);
+    // Check if we have at least 1 valid venue
+    if (validatedActivities.length < 1) {
+      console.log(`\n[AGENT 3] ❌ No venues verified`);
       return jsonResponse({
         success: false,
-        error: `We couldn't verify enough ${theme} venues in ${city}. Only ${validatedActivities.length} out of ${relevantActivities.length} relevant venues were found on Google Maps. Please try again.`,
+        error: `We couldn't verify any ${theme} venues in ${city}. None of the ${relevantActivities.length} relevant venues were found on Google Maps. Please try again.`,
         errorCode: 'INSUFFICIENT_VENUES',
         rejectedVenues: rejectedVenues.map(v => v.name),
         rejectionReasons: rejectedVenues,
         validatedCount: validatedActivities.length,
-        minimumRequired: 2,
+        minimumRequired: 1,
         retry: true
       });
     }
@@ -648,11 +680,30 @@ WHAT IS NOT RELEVANT (REJECT THESE):
 - Retail stores (unless they have a bar/restaurant)
 - Places that are clearly NOT entertainment venues
 
+PERMANENTLY CLOSED OR NAME CHANGED VENUES:
+- If you know a venue is PERMANENTLY CLOSED, REJECT it with reason "Permanently closed"
+- If a venue has CHANGED ITS NAME, APPROVE it but provide the CORRECT CURRENT NAME in "correctedName"
+- If a venue has been replaced by a different business at the same location, REJECT it
+- Use your knowledge of venues in ${city} to identify closures and name changes
+
 ALSO REJECT if the venue doesn't match the THEME:
 - For "Rooftop" theme: reject venues that are NOT elevated/rooftop locations
 - For "Nightlife" theme: reject venues that are NOT open late or for dancing/drinking
 - For "Jazz" theme: reject venues that don't feature jazz music
 - etc.
+
+DUPLICATE VENUE DETECTION:
+- If two or more venues have SIMILAR NAMES (same venue, slight spelling variations, or same establishment), REJECT the SECOND one
+- Examples of duplicates: "Sky Lounge" and "The Sky Lounge", "Bar XYZ" and "XYZ Bar", "Café Roma" and "Cafe Roma"
+- Keep the FIRST occurrence, reject subsequent duplicates with reason "Duplicate venue - similar to [first venue name]"
+- This ensures variety in the plan
+
+CITY NAME AS VENUE:
+- If a venue name is EXACTLY the same as the city name "${city}", REJECT it
+- The city itself is not a valid venue
+- Examples: Searching in "Paris" and venue is "Paris" → REJECT
+- Examples: Searching in "Nairobi" and venue is "Nairobi" → REJECT
+- Reject with reason "Venue name matches city name - not a valid venue"
 
 Be STRICT. If a venue sounds suspicious or inappropriate, REJECT it.
 
@@ -666,7 +717,10 @@ ${venueList.map(v => `${v.index + 1}. ${v.name}
 
 For EACH venue, decide:
 - APPROVE if it's a legitimate entertainment venue appropriate for "${theme}"
-- REJECT if it's inappropriate, irrelevant, or doesn't match the theme
+- REJECT if it's inappropriate, irrelevant, permanently closed, or doesn't match the theme
+- REJECT if it's a DUPLICATE (similar name to a previous venue) - keep the first, reject the second
+- REJECT if the venue name exactly matches the city name "${city}"
+- If the venue has changed its name, APPROVE but include the correctedName
 
 Return JSON:
 {
@@ -675,7 +729,8 @@ Return JSON:
       "index": 0,
       "venueName": "Venue Name",
       "approved": true,
-      "reason": "Why approved or rejected"
+      "reason": "Why approved or rejected",
+      "correctedName": "New Name (only if venue renamed, otherwise omit)"
     }
   ]
 }`;
@@ -694,6 +749,7 @@ Return JSON:
         venueName: string;
         approved: boolean;
         reason: string;
+        correctedName?: string;
       }>;
     }>(response);
 
@@ -705,7 +761,16 @@ Return JSON:
       if (!activity) continue;
 
       if (decision.approved) {
-        approved.push(activity);
+        // Apply corrected name if venue was renamed
+        if (decision.correctedName) {
+          console.log(`   📝 Name correction: "${activity.venueName}" → "${decision.correctedName}"`);
+          approved.push({
+            ...activity,
+            venueName: decision.correctedName
+          });
+        } else {
+          approved.push(activity);
+        }
       } else {
         rejected.push({
           name: decision.venueName || activity.venueName,
