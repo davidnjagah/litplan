@@ -61,7 +61,7 @@ const THEME_OPTIMIZATION: Record<string, string> = {
   "Afro Beats": "Find the BEST afrobeats music venues. Look for clubs hosting afrobeats nights, venues playing Nigerian and West African pop music, parties featuring Burna Boy/Wizkid/Davido style music, and African nightlife with high-energy vibes.",
   "Equestrian": "Find the BEST horse riding experiences. Look for riding schools with lessons, equestrian centers with trail rides, ranch experiences, and horseback adventures for hands-on participation.",
   "Excitement": "Find the MOST THRILLING and fun experiences in the city. Look for amusement parks, fun fairs, circuses, gondola rides, ferris wheels, carnivals, theme parks, water parks, and unique attractions that create unforgettable memories. Prioritize places with the best reviews for excitement and fun.",
-  "Activities": "Find the BEST group activity venues. Look for bowling alleys, paintball arenas, laser tag centers, escape rooms, go-karting tracks, mini golf, trampoline parks, and arcades. Find exactly 2 fun activities PLUS 1 final spot - either a scenic venue with views for sundowner drinks OR a nice restaurant where the group can eat and celebrate."
+  "Activities": "Find 4-5 BEST group activity venues to ensure variety after validation. Look for bowling alleys, paintball arenas, laser tag centers, escape rooms, go-karting tracks, mini golf, trampoline parks, VR arcades, and climbing gyms. ALSO find 2 options for the final spot - scenic venues with views for sundowner drinks OR nice restaurants where the group can eat and celebrate. The final plan will use 2 activities + 1 winding down spot."
 };
 
 // In-depth theme definitions for AI context
@@ -91,7 +91,7 @@ const THEME_DEFINITIONS: Record<string, string> = {
   "Afro Beats": "Afrobeats music experiences - clubs and venues playing Nigerian, Ghanaian, and West African pop music. Afrobeats dance nights, parties featuring music in the style of Burna Boy, Wizkid, Davido, Tems, and Rema. High-energy African pop culture vibes, African nightlife spots, and venues known for West African music scenes.",
   "Equestrian": "Hands-on horse riding experiences - riding schools offering lessons for beginners to advanced riders, equestrian centers with scenic trail rides, ranch experiences with horseback adventures, and immersive horse riding activities. For those who want to actually ride horses.",
   "Excitement": "Thrilling daytime and evening experiences that create unforgettable memories. Amusement parks with roller coasters, fun fairs with carnival games and rides, circuses with live performances, gondola rides with scenic views, ferris wheels for panoramic city vistas, theme parks with immersive attractions, water parks for splashing fun, zip lines for adrenaline, and unique city attractions. Perfect for groups wanting excitement, adventure, and Instagram-worthy moments.",
-  "Activities": "Interactive group activity experiences - EXACTLY 2 fun competitive activities like bowling alleys, paintball arenas, laser tag centers, escape rooms, go-karting tracks, mini golf courses, trampoline parks, axe throwing, VR arcades, or climbing walls. PLUS 1 final venue for winding down - either a rooftop bar/scenic viewpoint with beautiful views for sundowner drinks, OR a nice restaurant where the group can eat, celebrate, and share stories from the activities. The perfect group day out."
+  "Activities": "Interactive group activity experiences - Find 4-5 fun competitive activities like bowling alleys, paintball arenas, laser tag centers, escape rooms, go-karting tracks, mini golf courses, trampoline parks, axe throwing, VR arcades, or climbing walls (to ensure 2 survive validation). PLUS 2 options for final winding down venues - rooftop bars/scenic viewpoints with beautiful views for sundowner drinks, OR nice restaurants where the group can eat, celebrate, and share stories from the activities. The final curated plan will feature 2 activities + 1 winding down spot. The perfect group day out."
 };
 
 // Opening hours period structure (from Google Places)
@@ -608,10 +608,17 @@ async function agent1_discoverVenues(
   currency: string
 ): Promise<GroupPlan | null> {
   const isLowBudget = theme === 'Low Budget';
+  const isActivities = theme === 'Activities';
+  const venueCount = isActivities ? 6 : 3; // Request more venues for Activities to survive validation
 
   const systemPrompt = `You are an expert local guide for ${city}${country ? `, ${country}` : ''} with deep knowledge of the BEST venues.
 
-YOUR MISSION: Find the TOP 3 most CREDIBLE, REAL, and HIGHLY-RATED venues for a "${theme}" experience.
+YOUR MISSION: Find the TOP ${venueCount} most CREDIBLE, REAL, and HIGHLY-RATED venues for a "${theme}" experience.${isActivities ? `
+
+SPECIAL FOR ACTIVITIES THEME:
+- Find 4-5 fun competitive ACTIVITY venues (bowling, laser tag, escape rooms, go-karting, VR arcades, etc.)
+- PLUS 1-2 winding down spots (rooftop bars, scenic restaurants, or nice places to eat)
+- This ensures enough venues survive validation for a final plan of 2 activities + 1 dining/drinks spot` : ''}
 
 THEME CONTEXT:
 ${themeDefinition}
@@ -648,7 +655,7 @@ FOR EACH VENUE, EXPLAIN:
 - Popularity signals (famous for, featured in, known for)
 
 PROXIMITY REQUIREMENTS:
-- All 3 venues MUST be within 15 MINUTES WALKING DISTANCE of each other
+- All ${venueCount} venues MUST be within 15 MINUTES WALKING DISTANCE of each other
 - Choose venues in the SAME neighborhood or entertainment district within ${city}
 - If walking distance isn't possible, max 30 minutes by car WITHIN ${city}
 - Prioritize walkable areas with multiple venue options
@@ -664,9 +671,15 @@ ${isLowBudget ? 'BUDGET: Total must be under $50/person. Focus on happy hours, f
 
 RESPOND WITH VALID JSON ONLY.`;
 
-  const userPrompt = `Find the TOP 3 ${theme} venues in ${city}${country ? `, ${country}` : ''}.
+  const userPrompt = `Find the TOP ${venueCount} ${theme} venues in ${city}${country ? `, ${country}` : ''}.
 
-REMEMBER: Only recommend REAL places with REAL reviews and ratings. I will verify these exist.
+REMEMBER: Only recommend REAL places with REAL reviews and ratings. I will verify these exist.${isActivities ? `
+
+FOR ACTIVITIES THEME - YOU MUST INCLUDE:
+1. First 4-5 venues: Fun competitive ACTIVITIES (bowling, escape rooms, laser tag, go-karting, VR arcades, paintball, mini golf, trampoline parks, etc.)
+2. Last 1-2 venues: WINDING DOWN spots - either a nice RESTAURANT for dinner OR a BAR/ROOFTOP with views for sundowner drinks
+
+⚠️ The last venue(s) MUST be a restaurant or bar - NOT another activity!` : ''}
 
 Return JSON:
 {
