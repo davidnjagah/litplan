@@ -609,7 +609,8 @@ async function agent1_discoverVenues(
 ): Promise<GroupPlan | null> {
   const isLowBudget = theme === 'Low Budget';
   const isActivities = theme === 'Activities';
-  const venueCount = isActivities ? 6 : 3; // Request more venues for Activities to survive validation
+  const isExcitement = theme === 'Excitement';
+  const venueCount = (isActivities || isExcitement) ? 7 : 3; // Request more venues for Activities/Excitement to survive validation
 
   const systemPrompt = `You are an expert local guide for ${city}${country ? `, ${country}` : ''} with deep knowledge of the BEST venues.
 
@@ -618,7 +619,12 @@ YOUR MISSION: Find the TOP ${venueCount} most CREDIBLE, REAL, and HIGHLY-RATED v
 SPECIAL FOR ACTIVITIES THEME:
 - Find 4-5 fun competitive ACTIVITY venues (bowling, laser tag, escape rooms, go-karting, VR arcades, etc.)
 - PLUS 1-2 winding down spots (rooftop bars, scenic restaurants, or nice places to eat)
-- This ensures enough venues survive validation for a final plan of 2 activities + 1 dining/drinks spot` : ''}
+- This ensures enough venues survive validation for a final plan of 2 activities + 1 dining/drinks spot` : ''}${isExcitement ? `
+
+SPECIAL FOR EXCITEMENT THEME:
+- Find 4-5 THRILLING excitement venues (amusement parks, fun fairs, ferris wheels, gondola rides, theme parks, water parks, carnivals, circuses, zip lines, etc.)
+- PLUS 2 winding down spots (rooftop bars, scenic restaurants, or nice places to relax with views and drinks)
+- This ensures enough venues survive validation for a final plan of 2-3 excitement spots + 1 dining/drinks spot` : ''}
 
 THEME CONTEXT:
 ${themeDefinition}
@@ -679,7 +685,13 @@ FOR ACTIVITIES THEME - YOU MUST INCLUDE:
 1. First 4-5 venues: Fun competitive ACTIVITIES (bowling, escape rooms, laser tag, go-karting, VR arcades, paintball, mini golf, trampoline parks, etc.)
 2. Last 1-2 venues: WINDING DOWN spots - either a nice RESTAURANT for dinner OR a BAR/ROOFTOP with views for sundowner drinks
 
-⚠️ The last venue(s) MUST be a restaurant or bar - NOT another activity!` : ''}
+⚠️ The last venue(s) MUST be a restaurant or bar - NOT another activity!` : ''}${isExcitement ? `
+
+FOR EXCITEMENT THEME - YOU MUST INCLUDE:
+1. First 4-5 venues: THRILLING experiences (amusement parks, fun fairs, ferris wheels, gondola rides, theme parks, water parks, carnivals, circuses, zip lines, unique attractions, etc.)
+2. Last 2 venues: WINDING DOWN spots - either a nice RESTAURANT for dinner OR a BAR/ROOFTOP with scenic views for sundowner drinks
+
+⚠️ The last 2 venues MUST be restaurants or bars with views - NOT more excitement venues!` : ''}
 
 Return JSON:
 {
