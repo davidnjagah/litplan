@@ -21,7 +21,7 @@ struct PasswordResetView: View {
     let tokenHash: String
     let onComplete: (Bool) -> Void
 
-    enum ResetState {
+    enum ResetState: Equatable {
         case input
         case loading
         case success

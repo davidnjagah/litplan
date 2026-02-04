@@ -494,16 +494,19 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         do {
             // Verify the OTP token with type 'signup' or 'email'
-            let session = try await supabaseManager.client.auth.verifyOTP(
+            let response = try await supabaseManager.client.auth.verifyOTP(
                 tokenHash: tokenHash,
                 type: .signup
             )
 
             // Update session and user state
-            supabaseManager.updateSession(Session(from: session))
-            supabaseManager.updateUser(SupabaseUser(from: session.user))
+            guard let supabaseSession = response.session else {
+                throw AuthError.unknown("No session returned from verification")
+            }
+            supabaseManager.updateSession(Session(from: supabaseSession))
+            supabaseManager.updateUser(SupabaseUser(from: response.user))
 
-            self.currentUser = SupabaseUser(from: session.user)
+            self.currentUser = SupabaseUser(from: response.user)
             self.authState = .authenticated
             self.emailConfirmationNeeded = false
             self.pendingConfirmationEmail = nil
@@ -543,13 +546,16 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         do {
             // First verify the recovery token
-            let session = try await supabaseManager.client.auth.verifyOTP(
+            let response = try await supabaseManager.client.auth.verifyOTP(
                 tokenHash: tokenHash,
                 type: .recovery
             )
 
             // Update session temporarily
-            supabaseManager.updateSession(Session(from: session))
+            guard let supabaseSession = response.session else {
+                throw AuthError.unknown("No session returned from recovery verification")
+            }
+            supabaseManager.updateSession(Session(from: supabaseSession))
 
             // Now update the password
             try await supabaseManager.client.auth.update(user: UserAttributes(password: newPassword))
@@ -580,16 +586,19 @@ class AuthenticationManager: NSObject, ObservableObject {
         errorMessage = nil
 
         do {
-            let session = try await supabaseManager.client.auth.verifyOTP(
+            let response = try await supabaseManager.client.auth.verifyOTP(
                 tokenHash: tokenHash,
                 type: .magiclink
             )
 
             // Update session and user state
-            supabaseManager.updateSession(Session(from: session))
-            supabaseManager.updateUser(SupabaseUser(from: session.user))
+            guard let supabaseSession = response.session else {
+                throw AuthError.unknown("No session returned from magic link verification")
+            }
+            supabaseManager.updateSession(Session(from: supabaseSession))
+            supabaseManager.updateUser(SupabaseUser(from: response.user))
 
-            self.currentUser = SupabaseUser(from: session.user)
+            self.currentUser = SupabaseUser(from: response.user)
             self.authState = .authenticated
 
             // Sync with backend
@@ -620,16 +629,19 @@ class AuthenticationManager: NSObject, ObservableObject {
         errorMessage = nil
 
         do {
-            let session = try await supabaseManager.client.auth.verifyOTP(
+            let response = try await supabaseManager.client.auth.verifyOTP(
                 tokenHash: tokenHash,
                 type: .invite
             )
 
             // Update session and user state
-            supabaseManager.updateSession(Session(from: session))
-            supabaseManager.updateUser(SupabaseUser(from: session.user))
+            guard let supabaseSession = response.session else {
+                throw AuthError.unknown("No session returned from invite verification")
+            }
+            supabaseManager.updateSession(Session(from: supabaseSession))
+            supabaseManager.updateUser(SupabaseUser(from: response.user))
 
-            self.currentUser = SupabaseUser(from: session.user)
+            self.currentUser = SupabaseUser(from: response.user)
             self.authState = .authenticated
 
             // Update display name if provided
