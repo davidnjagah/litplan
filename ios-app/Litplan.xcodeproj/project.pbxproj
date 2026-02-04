@@ -43,11 +43,19 @@
 		16C962A7DE3804F453C51A9E /* DayGroupedPlansSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16DC0A7DEAC333438920E42E /* DayGroupedPlansSection.swift */; };
 		1D67C85F9866D9578B5F65C0 /* CitySearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5AD98C0DE0BC26B446A974A /* CitySearchManager.swift */; };
 		1DECED6E5624F94D601F7903 /* WeekendPlansSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F942FE57C3D9148D5F4AE14 /* WeekendPlansSection.swift */; };
+		2196C974860A78E497048B58 /* SearchHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384C562426CBDB498F28A1D2 /* SearchHistoryManager.swift */; };
 		21A83C7A2F047AE00093A0B3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 211DED512F02E98C00532BB1 /* Supabase */; };
+		21FFB3B52F3290DF00B056E5 /* DeepLinkType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3B42F3290DF00B056E5 /* DeepLinkType.swift */; };
+		21FFB3B72F32910A00B056E5 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3B62F32910A00B056E5 /* DeepLinkHandler.swift */; };
+		21FFB3BE2F32913700B056E5 /* AuthFlowContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3B82F32913700B056E5 /* AuthFlowContainerView.swift */; };
+		21FFB3BF2F32913700B056E5 /* InviteAcceptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3BA2F32913700B056E5 /* InviteAcceptView.swift */; };
+		21FFB3C02F32913700B056E5 /* MagicLinkVerifyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3BB2F32913700B056E5 /* MagicLinkVerifyView.swift */; };
+		21FFB3C12F32913700B056E5 /* EmailVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3B92F32913700B056E5 /* EmailVerificationView.swift */; };
+		21FFB3C22F32913700B056E5 /* PasswordResetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3BC2F32913700B056E5 /* PasswordResetView.swift */; };
 		29E67E34BFAB50A7B315784C /* BoltCitySelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C0778C25417884E02F00CA /* BoltCitySelector.swift */; };
-		2E44806F926C4DB197321DEA /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A79DBEF7822148A4A78F0907 /* HapticManager.swift */; };
-		55FA7A24C5F9440FB527E3C3 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA6A160B87640F8AF932512 /* AsyncImageView.swift */; };
+		5D8E80AE1F9F4A7D8F400D9C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BCC5992D4C6E4CE2B28FBE34 /* Assets.xcassets */; };
 		609FC81F746E49CB21A636E6 /* PlanListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32ABBF512970389B671E2F1F /* PlanListItem.swift */; };
+		6A600B3334734F3882F3BB6B /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0A02382E5D4E44BA067A19 /* SplashScreenView.swift */; };
 		7523AACB826003E039BF4125 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */; };
 		7A9295786E53FDF606D37F31 /* SavedItemsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */; };
 		98D1C37EA7BE8D6D8C846BDE /* CitySearchSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F24C14E1149D976FC39992A /* CitySearchSelector.swift */; };
@@ -61,6 +69,7 @@
 		BE2B8A3C96A3A3120BE6A1CD /* ErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */; };
 		C13BC79EEC0587409C9794F6 /* Parallax3DCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7886B710A852B678FA16ED00 /* Parallax3DCard.swift */; };
 		C26592D7480C9C1DEDC6F61D /* DynamicIslandTabSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C974A2F31D42E9A19B515BB /* DynamicIslandTabSelector.swift */; };
+		C498C87825294BEA972543A8 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A032EDD07B714703B0CCB656 /* AsyncImageView.swift */; };
 		CAD41E35D25DF39969629027 /* BoltThemeSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400B41C29D041B4598733AE6 /* BoltThemeSelector.swift */; };
 		CB8313F94F443E7030E30853 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44B482D5F2E37EF24D5C64A /* MotionManager.swift */; };
 		CE244B833F4794EEAEC7FA1F /* BoltView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E852CC197ADBBA78C9D823F1 /* BoltView.swift */; };
@@ -68,6 +77,7 @@
 		CPS002 /* CityPreloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CPS001 /* CityPreloadService.swift */; };
 		CSS001 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CSS002 /* CacheService.swift */; };
 		D57E718C03564816A6D908AA /* NotificationsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B25A9CE26813A1F1C6E048 /* NotificationsSettingsView.swift */; };
+		D94DD60ECEAC48698F382007 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F22C95DEA7048A488D69E6F /* HapticManager.swift */; };
 		DD99AFFD452ED2C3DA626451 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5309BDE2320E0532A23CED3C /* EmptyStateView.swift */; };
 		E9A9E6C58B38DF7A69D0F579 /* DetailedGroupFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */; };
 		F556E3FEBDF38C02C780C820 /* PlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49329656D85F82B7ABE55280 /* PlanDetailView.swift */; };
@@ -76,10 +86,6 @@
 		SP13001 /* MyPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP13002 /* MyPlansView.swift */; };
 		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
 		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
-		C498C87825294BEA972543A8 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A032EDD07B714703B0CCB656 /* AsyncImageView.swift */; };
-		D94DD60ECEAC48698F382007 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F22C95DEA7048A488D69E6F /* HapticManager.swift */; };
-		6A600B3334734F3882F3BB6B /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0A02382E5D4E44BA067A19 /* SplashScreenView.swift */; };
-		5D8E80AE1F9F4A7D8F400D9C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BCC5992D4C6E4CE2B28FBE34 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -122,8 +128,18 @@
 		134 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
 		16DC0A7DEAC333438920E42E /* DayGroupedPlansSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DayGroupedPlansSection.swift; sourceTree = "<group>"; };
 		21A83C7B2F0542D50093A0B3 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
+		21FFB3B42F3290DF00B056E5 /* DeepLinkType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkType.swift; sourceTree = "<group>"; };
+		21FFB3B62F32910A00B056E5 /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
+		21FFB3B82F32913700B056E5 /* AuthFlowContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFlowContainerView.swift; sourceTree = "<group>"; };
+		21FFB3B92F32913700B056E5 /* EmailVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailVerificationView.swift; sourceTree = "<group>"; };
+		21FFB3BA2F32913700B056E5 /* InviteAcceptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteAcceptView.swift; sourceTree = "<group>"; };
+		21FFB3BB2F32913700B056E5 /* MagicLinkVerifyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagicLinkVerifyView.swift; sourceTree = "<group>"; };
+		21FFB3BC2F32913700B056E5 /* PasswordResetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
+		2A0A02382E5D4E44BA067A19 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
 		32ABBF512970389B671E2F1F /* PlanListItem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanListItem.swift; sourceTree = "<group>"; };
+		384C562426CBDB498F28A1D2 /* SearchHistoryManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchHistoryManager.swift; sourceTree = "<group>"; };
 		39A8DD9CF4C0A69FAEA5996A /* DetailedGroupFlowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DetailedGroupFlowView.swift; sourceTree = "<group>"; };
+		3F22C95DEA7048A488D69E6F /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		400B41C29D041B4598733AE6 /* BoltThemeSelector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoltThemeSelector.swift; sourceTree = "<group>"; };
 		44C0778C25417884E02F00CA /* BoltCitySelector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoltCitySelector.swift; sourceTree = "<group>"; };
 		49329656D85F82B7ABE55280 /* PlanDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanDetailView.swift; sourceTree = "<group>"; };
@@ -135,12 +151,14 @@
 		7886B710A852B678FA16ED00 /* Parallax3DCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Parallax3DCard.swift; sourceTree = "<group>"; };
 		88BF7F37FA4D5EC2FEA959DC /* PaywallTrigger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PaywallTrigger.swift; sourceTree = "<group>"; };
 		9F24C14E1149D976FC39992A /* CitySearchSelector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CitySearchSelector.swift; sourceTree = "<group>"; };
+		A032EDD07B714703B0CCB656 /* AsyncImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
 		A44B482D5F2E37EF24D5C64A /* MotionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SavedItemsManager.swift; sourceTree = "<group>"; };
 		A79DBEF7822148A4A78F0907 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		B5AD98C0DE0BC26B446A974A /* CitySearchManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CitySearchManager.swift; sourceTree = "<group>"; };
 		B7A662B1B8B6BDB69709844A /* BoltTokenManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoltTokenManager.swift; sourceTree = "<group>"; };
 		B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
+		BCC5992D4C6E4CE2B28FBE34 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CP01002 /* CopyableAddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyableAddressView.swift; sourceTree = "<group>"; };
 		CPS001 /* CityPreloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPreloadService.swift; sourceTree = "<group>"; };
 		CSS002 /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheService.swift; sourceTree = "<group>"; };
@@ -153,10 +171,6 @@
 		SP13002 /* MyPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPlansView.swift; sourceTree = "<group>"; };
 		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
 		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
-		A032EDD07B714703B0CCB656 /* AsyncImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
-		3F22C95DEA7048A488D69E6F /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
-		2A0A02382E5D4E44BA067A19 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
-		BCC5992D4C6E4CE2B28FBE34 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -171,6 +185,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		21FFB3BD2F32913700B056E5 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				21FFB3B82F32913700B056E5 /* AuthFlowContainerView.swift */,
+				21FFB3B92F32913700B056E5 /* EmailVerificationView.swift */,
+				21FFB3BA2F32913700B056E5 /* InviteAcceptView.swift */,
+				21FFB3BB2F32913700B056E5 /* MagicLinkVerifyView.swift */,
+				21FFB3BC2F32913700B056E5 /* PasswordResetView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
 		300 = {
 			isa = PBXGroup;
 			children = (
@@ -210,6 +236,7 @@
 			children = (
 				2A0A02382E5D4E44BA067A19 /* SplashScreenView.swift */,
 				103 /* HomeView.swift */,
+				21FFB3BD2F32913700B056E5 /* Auth */,
 				104 /* SearchView.swift */,
 				105 /* SearchedCitiesView.swift */,
 				SP13002 /* MyPlansView.swift */,
@@ -267,6 +294,7 @@
 			isa = PBXGroup;
 			children = (
 				115 /* City.swift */,
+				21FFB3B42F3290DF00B056E5 /* DeepLinkType.swift */,
 				116 /* Plan.swift */,
 				4C94516B2740331C2C25E62F /* GroupFlow.swift */,
 				120 /* ViewedCity.swift */,
@@ -283,6 +311,7 @@
 				124 /* SubscriptionManager.swift */,
 				127 /* NetworkMonitor.swift */,
 				129 /* Config.swift */,
+				21FFB3B62F32910A00B056E5 /* DeepLinkHandler.swift */,
 				130 /* SupabaseManager.swift */,
 				131 /* AuthenticationManager.swift */,
 				132 /* APIService.swift */,
@@ -291,6 +320,7 @@
 				CSS002 /* CacheService.swift */,
 				B5AD98C0DE0BC26B446A974A /* CitySearchManager.swift */,
 				B7A662B1B8B6BDB69709844A /* BoltTokenManager.swift */,
+				384C562426CBDB498F28A1D2 /* SearchHistoryManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -426,6 +456,7 @@
 				020 /* ViewedCity.swift in Sources */,
 				021 /* ViewedCityCard.swift in Sources */,
 				022 /* User.swift in Sources */,
+				21FFB3B52F3290DF00B056E5 /* DeepLinkType.swift in Sources */,
 				023 /* PaywallView.swift in Sources */,
 				024 /* SubscriptionManager.swift in Sources */,
 				A1A4FAC30BF3E48C2743C6D8 /* PaywallTrigger.swift in Sources */,
@@ -449,6 +480,11 @@
 				SP13001 /* MyPlansView.swift in Sources */,
 				F556E3FEBDF38C02C780C820 /* PlanDetailView.swift in Sources */,
 				609FC81F746E49CB21A636E6 /* PlanListItem.swift in Sources */,
+				21FFB3BE2F32913700B056E5 /* AuthFlowContainerView.swift in Sources */,
+				21FFB3BF2F32913700B056E5 /* InviteAcceptView.swift in Sources */,
+				21FFB3C02F32913700B056E5 /* MagicLinkVerifyView.swift in Sources */,
+				21FFB3C12F32913700B056E5 /* EmailVerificationView.swift in Sources */,
+				21FFB3C22F32913700B056E5 /* PasswordResetView.swift in Sources */,
 				1DECED6E5624F94D601F7903 /* WeekendPlansSection.swift in Sources */,
 				16C962A7DE3804F453C51A9E /* DayGroupedPlansSection.swift in Sources */,
 				AFEE0E9793F2246584F8D92C /* RouteMapView.swift in Sources */,
@@ -464,9 +500,11 @@
 				CE244B833F4794EEAEC7FA1F /* BoltView.swift in Sources */,
 				1D67C85F9866D9578B5F65C0 /* CitySearchManager.swift in Sources */,
 				BDCC733F7BCB5F4C9E158D24 /* BoltTokenManager.swift in Sources */,
+				21FFB3B72F32910A00B056E5 /* DeepLinkHandler.swift in Sources */,
 				98D1C37EA7BE8D6D8C846BDE /* CitySearchSelector.swift in Sources */,
 				29E67E34BFAB50A7B315784C /* BoltCitySelector.swift in Sources */,
 				CAD41E35D25DF39969629027 /* BoltThemeSelector.swift in Sources */,
+				2196C974860A78E497048B58 /* SearchHistoryManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -607,6 +645,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LitPlanz;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -618,7 +657,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.litplan.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -635,6 +674,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LitPlanz;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -646,7 +686,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.litplan.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
