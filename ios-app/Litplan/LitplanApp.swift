@@ -9,6 +9,7 @@
 //  Updated for Sprint 6 - Supabase Integration
 //  Updated for Sprint 8 - Google Sign In OAuth Support
 //  Updated for Sprint Email Flows - Deep Link Handling
+//  Updated for Onboarding Flow
 //
 
 import SwiftUI
@@ -24,6 +25,10 @@ struct LitplanApp: App {
 
     // Splash screen state
     @State private var showSplash = true
+
+    // Onboarding state - persisted to UserDefaults
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var showOnboarding = false
 
     init() {
         // Log environment info synchronously (safe)
@@ -69,6 +74,12 @@ struct LitplanApp: App {
                 withAnimation(.easeOut(duration: 0.5)) {
                     showSplash = false
                 }
+
+                // Show onboarding if not completed
+                if !hasCompletedOnboarding {
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds delay
+                    showOnboarding = true
+                }
             }
             .onOpenURL { url in
                 // Handle all deep links through centralized handler
@@ -79,6 +90,12 @@ struct LitplanApp: App {
                     AuthFlowContainerView(deepLinkType: deepLink)
                         .environmentObject(authManager)
                 }
+            }
+            .fullScreenCover(isPresented: $showOnboarding) {
+                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+                    .onDisappear {
+                        showOnboarding = false
+                    }
             }
         }
     }

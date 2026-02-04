@@ -86,6 +86,10 @@
 		SP13001 /* MyPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP13002 /* MyPlansView.swift */; };
 		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
 		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
+		OB01001 /* OnboardingPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB01002 /* OnboardingPage.swift */; };
+		OB02001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB02002 /* OnboardingView.swift */; };
+		OB03001 /* OnboardingPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB03002 /* OnboardingPageView.swift */; };
+		OB04001 /* ProComparisonPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB04002 /* ProComparisonPageView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -171,6 +175,10 @@
 		SP13002 /* MyPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPlansView.swift; sourceTree = "<group>"; };
 		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
 		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
+		OB01002 /* OnboardingPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPage.swift; sourceTree = "<group>"; };
+		OB02002 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		OB03002 /* OnboardingPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPageView.swift; sourceTree = "<group>"; };
+		OB04002 /* ProComparisonPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProComparisonPageView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,6 +193,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		OB05000 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				OB02002 /* OnboardingView.swift */,
+				OB03002 /* OnboardingPageView.swift */,
+				OB04002 /* ProComparisonPageView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
 		21FFB3BD2F32913700B056E5 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
@@ -237,6 +255,7 @@
 				2A0A02382E5D4E44BA067A19 /* SplashScreenView.swift */,
 				103 /* HomeView.swift */,
 				21FFB3BD2F32913700B056E5 /* Auth */,
+				OB05000 /* Onboarding */,
 				104 /* SearchView.swift */,
 				105 /* SearchedCitiesView.swift */,
 				SP13002 /* MyPlansView.swift */,
@@ -297,6 +316,7 @@
 				21FFB3B42F3290DF00B056E5 /* DeepLinkType.swift */,
 				116 /* Plan.swift */,
 				4C94516B2740331C2C25E62F /* GroupFlow.swift */,
+				OB01002 /* OnboardingPage.swift */,
 				120 /* ViewedCity.swift */,
 				122 /* User.swift */,
 				88BF7F37FA4D5EC2FEA959DC /* PaywallTrigger.swift */,
@@ -505,6 +525,10 @@
 				29E67E34BFAB50A7B315784C /* BoltCitySelector.swift in Sources */,
 				CAD41E35D25DF39969629027 /* BoltThemeSelector.swift in Sources */,
 				2196C974860A78E497048B58 /* SearchHistoryManager.swift in Sources */,
+				OB01001 /* OnboardingPage.swift in Sources */,
+				OB02001 /* OnboardingView.swift in Sources */,
+				OB03001 /* OnboardingPageView.swift in Sources */,
+				OB04001 /* ProComparisonPageView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
