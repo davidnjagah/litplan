@@ -70,7 +70,7 @@ enum DeepLinkType: Equatable {
                 return .invite(tokenHash: token)
             }
 
-        case "auth-callback", "callback":
+        case "auth-callback", "oauth-callback", "callback":
             // Check for type parameter to determine specific flow
             if let typeValue = type {
                 switch typeValue {
