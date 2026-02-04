@@ -1,4 +1,4 @@
-# Litplan App Store Listing
+# LitPlanz App Store Listing
 
 **Version:** 1.0
 **Last Updated:** December 28, 2025
@@ -8,20 +8,20 @@
 
 ## App Name
 
-**Primary Name:** Litplan - Discover Your Night
+**Primary Name:** LitPlanz - Discover Your Night
 
 **Character Count:** 28/30 characters
 
 **Reasoning:**
-- "Litplan" establishes brand identity
+- "LitPlanz" establishes brand identity
 - "Discover Your Night" conveys core value proposition
 - Clear, memorable, action-oriented
 - Includes searchable keyword "Discover"
 
 **Alternatives (if primary is unavailable):**
-- Litplan - Nightlife Discovery (27 chars)
-- Litplan - Night Out Plans (25 chars)
-- Litplan - Find Your Vibe (24 chars)
+- LitPlanz - Nightlife Discovery (27 chars)
+- LitPlanz - Night Out Plans (25 chars)
+- LitPlanz - Find Your Vibe (24 chars)
 
 ---
 
@@ -50,13 +50,13 @@
 
 ### Full Description
 
-**Discover Your Perfect Night Out with Litplan**
+**Discover Your Perfect Night Out with LitPlanz**
 
-Tired of Googling "best bars near me" and scrolling through endless reviews? Litplan takes the guesswork out of nightlife discovery with AI-curated plans tailored to your vibe.
+Tired of Googling "best bars near me" and scrolling through endless reviews? LitPlanz takes the guesswork out of nightlife discovery with AI-curated plans tailored to your vibe.
 
-Whether you're exploring a new city or rediscovering your hometown, Litplan delivers handpicked nightlife recommendations—from hidden speakeasies to rooftop clubs, cozy wine bars to high-energy nightclubs.
+Whether you're exploring a new city or rediscovering your hometown, LitPlanz delivers handpicked nightlife recommendations—from hidden speakeasies to rooftop clubs, cozy wine bars to high-energy nightclubs.
 
-**Why Litplan?**
+**Why LitPlanz?**
 
 Finding the perfect spot for your night out shouldn't be hard. We've done the research for you. Every plan is crafted by AI, curated for quality, and designed to match your mood—whether you're looking for a chill date night, an epic group outing, or a solo adventure.
 
@@ -75,7 +75,7 @@ Planning a night out with friends? Explore multi-stop itineraries with curated 3
 Unlock premium weekend experiences available only to Pro members. Get access to the hottest spots for Friday and Saturday nights.
 
 ✨ **Personalized Recommendations**
-The more you explore, the better we get. Litplan learns your preferences and suggests plans that match your style—upscale rooftop bars, underground speakeasies, high-energy dance clubs, or laid-back jazz lounges.
+The more you explore, the better we get. LitPlanz learns your preferences and suggests plans that match your style—upscale rooftop bars, underground speakeasies, high-energy dance clubs, or laid-back jazz lounges.
 
 🔄 **Weekly Refreshed Content**
 New plans added every week. Never run out of ideas for your next night out. Fresh recommendations keep your nightlife exciting and unpredictable.
@@ -126,7 +126,7 @@ Experience nightlife discovery in a sleek, dark-themed interface with smooth ani
 
 "The group flows are genius. Planned an entire bachelor party in 5 minutes." - Mike T.
 
-"I've lived in NYC for 10 years and Litplan showed me spots I never knew existed." - Alex K.
+"I've lived in NYC for 10 years and LitPlanz showed me spots I never knew existed." - Alex K.
 
 **Cities Available:**
 
@@ -138,15 +138,15 @@ And many more...
 
 **Privacy & Security:**
 
-Your privacy matters. We collect minimal data (email and city preferences only) and never sell your information to third parties. No location tracking. No intrusive permissions. Read our full privacy policy at litplan.app/privacy.
+Your privacy matters. We collect minimal data (email and city preferences only) and never sell your information to third parties. No location tracking. No intrusive permissions. Read our full privacy policy at litplanz.com/privacy.
 
 **Support:**
 
 Questions? Feedback? We're here to help.
-Email: support@litplan.app
-Website: litplan.app
+Email: support@litplanz.com
+Website: litplanz.com
 
-**Download Litplan and discover your perfect night out tonight.**
+**Download LitPlanz and discover your perfect night out tonight.**
 
 ---
 
@@ -207,7 +207,7 @@ nightlife,bars,clubs,party,night out,weekend,group,travel,city guide,drinks,AI r
 
 **Current Promotional Text:**
 ```
-New Year, New Nightlife! Start 2026 with a 7-day free trial of Litplan Pro. Unlock unlimited cities and exclusive weekend plans. Download now and discover your night.
+New Year, New Nightlife! Start 2026 with a 7-day free trial of LitPlanz Pro. Unlock unlimited cities and exclusive weekend plans. Download now and discover your night.
 ```
 
 **Reasoning:**
@@ -220,27 +220,27 @@ New Year, New Nightlife! Start 2026 with a 7-day free trial of Litplan Pro. Unlo
 
 **Spring (March-May):**
 ```
-Spring into new adventures! Try Litplan Pro free for 7 days. Explore 100+ cities, discover hidden gems, and plan unforgettable group outings. Download now!
+Spring into new adventures! Try LitPlanz Pro free for 7 days. Explore 100+ cities, discover hidden gems, and plan unforgettable group outings. Download now!
 ```
 
 **Summer (June-August):**
 ```
-Summer nights start here! Unlock Litplan Pro with a 7-day free trial. Rooftop bars, beach clubs, and weekend exclusives await. Discover your perfect night out.
+Summer nights start here! Unlock LitPlanz Pro with a 7-day free trial. Rooftop bars, beach clubs, and weekend exclusives await. Discover your perfect night out.
 ```
 
 **Fall (September-November):**
 ```
-Fall in love with nightlife again. Try Litplan Pro free for 7 days. 100+ cities, 5,000+ AI-curated plans, unlimited possibilities. Download and explore tonight.
+Fall in love with nightlife again. Try LitPlanz Pro free for 7 days. 100+ cities, 5,000+ AI-curated plans, unlimited possibilities. Download and explore tonight.
 ```
 
 **Holiday (December):**
 ```
-Holiday parties made easy! Plan group outings with Litplan Pro. 7-day free trial. Multi-stop itineraries, exclusive venues, unforgettable nights. Download now!
+Holiday parties made easy! Plan group outings with LitPlanz Pro. 7-day free trial. Multi-stop itineraries, exclusive venues, unforgettable nights. Download now!
 ```
 
 **Post-Launch (Evergreen):**
 ```
-Discover nightlife, redefined. Litplan uses AI to curate the perfect night out. 100+ cities, 5,000+ plans. Try Pro free for 7 days. Download now and explore.
+Discover nightlife, redefined. LitPlanz uses AI to curate the perfect night out. 100+ cities, 5,000+ plans. Try Pro free for 7 days. Download now and explore.
 ```
 
 ---
@@ -321,16 +321,16 @@ Discover nightlife, redefined. Litplan uses AI to curate the perfect night out. 
 **Duration:** 15-30 seconds
 
 **Storyboard:**
-1. **0-3s:** Litplan logo animation with tagline "Discover Your Night"
+1. **0-3s:** LitPlanz logo animation with tagline "Discover Your Night"
 2. **3-8s:** Swipe through city cards on Home screen
 3. **8-12s:** Tap NYC card, view nightlife plans with smooth animations
 4. **12-17s:** Show group flow timeline with 3-stop itinerary
 5. **17-22s:** Highlight Pro features paywall with free trial CTA
 6. **22-25s:** Profile screen showing saved cities and subscription
-7. **25-30s:** End with Litplan logo and "Download Now" CTA
+7. **25-30s:** End with LitPlanz logo and "Download Now" CTA
 
 **Voiceover Script:**
-"Discover your perfect night out with Litplan. Explore 100+ cities. AI-curated nightlife plans. Group flows for unforgettable experiences. Try Pro free for 7 days. Download Litplan today."
+"Discover your perfect night out with LitPlanz. Explore 100+ cities. AI-curated nightlife plans. Group flows for unforgettable experiences. Try Pro free for 7 days. Download LitPlanz today."
 
 **Music:**
 - Upbeat, energetic electronic music
@@ -342,7 +342,7 @@ Discover nightlife, redefined. Litplan uses AI to curate the perfect night out. 
 ## App Store Connect Metadata Checklist
 
 ### Required Fields
-- [x] App Name: Litplan - Discover Your Night
+- [x] App Name: LitPlanz - Discover Your Night
 - [x] Subtitle: AI-Powered Nightlife Discovery
 - [x] Description: 3,847 characters
 - [x] Keywords: 97 characters
@@ -352,9 +352,9 @@ Discover nightlife, redefined. Litplan uses AI to curate the perfect night out. 
 - [x] Age Rating: 17+
 - [ ] App Icon: 1024x1024px (to be uploaded)
 - [ ] Screenshots: 5 per device size (to be uploaded)
-- [ ] Privacy Policy URL: https://litplan.app/privacy (to be published)
-- [ ] Support URL: https://support.litplan.app (to be created)
-- [ ] Marketing URL: https://litplan.app (to be created)
+- [ ] Privacy Policy URL: https://litplanz.com/privacy (to be published)
+- [ ] Support URL: https://support.litplanz.com (to be created)
+- [ ] Marketing URL: https://litplanz.com (to be created)
 
 ### Optional Fields
 - [ ] App Preview Video (future enhancement)
@@ -422,7 +422,7 @@ Discover nightlife, redefined. Litplan uses AI to curate the perfect night out. 
 
 ### Market Positioning
 
-**Litplan's Unique Position:**
+**LitPlanz's Unique Position:**
 - Only AI-powered nightlife discovery app
 - Focus on curation over quantity
 - Beautiful, modern design (vs. dated competitors)
@@ -437,7 +437,7 @@ Discover nightlife, redefined. Litplan uses AI to curate the perfect night out. 
 
 **Twitter/X:**
 ```
-🎉 Litplan is LIVE on the App Store!
+🎉 LitPlanz is LIVE on the App Store!
 
 Discover nightlife in 100+ cities with AI-curated plans.
 ✨ From rooftop bars to hidden speakeasies
@@ -446,14 +446,14 @@ Discover nightlife in 100+ cities with AI-curated plans.
 
 Download now: [link]
 
-#Litplan #Nightlife #TravelApp
+#LitPlanz #Nightlife #TravelApp
 ```
 
 **Instagram Caption:**
 ```
 Your perfect night out starts here. 🌃
 
-Litplan uses AI to discover the best nightlife spots in 100+ cities worldwide. Whether you're exploring NYC, Miami, LA, or traveling abroad—we've got your night planned.
+LitPlanz uses AI to discover the best nightlife spots in 100+ cities worldwide. Whether you're exploring NYC, Miami, LA, or traveling abroad—we've got your night planned.
 
 ✨ Features:
 🌆 100+ cities
@@ -461,26 +461,26 @@ Litplan uses AI to discover the best nightlife spots in 100+ cities worldwide. W
 🎉 Group flow itineraries
 📅 Weekend exclusives (Pro)
 
-Download Litplan on the App Store and try Pro free for 7 days.
+Download LitPlanz on the App Store and try Pro free for 7 days.
 
 Link in bio 👆
 
-#Litplan #Nightlife #DiscoverYourNight #TravelApp #Nightclub #Bars #AI
+#LitPlanz #Nightlife #DiscoverYourNight #TravelApp #Nightclub #Bars #AI
 ```
 
 **LinkedIn Announcement:**
 ```
-Excited to announce the launch of Litplan on the App Store! 🚀
+Excited to announce the launch of LitPlanz on the App Store! 🚀
 
-Litplan is an AI-powered nightlife discovery app that helps users find the perfect bars, clubs, and lounges in 100+ cities worldwide.
+LitPlanz is an AI-powered nightlife discovery app that helps users find the perfect bars, clubs, and lounges in 100+ cities worldwide.
 
-Built with SwiftUI, Firebase, and Claude AI, Litplan offers:
+Built with SwiftUI, Firebase, and Claude AI, LitPlanz offers:
 - AI-curated nightlife recommendations
 - Multi-stop group itineraries
 - Subscription features with StoreKit 2
 - Beautiful, modern iOS design
 
-Try Litplan today: [link]
+Try LitPlanz today: [link]
 
 #ProductLaunch #iOS #AI #NightlifeDiscovery #SwiftUI
 ```

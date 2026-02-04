@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In to LitPlanz</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0f;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 480px; border-collapse: collapse;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding-bottom: 32px;">
+              <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">LitPlanz</h1>
+              <p style="margin: 8px 0 0 0; font-size: 14px; color: #a855f7;">Discover your perfect night out</p>
+            </td>
+          </tr>
+
+          <!-- Main Card -->
+          <tr>
+            <td style="background-color: #18181b; border-radius: 16px; padding: 40px 32px;">
+
+              <!-- Icon -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center" style="padding-bottom: 24px;">
+                    <div style="width: 64px; height: 64px; background-color: rgba(168, 85, 247, 0.15); border-radius: 50%; display: inline-block; line-height: 64px; text-align: center;">
+                      <span style="font-size: 28px;">&#9889;</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Title -->
+              <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #ffffff; text-align: center;">
+                Your Login Link
+              </h2>
+
+              <!-- Message -->
+              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #a1a1aa; text-align: center;">
+                Click the button below to securely sign in to your LitPlanz account. No password needed.
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center" style="padding: 8px 0 24px 0;">
+                    <a href="{{ .ConfirmationURL }}" style="display: inline-block; background-color: #a855f7; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 14px 32px; border-radius: 10px;">
+                      Sign In to LitPlanz
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Link fallback -->
+              <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a; text-align: center;">
+                Or copy and paste this link into your browser:<br>
+                <a href="{{ .ConfirmationURL }}" style="color: #a855f7; word-break: break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+
+              <!-- Expiry notice -->
+              <div style="background-color: #27272a; border-radius: 8px; padding: 12px 16px;">
+                <p style="margin: 0; font-size: 13px; color: #a1a1aa; text-align: center;">
+                  This link will expire in 1 hour and can only be used once.
+                </p>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Security Notice -->
+          <tr>
+            <td style="padding: 24px 0;">
+              <div style="background-color: rgba(113, 113, 122, 0.1); border: 1px solid #27272a; border-radius: 8px; padding: 16px;">
+                <p style="margin: 0; font-size: 13px; color: #71717a; text-align: center;">
+                  <strong style="color: #a1a1aa;">Security tip:</strong> Never share this link with anyone. LitPlanz will never ask for your login link via email or message.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding-top: 16px; border-top: 1px solid #27272a;">
+              <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a;">
+                Questions? Contact us at <a href="mailto:support@litplanz.com" style="color: #a855f7; text-decoration: none;">support@litplanz.com</a>
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #52525b;">
+                &copy; {{ .CurrentYear }} LitPlanz. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

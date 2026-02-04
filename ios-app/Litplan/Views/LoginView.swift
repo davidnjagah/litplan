@@ -2,6 +2,7 @@
 //  LoginView.swift
 //  Litplan
 //
+//  App Name: LitPlanz
 //  Created for Sprint 6 - Supabase Integration
 //  Authentication view with Google sign in, email/password, and guest mode
 //
@@ -30,7 +31,9 @@ struct LoginView: View {
                 Spacer()
 
                 // Main content
-                if showEmailLogin {
+                if authManager.emailConfirmationNeeded {
+                    emailConfirmationSection
+                } else if showEmailLogin {
                     emailLoginSection
                 } else if showSignUp {
                     signUpSection
@@ -345,6 +348,70 @@ struct LoginView: View {
         }
     }
 
+    // MARK: - Email Confirmation Section
+
+    private var emailConfirmationSection: some View {
+        VStack(spacing: Spacing.xl) {
+            Spacer()
+
+            // Success icon
+            ZStack {
+                Circle()
+                    .fill(Color.success.opacity(0.15))
+                    .frame(width: 120, height: 120)
+
+                Image(systemName: "envelope.badge.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.success)
+            }
+
+            // Title
+            Text("Check Your Email")
+                .font(.displayMedium)
+                .foregroundColor(.textPrimary)
+
+            // Description
+            VStack(spacing: Spacing.sm) {
+                Text("We've sent a confirmation link to:")
+                    .font(.body)
+                    .foregroundColor(.textSecondary)
+
+                Text(authManager.pendingConfirmationEmail ?? email)
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.textPrimary)
+
+                Text("Please check your inbox and click the link to verify your account.")
+                    .font(.callout)
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, Spacing.xs)
+            }
+
+            Spacer()
+
+            // Continue to Sign In button
+            PrimaryButton(title: "Continue to Sign In") {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    authManager.clearEmailConfirmation()
+                    showSignUp = false
+                    showEmailLogin = true
+                }
+            }
+
+            // Didn't receive email hint
+            VStack(spacing: Spacing.xs) {
+                Text("Didn't receive the email?")
+                    .font(.caption)
+                    .foregroundColor(.textTertiary)
+
+                Text("Check your spam folder or try signing up again")
+                    .font(.caption)
+                    .foregroundColor(.textTertiary)
+            }
+        }
+    }
+
     // MARK: - Footer Section
 
     private var footerSection: some View {
@@ -356,7 +423,7 @@ struct LoginView: View {
             HStack(spacing: Spacing.xs) {
                 Button(action: {
                     // Open Terms of Service
-                    if let url = URL(string: "https://litplan.app/terms") {
+                    if let url = URL(string: "https://litplanz.com/terms") {
                         UIApplication.shared.open(url)
                     }
                 }) {
@@ -371,7 +438,7 @@ struct LoginView: View {
 
                 Button(action: {
                     // Open Privacy Policy
-                    if let url = URL(string: "https://litplan.app/privacy") {
+                    if let url = URL(string: "https://litplanz.com/privacy") {
                         UIApplication.shared.open(url)
                     }
                 }) {

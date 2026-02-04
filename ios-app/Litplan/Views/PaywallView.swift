@@ -2,6 +2,7 @@
 //  PaywallView.swift
 //  Litplan
 //
+//  App Name: LitPlanz
 //  Created by UI Designer Agent on 12/30/25.
 //  Full-screen subscription paywall modal - Sprint 3, Day 11
 //
@@ -173,7 +174,7 @@ struct PaywallView: View {
                 .accessibilityHidden(true)
 
             // Title
-            Text("Unlock Litplan Pro")
+            Text("Unlock LitPlanz Pro")
                 .font(.displayLarge)
                 .foregroundColor(.textPrimary)
                 .multilineTextAlignment(.center)
@@ -411,14 +412,14 @@ struct PaywallView: View {
                 .padding(.horizontal, Spacing.md)
 
             HStack(spacing: Spacing.md) {
-                Link("Terms of Service", destination: URL(string: "https://litplan.app/terms")!)
+                Link("Terms of Service", destination: URL(string: "https://litplanz.com/terms")!)
                     .font(.caption)
                     .foregroundColor(.accentPrimary)
 
                 Text("•")
                     .foregroundColor(.textTertiary)
 
-                Link("Privacy Policy", destination: URL(string: "https://litplan.app/privacy")!)
+                Link("Privacy Policy", destination: URL(string: "https://litplanz.com/privacy")!)
                     .font(.caption)
                     .foregroundColor(.accentPrimary)
 
@@ -553,7 +554,7 @@ struct PaywallView: View {
                     .scaleEffect(showSuccess ? 1.0 : 0.5)
                     .animation(.spring(response: 0.5, dampingFraction: 0.6), value: showSuccess)
 
-                Text("Welcome to Litplan Pro!")
+                Text("Welcome to LitPlanz Pro!")
                     .font(.displayMedium)
                     .foregroundColor(.textPrimary)
                     .multilineTextAlignment(.center)

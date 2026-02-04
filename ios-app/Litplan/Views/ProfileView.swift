@@ -296,7 +296,7 @@ struct ProfileView: View {
 
                 settingsRow(
                     icon: "info.circle",
-                    title: "About Litplan",
+                    title: "About LitPlanz",
                     iconColor: .textSecondary
                 ) {
                     showAbout = true
@@ -366,7 +366,7 @@ struct ProfileView: View {
                     .font(.system(size: 80))
                     .foregroundColor(.accentPrimary)
 
-                Text("Litplan Pro")
+                Text("LitPlanz Pro")
                     .font(.displayLarge)
                     .foregroundColor(.textPrimary)
 

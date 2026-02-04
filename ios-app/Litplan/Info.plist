@@ -13,10 +13,10 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>CFBundleURLName</key>
-            <string>com.litplan.app</string>
+            <string>com.litplanz.app</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>com.litplan.app</string>
+                <string>com.litplanz.app</string>
             </array>
         </dict>
     </array>
@@ -32,11 +32,11 @@
 
     <!-- Privacy usage descriptions -->
     <key>NSCameraUsageDescription</key>
-    <string>Litplan needs camera access to scan QR codes for group activities.</string>
+    <string>LitPlanz needs camera access to scan QR codes for group activities.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Litplan uses your location to find nearby nightlife venues and events.</string>
+    <string>LitPlanz uses your location to find nearby nightlife venues and events.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Litplan needs photo library access to let you share or save images.</string>
+    <string>LitPlanz needs photo library access to let you share or save images.</string>
 
     <!-- Scene Configuration -->
     <key>UIApplicationSceneManifest</key>

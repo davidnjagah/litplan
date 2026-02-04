@@ -1,11 +1,11 @@
-# Litplan Backend API Documentation
+# LitPlanz Backend API Documentation
 **Sprint 2 Complete - Production Ready**
 
 ## Overview
-This document provides comprehensive documentation for all Litplan backend endpoints implemented during Sprint 2 (Days 6-10). All endpoints are production-ready with TypeScript compilation successful (0 errors).
+This document provides comprehensive documentation for all LitPlanz backend endpoints implemented during Sprint 2 (Days 6-10). All endpoints are production-ready with TypeScript compilation successful (0 errors).
 
 **Base URL (Development)**: `https://litplan-dev.firebaseapp.com/api/v1`
-**Base URL (Production)**: `https://api.litplan.app/v1`
+**Base URL (Production)**: `https://api.litplanz.com/v1`
 
 **Version**: 1.0.0
 **Last Updated**: December 28, 2025 (Sprint 2, Day 10)
@@ -774,17 +774,17 @@ Get current app configuration.
     "products": [
       {
         "productId": "litplan_pro_monthly",
-        "name": "Litplan Pro Monthly",
+        "name": "LitPlanz Pro Monthly",
         "price": 999,
         "currency": "USD",
-        "description": "Monthly subscription to Litplan Pro"
+        "description": "Monthly subscription to LitPlanz Pro"
       },
       {
         "productId": "litplan_pro_yearly",
-        "name": "Litplan Pro Yearly",
+        "name": "LitPlanz Pro Yearly",
         "price": 9999,
         "currency": "USD",
-        "description": "Yearly subscription to Litplan Pro (save 17%)"
+        "description": "Yearly subscription to LitPlanz Pro (save 17%)"
       }
     ]
   }

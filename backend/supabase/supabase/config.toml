@@ -221,26 +221,40 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Resend SMTP configuration for production emails
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "noreply@litplanz.com"
+sender_name = "LitPlanz"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Email confirmation template (sent after signup)
+[auth.email.template.confirmation]
+subject = "Verify your LitPlanz account"
+content_path = "./templates/confirmation.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./templates/password_changed_notification.html"
+# Password recovery template
+[auth.email.template.recovery]
+subject = "Reset your LitPlanz password"
+content_path = "./templates/recovery.html"
+
+# User invitation template
+[auth.email.template.invite]
+subject = "You're invited to LitPlanz"
+content_path = "./templates/invite.html"
+
+# Magic link template (passwordless login)
+[auth.email.template.magic_link]
+subject = "Your LitPlanz login link"
+content_path = "./templates/magic_link.html"
+
+# Email change confirmation template
+[auth.email.template.email_change]
+subject = "Confirm your new email address"
+content_path = "./templates/email_change.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

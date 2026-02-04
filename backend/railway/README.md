@@ -1,4 +1,4 @@
-# Litplan Pipeline Orchestrator - Railway Deployment
+# LitPlanz Pipeline Orchestrator - Railway Deployment
 
 This service hosts the AI pipeline orchestrator on Railway, bypassing Supabase's 60-second Edge Function timeout limit. Railway has **no timeout restrictions** for HTTP requests.
 

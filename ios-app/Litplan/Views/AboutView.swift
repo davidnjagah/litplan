@@ -3,7 +3,7 @@
 //  Litplan
 //
 //  Created by UI Designer Agent on 12/30/25.
-//  About Litplan view - Sprint 8 implementation
+//  About LitPlanz view - Sprint 8 implementation
 //
 
 import SwiftUI
@@ -43,7 +43,7 @@ struct AboutView: View {
                     .padding(.top, Spacing.lg)
                 }
             }
-            .navigationTitle("About Litplan")
+            .navigationTitle("About LitPlanz")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -77,7 +77,7 @@ struct AboutView: View {
                     .foregroundColor(.white)
             }
 
-            Text("Litplan")
+            Text("LitPlanz")
                 .font(.displayLarge)
                 .foregroundColor(.textPrimary)
 
@@ -136,7 +136,7 @@ struct AboutView: View {
                 .padding(.horizontal, Spacing.md)
 
             StandardCard {
-                Text("Litplan is your ultimate guide to nightlife around the world. We curate the best venues, events, and experiences so you can discover amazing nights out wherever you are.\n\nOur team of local experts and AI-powered recommendations help you find the perfect plan for any occasion, whether you're looking for a quiet cocktail bar or the hottest club in town.")
+                Text("LitPlanz is your ultimate guide to nightlife around the world. We curate the best venues, events, and experiences so you can discover amazing nights out wherever you are.\n\nOur team of local experts and AI-powered recommendations help you find the perfect plan for any occasion, whether you're looking for a quiet cocktail bar or the hottest club in town.")
                     .font(.body)
                     .foregroundColor(.textSecondary)
                     .lineSpacing(4)
@@ -157,7 +157,7 @@ struct AboutView: View {
 
             StandardCard {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Text("Built with love by the Litplan team")
+                    Text("Built with love by the LitPlanz team")
                         .font(.body)
                         .foregroundColor(.textPrimary)
 
@@ -182,19 +182,19 @@ struct AboutView: View {
 
             VStack(spacing: Spacing.sm) {
                 legalRow(title: "Terms of Service") {
-                    if let url = URL(string: "https://www.litplan.app/terms") {
+                    if let url = URL(string: "https://www.litplanz.com/terms") {
                         UIApplication.shared.open(url)
                     }
                 }
 
                 legalRow(title: "Privacy Policy") {
-                    if let url = URL(string: "https://www.litplan.app/privacy") {
+                    if let url = URL(string: "https://www.litplanz.com/privacy") {
                         UIApplication.shared.open(url)
                     }
                 }
 
                 legalRow(title: "Open Source Licenses") {
-                    if let url = URL(string: "https://www.litplan.app/licenses") {
+                    if let url = URL(string: "https://www.litplanz.com/licenses") {
                         UIApplication.shared.open(url)
                     }
                 }
@@ -231,7 +231,7 @@ struct AboutView: View {
                 .font(.caption)
                 .foregroundColor(.textTertiary)
 
-            Text("\u{00A9} 2024-2025 Litplan Inc. All rights reserved.")
+            Text("\u{00A9} 2024-2025 LitPlanz Inc. All rights reserved.")
                 .font(.caption)
                 .foregroundColor(.textTertiary)
         }

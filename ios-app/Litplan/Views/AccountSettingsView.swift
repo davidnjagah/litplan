@@ -33,6 +33,9 @@ struct AccountSettingsView: View {
                         // Account Info Section
                         accountInfoSection
 
+                        // Legal Section
+                        legalSection
+
                         // Danger Zone
                         dangerZoneSection
 
@@ -164,6 +167,64 @@ struct AccountSettingsView: View {
         }
     }
 
+    // MARK: - Legal Section
+
+    private var legalSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            Text("Legal")
+                .font(.headline)
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, Spacing.md)
+
+            VStack(spacing: Spacing.sm) {
+                // Privacy Policy
+                Link(destination: URL(string: "https://litplanz.com/privacy")!) {
+                    StandardCard {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                                .font(.body)
+                                .foregroundColor(.accentPrimary)
+
+                            Text("Privacy Policy")
+                                .font(.body)
+                                .foregroundColor(.textPrimary)
+
+                            Spacer()
+
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundColor(.textTertiary)
+                        }
+                        .padding(Spacing.md)
+                    }
+                }
+
+                // Terms of Service
+                Link(destination: URL(string: "https://litplanz.com/terms")!) {
+                    StandardCard {
+                        HStack {
+                            Image(systemName: "doc.text.fill")
+                                .font(.body)
+                                .foregroundColor(.accentPrimary)
+
+                            Text("Terms of Service")
+                                .font(.body)
+                                .foregroundColor(.textPrimary)
+
+                            Spacer()
+
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundColor(.textTertiary)
+                        }
+                        .padding(Spacing.md)
+                    }
+                }
+            }
+            .padding(.horizontal, Spacing.md)
+        }
+    }
+
     // MARK: - Danger Zone Section
 
     private var dangerZoneSection: some View {
@@ -202,7 +263,7 @@ struct AccountSettingsView: View {
             }
             .padding(.horizontal, Spacing.md)
 
-            Text("To delete your account, please contact support at support@litplan.app")
+            Text("To delete your account, please contact support at support@litplanz.com")
                 .font(.caption)
                 .foregroundColor(.textTertiary)
                 .padding(.horizontal, Spacing.md)

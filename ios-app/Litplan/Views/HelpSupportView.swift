@@ -2,6 +2,7 @@
 //  HelpSupportView.swift
 //  Litplan
 //
+//  App Name: LitPlanz
 //  Created by UI Designer Agent on 12/30/25.
 //  Help & Support view - Sprint 8 implementation
 //
@@ -51,7 +52,7 @@ struct HelpSupportView: View {
             .alert("Email Not Available", isPresented: $showMailError) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Please email us at support@litplan.app")
+                Text("Please email us at support@litplanz.com")
             }
         }
     }
@@ -69,7 +70,7 @@ struct HelpSupportView: View {
                 contactRow(
                     icon: "envelope.fill",
                     title: "Email Support",
-                    subtitle: "support@litplan.app",
+                    subtitle: "support@litplanz.com",
                     action: {
                         if MFMailComposeViewController.canSendMail() {
                             showMailComposer = true
@@ -82,9 +83,9 @@ struct HelpSupportView: View {
                 contactRow(
                     icon: "globe",
                     title: "Visit Website",
-                    subtitle: "www.litplan.app",
+                    subtitle: "www.litplanz.com",
                     action: {
-                        if let url = URL(string: "https://www.litplan.app") {
+                        if let url = URL(string: "https://www.litplanz.com") {
                             UIApplication.shared.open(url)
                         }
                     }
@@ -171,14 +172,14 @@ struct HelpSupportView: View {
 
                 faqItem(
                     id: "offline",
-                    question: "Can I use Litplan offline?",
+                    question: "Can I use LitPlanz offline?",
                     answer: "Some features require an internet connection. However, we cache recently viewed cities and plans so you can access them even when offline."
                 )
 
                 faqItem(
                     id: "account",
                     question: "How do I delete my account?",
-                    answer: "To delete your account, please contact our support team at support@litplan.app. We'll process your request within 48 hours."
+                    answer: "To delete your account, please contact our support team at support@litplanz.com. We'll process your request within 48 hours."
                 )
             }
             .padding(.horizontal, Spacing.md)
@@ -238,7 +239,7 @@ struct HelpSupportView: View {
                     icon: "doc.text",
                     title: "Terms of Service",
                     action: {
-                        if let url = URL(string: "https://www.litplan.app/terms") {
+                        if let url = URL(string: "https://www.litplanz.com/terms") {
                             UIApplication.shared.open(url)
                         }
                     }
@@ -248,7 +249,7 @@ struct HelpSupportView: View {
                     icon: "lock.shield",
                     title: "Privacy Policy",
                     action: {
-                        if let url = URL(string: "https://www.litplan.app/privacy") {
+                        if let url = URL(string: "https://www.litplanz.com/privacy") {
                             UIApplication.shared.open(url)
                         }
                     }

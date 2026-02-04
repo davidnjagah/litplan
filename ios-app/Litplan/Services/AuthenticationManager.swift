@@ -73,6 +73,8 @@ class AuthenticationManager: NSObject, ObservableObject {
     @Published var currentUser: SupabaseUser? = nil
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
+    @Published var emailConfirmationNeeded: Bool = false
+    @Published var pendingConfirmationEmail: String? = nil
 
     // MARK: - Private Properties
 
@@ -214,7 +216,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         do {
             // Use the bundle ID as the callback scheme (no registration needed for ASWebAuthenticationSession)
-            let callbackScheme = "com.litplan.app"
+            let callbackScheme = "com.litplanz.com"
             let redirectURL = URL(string: "\(callbackScheme)://oauth-callback")!
 
             // Get the OAuth sign in URL for Google provider
@@ -406,8 +408,9 @@ class AuthenticationManager: NSObject, ObservableObject {
                     print("[AuthenticationManager] Sign up successful for: \(email)")
                 }
             } else {
-                // Email confirmation required
-                self.errorMessage = "Please check your email to confirm your account."
+                // Email confirmation required - notify UI to show confirmation screen
+                self.emailConfirmationNeeded = true
+                self.pendingConfirmationEmail = email
                 if Config.enableDebugLogging {
                     print("[AuthenticationManager] Sign up requires email confirmation for: \(email)")
                 }
@@ -481,6 +484,178 @@ class AuthenticationManager: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Email Verification (Deep Link)
+
+    /// Verify email using token from deep link
+    /// - Parameter tokenHash: The token hash from the verification URL
+    func verifyEmail(tokenHash: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // Verify the OTP token with type 'signup' or 'email'
+            let session = try await supabaseManager.client.auth.verifyOTP(
+                tokenHash: tokenHash,
+                type: .signup
+            )
+
+            // Update session and user state
+            supabaseManager.updateSession(Session(from: session))
+            supabaseManager.updateUser(SupabaseUser(from: session.user))
+
+            self.currentUser = SupabaseUser(from: session.user)
+            self.authState = .authenticated
+            self.emailConfirmationNeeded = false
+            self.pendingConfirmationEmail = nil
+
+            // Sync with backend
+            await syncUserWithBackend()
+
+            UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
+
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Email verified successfully")
+            }
+        } catch {
+            self.errorMessage = "Email verification failed: \(error.localizedDescription)"
+            isLoading = false
+            throw AuthError.unknown(error.localizedDescription)
+        }
+
+        isLoading = false
+    }
+
+    // MARK: - Password Reset with Token (Deep Link)
+
+    /// Reset password using token from deep link
+    /// - Parameters:
+    ///   - tokenHash: The token hash from the reset URL
+    ///   - newPassword: The new password to set
+    func resetPassword(tokenHash: String, newPassword: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        guard newPassword.count >= 8 else {
+            errorMessage = "Password must be at least 8 characters"
+            isLoading = false
+            throw AuthError.signUpFailed("Password must be at least 8 characters")
+        }
+
+        do {
+            // First verify the recovery token
+            let session = try await supabaseManager.client.auth.verifyOTP(
+                tokenHash: tokenHash,
+                type: .recovery
+            )
+
+            // Update session temporarily
+            supabaseManager.updateSession(Session(from: session))
+
+            // Now update the password
+            try await supabaseManager.client.auth.update(user: UserAttributes(password: newPassword))
+
+            // Sign out to force re-login with new password
+            await supabaseManager.clearSession()
+            self.currentUser = nil
+            self.authState = .unauthenticated
+
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Password reset successfully")
+            }
+        } catch {
+            self.errorMessage = "Password reset failed: \(error.localizedDescription)"
+            isLoading = false
+            throw AuthError.unknown(error.localizedDescription)
+        }
+
+        isLoading = false
+    }
+
+    // MARK: - Magic Link Verification (Deep Link)
+
+    /// Verify magic link token for passwordless sign-in
+    /// - Parameter tokenHash: The token hash from the magic link URL
+    func verifyMagicLink(tokenHash: String) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let session = try await supabaseManager.client.auth.verifyOTP(
+                tokenHash: tokenHash,
+                type: .magiclink
+            )
+
+            // Update session and user state
+            supabaseManager.updateSession(Session(from: session))
+            supabaseManager.updateUser(SupabaseUser(from: session.user))
+
+            self.currentUser = SupabaseUser(from: session.user)
+            self.authState = .authenticated
+
+            // Sync with backend
+            await syncUserWithBackend()
+
+            UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
+
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Magic link verified successfully")
+            }
+        } catch {
+            self.errorMessage = "Magic link verification failed: \(error.localizedDescription)"
+            isLoading = false
+            throw AuthError.unknown(error.localizedDescription)
+        }
+
+        isLoading = false
+    }
+
+    // MARK: - Invite Accept (Deep Link)
+
+    /// Accept invitation using token from deep link
+    /// - Parameters:
+    ///   - tokenHash: The token hash from the invite URL
+    ///   - displayName: Optional display name for the new user
+    func acceptInvite(tokenHash: String, displayName: String? = nil) async throws {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let session = try await supabaseManager.client.auth.verifyOTP(
+                tokenHash: tokenHash,
+                type: .invite
+            )
+
+            // Update session and user state
+            supabaseManager.updateSession(Session(from: session))
+            supabaseManager.updateUser(SupabaseUser(from: session.user))
+
+            self.currentUser = SupabaseUser(from: session.user)
+            self.authState = .authenticated
+
+            // Update display name if provided
+            if let name = displayName, !name.isEmpty {
+                try await supabaseManager.client.auth.update(
+                    user: UserAttributes(data: ["full_name": .string(name)])
+                )
+            }
+
+            // Sync with backend
+            await syncUserWithBackend()
+
+            UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
+
+            if Config.enableDebugLogging {
+                print("[AuthenticationManager] Invite accepted successfully")
+            }
+        } catch {
+            self.errorMessage = "Invite acceptance failed: \(error.localizedDescription)"
+            isLoading = false
+            throw AuthError.unknown(error.localizedDescription)
+        }
+
+        isLoading = false
+    }
+
     // MARK: - Sign Out
 
     /// Sign out the current user
@@ -536,6 +711,12 @@ class AuthenticationManager: NSObject, ObservableObject {
     /// Clear any error messages
     func clearError() {
         errorMessage = nil
+    }
+
+    /// Clear email confirmation state
+    func clearEmailConfirmation() {
+        emailConfirmationNeeded = false
+        pendingConfirmationEmail = nil
     }
 }
 

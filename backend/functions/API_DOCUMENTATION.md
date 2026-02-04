@@ -1,6 +1,6 @@
-# Litplan Backend - API Documentation
+# LitPlanz Backend - API Documentation
 
-Complete reference for all Litplan backend API endpoints.
+Complete reference for all LitPlanz backend API endpoints.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ Complete reference for all Litplan backend API endpoints.
 
 ## Overview
 
-The Litplan backend provides a RESTful API for managing users, cities, plans, and subscriptions. All endpoints (except health and root) require Firebase Authentication.
+The LitPlanz backend provides a RESTful API for managing users, cities, plans, and subscriptions. All endpoints (except health and root) require Firebase Authentication.
 
 **API Version**: 1.0.0
 **Last Updated**: 2025-12-28
@@ -154,7 +154,7 @@ API information and endpoint listing (no authentication required).
 **Response**: 200 OK
 ```json
 {
-  "message": "Litplan Backend API",
+  "message": "LitPlanz Backend API",
   "version": "1.0.0",
   "endpoints": { ... },
   "tierLimits": { ... }

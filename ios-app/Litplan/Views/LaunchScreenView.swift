@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-/// Launch screen with animated Litplan logo and tagline
+/// Launch screen with animated LitPlanz logo and tagline
 struct LaunchScreenView: View {
     @State private var logoOpacity: Double = 0
     @State private var logoScale: CGFloat = 0.8
@@ -59,7 +59,7 @@ struct LaunchScreenView: View {
                     .scaleEffect(logoScale)
 
                     // App name
-                    Text("Litplan")
+                    Text("LitPlanz")
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(.textPrimary)
                         .opacity(logoOpacity)
@@ -84,7 +84,7 @@ struct LaunchScreenView: View {
         .onAppear {
             startAnimation()
         }
-        .accessibilityLabel("Litplan loading")
+        .accessibilityLabel("LitPlanz loading")
         .accessibilityHint("App is starting")
     }
 

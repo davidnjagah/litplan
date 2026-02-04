@@ -1,6 +1,6 @@
-# Litplan Backend
+# LitPlanz Backend
 
-Backend infrastructure for Litplan - a premium nightlife discovery app powered by Firebase Cloud Functions.
+Backend infrastructure for LitPlanz - a premium nightlife discovery app powered by Firebase Cloud Functions.
 
 ## Architecture Overview
 
@@ -396,17 +396,17 @@ Get current app configuration including week, tier limits, and products.
     "products": [
       {
         "productId": "litplan_pro_monthly",
-        "name": "Litplan Pro Monthly",
+        "name": "LitPlanz Pro Monthly",
         "price": 999,
         "currency": "USD",
-        "description": "Monthly subscription to Litplan Pro"
+        "description": "Monthly subscription to LitPlanz Pro"
       },
       {
         "productId": "litplan_pro_yearly",
-        "name": "Litplan Pro Yearly",
+        "name": "LitPlanz Pro Yearly",
         "price": 9999,
         "currency": "USD",
-        "description": "Yearly subscription to Litplan Pro (save 17%)"
+        "description": "Yearly subscription to LitPlanz Pro (save 17%)"
       }
     ]
   }
@@ -746,8 +746,8 @@ Set `FIRESTORE_EMULATOR_HOST=localhost:8080` to use the emulator.
 - **10 Cities**: NYC, LA, Miami, London, Paris, Tokyo, Berlin, Barcelona, Amsterdam, Dubai
 - **500 Plans**: 50 real nightlife plans per city
 - **2 Test Users**:
-  - Free user: `test-free-user` (free@test.litplan.app)
-  - Pro user: `test-pro-user` (pro@test.litplan.app)
+  - Free user: `test-free-user` (free@test.litplanz.com)
+  - Pro user: `test-pro-user` (pro@test.litplanz.com)
 
 ---
 

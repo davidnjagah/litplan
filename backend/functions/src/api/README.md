@@ -1,6 +1,6 @@
 # API Routes
 
-This directory contains all API route handlers for the Litplan backend.
+This directory contains all API route handlers for the LitPlanz backend.
 
 ## Structure
 

@@ -129,7 +129,7 @@ enum Config {
     // MARK: - App Configuration
 
     /// App Bundle ID
-    static let bundleIdentifier = "com.litplan.app"
+    static let bundleIdentifier = "com.litplanz.app"
 
     /// Minimum iOS version supported
     static let minimumIOSVersion = "15.0"
@@ -166,8 +166,8 @@ enum Config {
     /// Test user emails that should automatically get Pro access
     static let testProUserEmails: [String] = [
         "davidwoguya@gmail.com",
-        "test@litplan.app",
-        "demo@litplan.app"
+        "test@litplanz.com",
+        "demo@litplanz.com"
     ]
 
     // MARK: - Timeouts
@@ -181,9 +181,9 @@ enum Config {
     // MARK: - Keychain Keys
 
     enum KeychainKeys {
-        static let accessToken = "com.litplan.accessToken"
-        static let refreshToken = "com.litplan.refreshToken"
-        static let userId = "com.litplan.userId"
+        static let accessToken = "com.litplanz.accessToken"
+        static let refreshToken = "com.litplanz.refreshToken"
+        static let userId = "com.litplanz.userId"
     }
 
     // MARK: - UserDefaults Keys
