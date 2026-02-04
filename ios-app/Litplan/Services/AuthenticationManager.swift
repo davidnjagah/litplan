@@ -216,8 +216,8 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         do {
             // Use the bundle ID as the callback scheme (no registration needed for ASWebAuthenticationSession)
-            let callbackScheme = "com.litplanz.com"
-            let redirectURL = URL(string: "\(callbackScheme)://oauth-callback")!
+            let callbackScheme = "com.litplanz.app"
+            let redirectURL = URL(string: "\(callbackScheme)://auth-callback")!
 
             // Get the OAuth sign in URL for Google provider
             let oauthURL = try supabaseManager.client.auth.getOAuthSignInURL(
