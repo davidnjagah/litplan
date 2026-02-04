@@ -302,12 +302,15 @@
         .phone-screen {
             width: 100%;
             height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            padding: 50px 20px 20px;
-            text-align: center;
+            position: relative;
+        }
+
+        .phone-screen img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top;
+            border-radius: 32px;
         }
 
         .phone-screen .screen-icon {
@@ -586,23 +589,17 @@
             <div class="phone-mockups">
                 <div class="phone-mockup">
                     <div class="phone-screen">
-                        <div class="screen-icon">🔍</div>
-                        <div class="screen-title">Explore Cities</div>
-                        <div class="screen-desc">Browse 100+ cities and discover hidden gems</div>
+                        <img src="/screenshots/explore.png" alt="Explore cities in LitPlanz">
                     </div>
                 </div>
                 <div class="phone-mockup">
                     <div class="phone-screen">
-                        <div class="screen-icon">⚡</div>
-                        <div class="screen-title">Choose Your Vibe</div>
-                        <div class="screen-desc">Select your mood and get instant recommendations</div>
+                        <img src="/screenshots/vibez.png" alt="Choose your vibe in LitPlanz">
                     </div>
                 </div>
                 <div class="phone-mockup">
                     <div class="phone-screen">
-                        <div class="screen-icon">🗺️</div>
-                        <div class="screen-title">Plan Your Flow</div>
-                        <div class="screen-desc">Create multi-stop itineraries for the perfect night</div>
+                        <img src="/screenshots/home.png" alt="LitPlanz login screen">
                     </div>
                 </div>
             </div>
