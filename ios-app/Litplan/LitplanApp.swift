@@ -93,9 +93,11 @@ struct LitplanApp: App {
             }
             .fullScreenCover(isPresented: $showOnboarding) {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-                    .onDisappear {
-                        showOnboarding = false
-                    }
+            }
+            .onChange(of: hasCompletedOnboarding) { _, completed in
+                if completed {
+                    showOnboarding = false
+                }
             }
         }
     }
