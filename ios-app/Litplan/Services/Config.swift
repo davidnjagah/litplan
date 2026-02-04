@@ -24,8 +24,8 @@ enum Config {
 
     // MARK: - Supabase Configuration
 
-    /// Supabase project URL
-    static let supabaseURL = "https://clktdigankjszupvrsqt.supabase.co"
+    /// Supabase project URL (using custom domain)
+    static let supabaseURL = "https://auth.litplanz.com"
 
     /// Supabase anonymous key for public API access
     /// Note: This key is safe to use in client apps - row level security is enforced server-side
