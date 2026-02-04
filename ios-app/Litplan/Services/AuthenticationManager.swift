@@ -245,7 +245,7 @@ class AuthenticationManager: NSObject, ObservableObject {
                 }
 
                 session.presentationContextProvider = self
-                session.prefersEphemeralWebBrowserSession = false // Allow SSO
+                session.prefersEphemeralWebBrowserSession = true // Force fresh session, no cached credentials
 
                 DispatchQueue.main.async {
                     session.start()
