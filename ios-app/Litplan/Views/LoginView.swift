@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @EnvironmentObject var authManager: AuthenticationManager
@@ -92,6 +93,21 @@ struct LoginView: View {
 
     private var mainAuthSection: some View {
         VStack(spacing: Spacing.lg) {
+            // Sign in with Apple (required by App Store when offering other social sign-in)
+            // Note: Apple's button has internal max-width constraints, so we wrap it
+            SignInWithAppleButton(.signIn) { request in
+                authManager.handleSignInWithAppleRequest(request)
+            } onCompletion: { result in
+                Task {
+                    await authManager.handleSignInWithAppleCompletion(result)
+                }
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 50)
+            .frame(maxWidth: 375) // Respect Apple button's internal max-width
+            .frame(maxWidth: .infinity) // Center within parent
+            .clipShape(RoundedRectangle(cornerRadius: Spacing.sm))
+
             // Sign in with Google
             Button(action: {
                 Task {

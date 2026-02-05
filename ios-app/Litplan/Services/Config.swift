@@ -20,7 +20,7 @@ enum Config {
     }
 
     /// Active environment - change this for deployment
-    static let environment: Environment = .development
+    static let environment: Environment = .production
 
     // MARK: - Supabase Configuration
 
@@ -161,7 +161,7 @@ enum Config {
 
     /// Enable StoreKit testing mode (bypasses real payments)
     /// Set to true to test Pro features without actual payment
-    static let enableStoreKitTesting = true
+    static let enableStoreKitTesting = false
 
     /// Test user emails that should automatically get Pro access
     static let testProUserEmails: [String] = [
