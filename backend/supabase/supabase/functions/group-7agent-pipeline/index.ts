@@ -209,6 +209,31 @@ const CITY_CONFIGS: Record<string, any> = {
 - Funky Buddha: Puerto Banús - Trendy nightclub, VIP tables, upscale party crowd
 - Olivia Valere: Ctra. de Istán km 0.8 - Legendary nightclub, opulent decor, celebrity magnet
 - Suite del Mar: Puente Romano - Beachfront lounge, sunset cocktails, romantic setting`
+  },
+  'London': {
+    cityName: 'London',
+    country: 'United Kingdom',
+    currency: 'GBP',
+    identity: 'The Capital - historic grandeur, world-class culture, diverse neighborhoods, legendary pubs, and cutting-edge nightlife',
+    vibe: 'Sophisticated, diverse, historic yet modern, buzzing creative energy, quintessentially British',
+    neighborhoods: ['Soho', 'Shoreditch', 'Camden', 'Notting Hill', 'Covent Garden', 'Mayfair', 'Brixton', 'Dalston', 'Hackney', 'Kensington', 'South Bank', 'Westminster'],
+    coordRange: { lat: [51.45, 51.55], lon: [-0.20, -0.05] },
+    legendaryVenues: 'Fabric, Ministry of Sound, XOYO, Ronnie Scott\'s, The Shard, Sky Garden, Ye Olde Cheshire Cheese, The Wolseley, Sketch, Chiltern Firehouse, The Connaught Bar, Annabel\'s, Loulou\'s, The Box',
+    venueDetails: `
+- Fabric: 77a Charterhouse St, EC1M 6HJ - Legendary superclub, techno temple, bodysonic dancefloor
+- Ministry of Sound: 103 Gaunt St, SE1 6DP - Iconic dance music institution since 1991
+- XOYO: 32-37 Cowper St, EC2A 4AP - Shoreditch club, diverse programming, intimate setting
+- Ronnie Scott's: 47 Frith St, W1D 4HT - World-famous jazz club since 1959
+- The Shard: 32 London Bridge St, SE1 9SG - Tallest building, panoramic views, cocktail bars
+- Sky Garden: 20 Fenchurch St, EC3M 8AF - Free rooftop garden, stunning city views
+- Ye Olde Cheshire Cheese: 145 Fleet St, EC4A 2BU - Historic pub since 1667, Dickens haunt
+- The Wolseley: 160 Piccadilly, W1J 9EB - Grand European cafe, celebrity breakfast spot
+- Sketch: 9 Conduit St, W1S 2XG - Pink room, Michelin star, art gallery
+- Chiltern Firehouse: 1 Chiltern St, W1U 7PA - Celeb magnet, converted fire station
+- The Connaught Bar: Carlos Pl, W1K 2AL - World's best bar, Art Deco elegance
+- Annabel's: 46 Berkeley Sq, W1J 5AT - Exclusive private members club since 1963
+- Loulou's: 5 Hertford St, W1J 7RH - Glamorous private club, celebrity haunt
+- The Box: 11-12 Walker's Ct, W1F 0SD - Theatrical nightclub, provocative shows`
   }
 };
 
@@ -261,33 +286,28 @@ interface AgentResult {
   changes?: string[];
 }
 
-serve(async (req: Request) => {
-  const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
-
-  if (req.method !== 'POST') {
-    return errorResponse('Method not allowed', 405, 'METHOD_NOT_ALLOWED');
-  }
+// Background processing function - runs after response is sent
+async function processPlansInBackground(city: string, config: any, jobId: string, storeResults: boolean) {
+  const supabase = createServiceClient();
 
   try {
-    const body = await req.json();
-    const { city = 'Ibiza', storeResults = true } = body;
-
-    const config = CITY_CONFIGS[city];
-    if (!config) {
-      return errorResponse(`Unknown city: ${city}. Supported: Ibiza, Paris`, 400, 'INVALID_CITY');
-    }
-
     console.log(`\n${'='.repeat(70)}`);
-    console.log(`${city.toUpperCase()} 7-AGENT PIPELINE (GPT-4o) - WITH TAG GENERATOR`);
+    console.log(`[BACKGROUND] ${city.toUpperCase()} 7-AGENT PIPELINE STARTED`);
+    console.log(`Job ID: ${jobId}`);
     console.log(`${'='.repeat(70)}\n`);
 
     const startTime = Date.now();
     const agentResults: AgentResult[] = [];
     let plans: GroupPlan[] = [];
 
+    // Update job status to processing
+    await supabase.from('PipelineJob').update({
+      status: 'processing',
+      startedAt: new Date().toISOString()
+    }).eq('id', jobId);
+
     // ===== AGENT 1: GENERATOR =====
-    console.log(`\n[AGENT 1] GENERATOR - Creating 9 default group plans...`);
+    console.log(`\n[AGENT 1] GENERATOR - Creating 11 default group plans...`);
     const agent1Start = Date.now();
     plans = await agent1_generateDefaultPlans(config);
     agentResults.push({
@@ -297,10 +317,15 @@ serve(async (req: Request) => {
       output: plans.length,
       changes: plans.map(p => `${p.planType}: ${p.title}`),
     });
-    console.log(`[AGENT 1] Generated ${plans.length} plans`);
+    console.log(`[AGENT 1] ✅ Generated ${plans.length} plans`);
 
     if (plans.length === 0) {
-      return jsonResponse({ success: false, error: 'No plans generated', agentResults });
+      await supabase.from('PipelineJob').update({
+        status: 'failed',
+        error: 'No plans generated',
+        completedAt: new Date().toISOString()
+      }).eq('id', jobId);
+      return;
     }
 
     // ===== AGENT 2: DETAILS VALIDATOR =====
@@ -315,9 +340,15 @@ serve(async (req: Request) => {
       output: plans.length,
       changes: agent2Result.changes,
     });
+    console.log(`[AGENT 2] ✅ ${plans.length} plans passed validation`);
 
     if (plans.length === 0) {
-      return jsonResponse({ success: false, error: 'All plans failed validation', agentResults });
+      await supabase.from('PipelineJob').update({
+        status: 'failed',
+        error: 'All plans failed validation',
+        completedAt: new Date().toISOString()
+      }).eq('id', jobId);
+      return;
     }
 
     // ===== AGENT 3: ADDRESS VALIDATOR =====
@@ -332,9 +363,15 @@ serve(async (req: Request) => {
       output: plans.length,
       changes: agent3Result.changes,
     });
+    console.log(`[AGENT 3] ✅ ${plans.length} plans with validated addresses`);
 
     if (plans.length === 0) {
-      return jsonResponse({ success: false, error: 'All plans failed address validation', agentResults });
+      await supabase.from('PipelineJob').update({
+        status: 'failed',
+        error: 'All plans failed address validation',
+        completedAt: new Date().toISOString()
+      }).eq('id', jobId);
+      return;
     }
 
     // ===== AGENT 4: DESCRIPTION EDITOR =====
@@ -349,6 +386,7 @@ serve(async (req: Request) => {
       output: plans.length,
       changes: agent4Result.changes,
     });
+    console.log(`[AGENT 4] ✅ Descriptions polished`);
 
     // ===== AGENT 5: QUALITY GATE =====
     console.log(`\n[AGENT 5] QUALITY GATE...`);
@@ -362,9 +400,15 @@ serve(async (req: Request) => {
       output: plans.length,
       changes: agent5Result.changes,
     });
+    console.log(`[AGENT 5] ✅ ${plans.length} plans passed quality gate`);
 
     if (plans.length === 0) {
-      return jsonResponse({ success: false, error: 'All plans failed quality gate', agentResults });
+      await supabase.from('PipelineJob').update({
+        status: 'failed',
+        error: 'All plans failed quality gate',
+        completedAt: new Date().toISOString()
+      }).eq('id', jobId);
+      return;
     }
 
     // ===== AGENT 6: COMMS SPECIALIST =====
@@ -379,7 +423,7 @@ serve(async (req: Request) => {
       output: plans.length,
       changes: agent6Result.changes,
     });
-    console.log(`[AGENT 6] Enhanced ${agent6Result.descriptionsEnhanced} descriptions`);
+    console.log(`[AGENT 6] ✅ Enhanced ${agent6Result.descriptionsEnhanced} descriptions`);
 
     // ===== AGENT 7: TAG GENERATOR =====
     console.log(`\n[AGENT 7] TAG GENERATOR - Generating bestFor tags...`);
@@ -393,13 +437,12 @@ serve(async (req: Request) => {
       output: plans.length,
       changes: agent7Result.changes,
     });
-    console.log(`[AGENT 7] Generated tags for ${agent7Result.plansTagged} plans`);
+    console.log(`[AGENT 7] ✅ Generated tags for ${agent7Result.plansTagged} plans`);
 
     // ===== STORE RESULTS =====
     let storedCount = 0;
     if (storeResults && plans.length > 0) {
       console.log(`\n[STORAGE] Saving ${plans.length} plans...`);
-      const supabase = createServiceClient();
       const { data: cityData } = await supabase
         .from('City')
         .select('id')
@@ -413,49 +456,106 @@ serve(async (req: Request) => {
 
     const totalDuration = Date.now() - startTime;
 
+    // Update job as completed
+    await supabase.from('PipelineJob').update({
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      result: {
+        totalGenerated: agentResults[0]?.output || 0,
+        totalApproved: plans.length,
+        totalStored: storedCount,
+        durationMs: totalDuration,
+        agentResults: agentResults.map(a => ({ agent: a.agent, duration: a.duration }))
+      }
+    }).eq('id', jobId);
+
     console.log(`\n${'='.repeat(70)}`);
-    console.log(`${city.toUpperCase()} 7-AGENT PIPELINE COMPLETE`);
-    console.log(`Total: ${Math.round(totalDuration / 1000)}s | Generated: ${agentResults[0].output} | Approved: ${plans.length} | Stored: ${storedCount}`);
+    console.log(`[BACKGROUND] ${city.toUpperCase()} PIPELINE COMPLETE`);
+    console.log(`Total: ${Math.round(totalDuration / 1000)}s | Generated: ${agentResults[0]?.output || 0} | Approved: ${plans.length} | Stored: ${storedCount}`);
     console.log(`${'='.repeat(70)}\n`);
 
+  } catch (error) {
+    console.error(`[BACKGROUND] Pipeline error for ${city}:`, error);
+    await supabase.from('PipelineJob').update({
+      status: 'failed',
+      error: (error as Error).message,
+      completedAt: new Date().toISOString()
+    }).eq('id', jobId).catch(() => {});
+  }
+}
+
+serve(async (req: Request) => {
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
+
+  if (req.method !== 'POST') {
+    return errorResponse('Method not allowed', 405, 'METHOD_NOT_ALLOWED');
+  }
+
+  try {
+    const body = await req.json();
+    const { city = 'Ibiza', storeResults = true } = body;
+
+    const config = CITY_CONFIGS[city];
+    if (!config) {
+      return errorResponse(`Unknown city: ${city}. Supported: ${Object.keys(CITY_CONFIGS).join(', ')}`, 400, 'INVALID_CITY');
+    }
+
+    // Generate a unique job ID
+    const jobId = `job-${city.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+    // Create job record in database
+    const supabase = createServiceClient();
+
+    // Try to create PipelineJob table entry (create table if needed)
+    const { error: insertError } = await supabase.from('PipelineJob').insert({
+      id: jobId,
+      city: city,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
+    // If table doesn't exist, that's okay - we'll still process
+    if (insertError && !insertError.message.includes('does not exist')) {
+      console.warn('[Pipeline] Could not create job record:', insertError.message);
+    }
+
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`${city.toUpperCase()} 7-AGENT PIPELINE - ASYNC MODE`);
+    console.log(`Job ID: ${jobId}`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    // Start background processing (don't await - fire and forget)
+    // Use EdgeRuntime.waitUntil if available, otherwise just don't await
+    const processingPromise = processPlansInBackground(city, config, jobId, storeResults);
+
+    // Try to use EdgeRuntime.waitUntil for Supabase Edge Functions
+    // This ensures the function keeps running after response is sent
+    try {
+      // @ts-ignore - EdgeRuntime may not be typed
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(processingPromise);
+      }
+    } catch (e) {
+      // If EdgeRuntime is not available, the promise will still run
+      // but may be cut off if the function times out
+      console.log('[Pipeline] EdgeRuntime.waitUntil not available, using fire-and-forget');
+    }
+
+    // Return immediately with job info
     return jsonResponse({
       success: true,
-      data: {
-        city,
-        aiModel: 'GPT-4o',
-        pipeline: '7-agent',
-        agentResults,
-        finalPlans: plans.map(plan => ({
-          title: plan.title,
-          planType: plan.planType,
-          description: plan.description,
-          activities: plan.activities.map(a => ({
-            venueName: a.venueName,
-            address: a.address,
-            coordinates: a.coordinates,
-            time: `${a.startTime} (${a.duration}min)`,
-            description: a.description,
-          })),
-          cost: `${plan.estimatedCost.min}-${plan.estimatedCost.max} ${plan.estimatedCost.currency}`,
-          difficulty: plan.difficulty,
-          bestFor: plan.bestFor,
-          tags: plan.aiTags,
-          qualityScore: agent5Result.scores.find(s => s.title === plan.title)?.score || 0,
-        })),
-        summary: {
-          totalGenerated: agentResults[0].output,
-          totalApproved: plans.length,
-          totalStored: storedCount,
-          averageScore: Math.round(
-            agent5Result.scores.filter(s => s.passed).reduce((sum, s) => sum + s.score, 0) / (plans.length || 1)
-          ),
-          totalDuration,
-        },
-      },
+      async: true,
+      message: `Pipeline started for ${city}. Processing ${Object.keys(CITY_CONFIGS).includes(city) ? '11' : '0'} plans in background.`,
+      jobId: jobId,
+      city: city,
+      checkStatus: `Check GroupFlow table for city "${city}" to see results when complete.`,
+      estimatedTime: '3-5 minutes',
     });
 
   } catch (error) {
-    console.error('[6agent-pipeline] Error:', error);
+    console.error('[Pipeline] Error:', error);
     return errorResponse((error as Error).message, 500, 'SERVER_ERROR');
   }
 });

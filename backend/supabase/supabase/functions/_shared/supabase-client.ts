@@ -3,7 +3,7 @@
  * Creates authenticated Supabase clients for database access
  */
 
-import { createClient, SupabaseClient, User } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createClient, SupabaseClient, User } from 'npm:@supabase/supabase-js@2.94.1';
 
 // Environment variables (set via Supabase secrets)
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
