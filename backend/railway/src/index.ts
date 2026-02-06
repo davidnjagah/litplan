@@ -211,18 +211,20 @@ app.post('/api/pipeline/group', async (req: Request, res: Response) => {
     const durationMs = Date.now() - startTime;
 
     // Check if this is an async response (background processing)
-    if (groupResult.async) {
-      console.log(`[group] Async pipeline started for ${cityName}, job: ${groupResult.jobId}`);
+    // Note: callSupabaseFunction wraps response as { success, data, error }
+    const asyncData = groupResult.data;
+    if (asyncData?.async) {
+      console.log(`[group] Async pipeline started for ${cityName}, job: ${asyncData.jobId}`);
       res.json({
         success: true,
         async: true,
         cityId: cityId || '',
         cityName,
         phase: 'group',
-        message: groupResult.message,
-        jobId: groupResult.jobId,
-        checkStatus: groupResult.checkStatus,
-        estimatedTime: groupResult.estimatedTime,
+        message: asyncData.message,
+        jobId: asyncData.jobId,
+        checkStatus: asyncData.checkStatus,
+        estimatedTime: asyncData.estimatedTime,
         durationMs,
       });
       return;
