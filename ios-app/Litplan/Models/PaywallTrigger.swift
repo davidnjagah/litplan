@@ -14,6 +14,7 @@ enum PaywallTrigger: Equatable {
     case saveCity(cityName: String)       // Trying to save a city
     case groupFlow(cityName: String)      // Trying to view group flow itinerary
     case profile                          // Opened from profile subscription settings
+    case cityDiscovery                    // Trying to discover a new city
 
     var title: String {
         switch self {
@@ -26,7 +27,9 @@ enum PaywallTrigger: Equatable {
         case .groupFlow:
             return "Unlock Group Experiences"
         case .profile:
-            return "Upgrade to Litplan Pro"
+            return "Upgrade to LitPlanz Pro"
+        case .cityDiscovery:
+            return "Discover New Cities"
         }
     }
 
@@ -37,11 +40,13 @@ enum PaywallTrigger: Equatable {
         case .weekendPlan(let city):
             return "Weekend plans in \(city) are exclusive to Pro members. Upgrade to access premium weekend experiences."
         case .saveCity(let city):
-            return "Save \(city) to your favorites for quick access. This feature is available with Litplan Pro."
+            return "Save \(city) to your favorites for quick access. This feature is available with LitPlanz Pro."
         case .groupFlow(let city):
             return "Group flow itineraries in \(city) are exclusive to Pro members. Upgrade to unlock curated multi-venue experiences."
         case .profile:
             return "Get full access to all plans, save favorites, and unlock premium nightlife experiences."
+        case .cityDiscovery:
+            return "Pro members can discover any city in the world. Our AI will generate personalized nightlife plans just for you."
         }
     }
 
@@ -57,6 +62,8 @@ enum PaywallTrigger: Equatable {
             return "person.3.fill"
         case .profile:
             return "crown.fill"
+        case .cityDiscovery:
+            return "globe"
         }
     }
 }
@@ -75,6 +82,8 @@ extension PaywallTrigger: Identifiable {
             return "groupFlow_\(city)"
         case .profile:
             return "profile"
+        case .cityDiscovery:
+            return "cityDiscovery"
         }
     }
 }

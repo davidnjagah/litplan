@@ -1,6 +1,6 @@
 /**
  * User Edge Function
- * Handles user profile, sync, and viewed cities
+ * Handles user profile, sync, viewed cities, and device tokens
  *
  * Endpoints:
  * POST /user/sync - Sync user with database
@@ -8,6 +8,8 @@
  * PUT /user/profile - Update user profile
  * GET /user/viewed-cities - Get viewed cities
  * POST /user/viewed-cities/:cityId - Record city view
+ * POST /user/device-token - Register device token for push notifications
+ * DELETE /user/device-token - Remove device token
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -104,6 +106,21 @@ serve(async (req: Request) => {
     if (pathParts[1] === 'viewed-cities' && pathParts[2] && method === 'POST') {
       const cityId = pathParts[2];
       return await recordCityView(serviceClient, userId, cityId);
+    }
+
+    // Route: POST /user/device-token - Register device token
+    if (pathParts[1] === 'device-token' && method === 'POST') {
+      const body = await req.json();
+      return await registerDeviceToken(serviceClient, userId, body);
+    }
+
+    // Route: DELETE /user/device-token - Remove device token
+    if (pathParts[1] === 'device-token' && method === 'DELETE') {
+      const token = url.searchParams.get('token');
+      if (!token) {
+        return errorResponse('Token parameter required', 400, 'MISSING_PARAM');
+      }
+      return await removeDeviceToken(serviceClient, userId, token);
     }
 
     return errorResponse('Not found', 404, 'NOT_FOUND');
@@ -344,5 +361,66 @@ async function recordCityView(supabase: any, userId: string, cityId: string) {
   }
 
   console.log(`[user] Recorded city view: ${userId} -> ${cityId}`);
+  return jsonResponse({ success: true });
+}
+
+/**
+ * Register device token for push notifications
+ */
+async function registerDeviceToken(supabase: any, userId: string, data: any) {
+  const { token, platform, appVersion, deviceModel, osVersion } = data;
+
+  if (!token) {
+    return errorResponse('Token is required', 400, 'MISSING_PARAM');
+  }
+
+  // Upsert device token (update if same token exists, or create new)
+  const { data: deviceToken, error } = await supabase
+    .from('DeviceToken')
+    .upsert({
+      userId,
+      token,
+      platform: platform || 'ios',
+      appVersion,
+      deviceModel,
+      osVersion,
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+      lastUsedAt: new Date().toISOString(),
+    }, {
+      onConflict: 'token',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[user] Register device token error:', error);
+    return errorResponse('Failed to register device token', 500, 'DATABASE_ERROR');
+  }
+
+  console.log(`[user] Registered device token for user: ${userId}`);
+  return jsonResponse({ success: true, deviceToken });
+}
+
+/**
+ * Remove device token (on logout or token invalidation)
+ */
+async function removeDeviceToken(supabase: any, userId: string, token: string) {
+  // Mark token as inactive instead of deleting (for audit trail)
+  const { error } = await supabase
+    .from('DeviceToken')
+    .update({
+      isActive: false,
+      updatedAt: new Date().toISOString(),
+    })
+    .eq('userId', userId)
+    .eq('token', token);
+
+  if (error) {
+    console.error('[user] Remove device token error:', error);
+    return errorResponse('Failed to remove device token', 500, 'DATABASE_ERROR');
+  }
+
+  console.log(`[user] Removed device token for user: ${userId}`);
   return jsonResponse({ success: true });
 }

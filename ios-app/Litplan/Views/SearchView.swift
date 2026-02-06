@@ -26,6 +26,9 @@ struct SearchView: View {
     // City preload service for background-loaded cities (used for search)
     @ObservedObject private var cityPreloadService = CityPreloadService.shared
 
+    // City discovery manager for Pro user city discovery
+    @ObservedObject private var cityDiscoveryManager = CityDiscoveryManager.shared
+
     private var isProUser: Bool {
         subscriptionManager.isProUser
     }
@@ -253,54 +256,156 @@ struct SearchView: View {
     // MARK: - Discovery Prompt View
     private var discoveryPromptView: some View {
         VStack(spacing: Spacing.md) {
-            Image(systemName: "globe")
-                .font(.system(size: 48))
-                .foregroundColor(.accentPrimary)
-                .accessibilityHidden(true)
+            // Check if there's already an active discovery for this query
+            if cityDiscoveryManager.isDiscoveryInProgress(for: searchQuery) {
+                discoveryInProgressView
+            } else {
+                // Standard discovery prompt
+                Image(systemName: "globe")
+                    .font(.system(size: 48))
+                    .foregroundColor(.accentPrimary)
+                    .accessibilityHidden(true)
 
-            Text("Can't find \"\(searchQuery)\"?")
-                .font(.headline)
-                .foregroundColor(.textPrimary)
+                Text("Can't find \"\(searchQuery)\"?")
+                    .font(.headline)
+                    .foregroundColor(.textPrimary)
 
-            Text("We can search for this city worldwide")
-                .font(.callout)
-                .foregroundColor(.textSecondary)
+                if isProUser {
+                    // Pro users can discover new cities
+                    Text("Discover this city and we'll generate plans for you")
+                        .font(.callout)
+                        .foregroundColor(.textSecondary)
+                        .multilineTextAlignment(.center)
 
-            Button(action: {
-                Task {
-                    await discoverCity()
+                    Button(action: {
+                        Task {
+                            await discoverCity()
+                        }
+                    }) {
+                        HStack(spacing: Spacing.xs) {
+                            Image(systemName: "sparkles")
+                            Text("Discover City")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.accentPrimary, Color(hex: "#00FF88")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal, Spacing.xl)
+                    .accessibilityLabel("Discover \(searchQuery)")
+                    .accessibilityHint("AI will generate nightlife plans for this city")
+
+                    Text("Takes 5-10 minutes. You'll get a notification when ready.")
+                        .font(.caption)
+                        .foregroundColor(.textTertiary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Spacing.lg)
+                } else {
+                    // Free users see upgrade prompt
+                    Text("Pro members can discover new cities")
+                        .font(.callout)
+                        .foregroundColor(.textSecondary)
+
+                    Button(action: {
+                        paywallTrigger = .cityDiscovery
+                    }) {
+                        HStack(spacing: Spacing.xs) {
+                            Image(systemName: "crown.fill")
+                            Text("Upgrade to Pro")
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "#FFD700"), Color(hex: "#FFA500")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal, Spacing.xl)
+                    .accessibilityLabel("Upgrade to Pro")
+                    .accessibilityHint("Get Pro to discover new cities")
                 }
-            }) {
-                HStack(spacing: Spacing.xs) {
-                    Image(systemName: "magnifyingglass.circle.fill")
-                    Text("Discover City")
-                }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.accentPrimary)
-                .cornerRadius(12)
-            }
-            .padding(.horizontal, Spacing.xl)
-            .accessibilityLabel("Discover \(searchQuery)")
-            .accessibilityHint("Search worldwide for this city using AI")
 
-            if let error = discoveryError {
-                Text(error)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Spacing.lg)
+                if let error = discoveryError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Spacing.lg)
+                }
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.xl)
     }
 
+    // MARK: - Discovery In Progress View
+    private var discoveryInProgressView: some View {
+        VStack(spacing: Spacing.md) {
+            // Animated progress indicator
+            ZStack {
+                Circle()
+                    .stroke(Color.surfaceSecondary, lineWidth: 4)
+                    .frame(width: 60, height: 60)
+
+                Circle()
+                    .trim(from: 0, to: 0.7)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.accentPrimary, Color(hex: "#00FF88")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
+                    .frame(width: 60, height: 60)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: UUID())
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 24))
+                    .foregroundColor(.accentPrimary)
+            }
+
+            Text("Discovering \"\(searchQuery)\"...")
+                .font(.headline)
+                .foregroundColor(.textPrimary)
+
+            if let job = cityDiscoveryManager.getDiscoveryJob(for: searchQuery),
+               let estimatedTime = job.estimatedTime {
+                Text("Estimated: \(estimatedTime)")
+                    .font(.callout)
+                    .foregroundColor(.textSecondary)
+            }
+
+            Text("We'll send you a notification when plans are ready!")
+                .font(.caption)
+                .foregroundColor(.textTertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, Spacing.lg)
+        }
+    }
+
     // MARK: - Discovery Action
     private func discoverCity() async {
         guard !searchQuery.isEmpty else { return }
+        guard isProUser else {
+            paywallTrigger = .cityDiscovery
+            return
+        }
 
         isDiscovering = true
         discoveryError = nil
@@ -308,17 +413,45 @@ struct SearchView: View {
         // Dismiss keyboard
         isSearchFocused = false
 
+        // Try local discovery first (existing city in database)
         if let city = await cityPreloadService.discoverCityRemotely(query: searchQuery) {
             await MainActor.run {
                 discoveredCity = city
                 isDiscovering = false
                 HapticManager.shared.success()
             }
-        } else {
-            await MainActor.run {
-                discoveryError = "Could not find a city named \"\(searchQuery)\". Try a different spelling or check if it's a real city."
+            return
+        }
+
+        // If not found locally, use the new city discovery API (Pro feature)
+        // Parse city name and country from query (simple heuristic)
+        let components = searchQuery.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let cityName = components.first ?? searchQuery
+        let country = components.count > 1 ? components[1] : ""
+
+        let result = await cityDiscoveryManager.discoverCity(cityName: cityName, country: country)
+
+        await MainActor.run {
+            switch result {
+            case .success(let response):
+                if response.status == "available", let plans = response.plans, !plans.isEmpty {
+                    // City already has plans - this shouldn't happen often
+                    // but handle it gracefully
+                    HapticManager.shared.success()
+                } else if response.status == "started" || response.status == "in_progress" {
+                    // Discovery started - show in-progress UI
+                    HapticManager.shared.success()
+                }
                 isDiscovering = false
-                HapticManager.shared.warning()
+
+            case .failure(let error):
+                if case DiscoveryError.proRequired = error {
+                    paywallTrigger = .cityDiscovery
+                } else {
+                    discoveryError = error.localizedDescription
+                    HapticManager.shared.warning()
+                }
+                isDiscovering = false
             }
         }
     }

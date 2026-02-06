@@ -10,18 +10,23 @@
 //  Updated for Sprint 8 - Google Sign In OAuth Support
 //  Updated for Sprint Email Flows - Deep Link Handling
 //  Updated for Onboarding Flow
+//  Updated for Push Notifications - City Discovery Feature
 //
 
 import SwiftUI
 
 @main
 struct LitplanApp: App {
+    // AppDelegate for APNs registration
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     // Initialize shared singletons at app level to ensure proper lifecycle
     @StateObject private var networkMonitor = NetworkMonitor.shared
     @StateObject private var subscriptionManager = SubscriptionManager.shared
     @StateObject private var authManager = AuthenticationManager.shared
     @StateObject private var supabaseManager = SupabaseManager.shared
     @StateObject private var deepLinkHandler = DeepLinkHandler.shared
+    @StateObject private var pushNotificationManager = PushNotificationManager.shared
 
     // Splash screen state
     @State private var showSplash = true
@@ -64,6 +69,14 @@ struct LitplanApp: App {
 
                 // Start listening for auth state changes
                 supabaseManager.listenForAuthChanges()
+
+                // Register for push notifications (non-blocking)
+                // Will prompt user if not already determined
+                await pushNotificationManager.checkPermissionStatus()
+                if pushNotificationManager.notificationPermissionStatus == .authorized {
+                    // Re-send token to backend in case it changed
+                    await pushNotificationManager.resendTokenAfterLogin()
+                }
 
                 // Preload cities in background AFTER critical UI is ready
                 // This ensures search has cities available without blocking initial load
