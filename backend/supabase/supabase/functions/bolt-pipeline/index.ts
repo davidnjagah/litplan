@@ -61,7 +61,9 @@ const THEME_OPTIMIZATION: Record<string, string> = {
   "Afro Beats": "Find the BEST afrobeats music venues. Look for clubs hosting afrobeats nights, venues playing Nigerian and West African pop music, parties featuring Burna Boy/Wizkid/Davido style music, and African nightlife with high-energy vibes.",
   "Equestrian": "Find the BEST horse riding experiences. Look for riding schools with lessons, equestrian centers with trail rides, ranch experiences, and horseback adventures for hands-on participation.",
   "Excitement": "Find the MOST THRILLING and fun experiences in the city. Look for amusement parks, fun fairs, circuses, gondola rides, ferris wheels, carnivals, theme parks, water parks, and unique attractions that create unforgettable memories. Prioritize places with the best reviews for excitement and fun.",
-  "Activities": "Find 4-5 BEST group activity venues to ensure variety after validation. Look for bowling alleys, paintball arenas, laser tag centers, escape rooms, go-karting tracks, mini golf, trampoline parks, VR arcades, and climbing gyms. ALSO find 2 options for the final spot - scenic venues with views for sundowner drinks OR nice restaurants where the group can eat and celebrate. The final plan will use 2 activities + 1 winding down spot."
+  "Activities": "Find 4-5 BEST group activity venues to ensure variety after validation. Look for bowling alleys, paintball arenas, laser tag centers, escape rooms, go-karting tracks, mini golf, axe throwing, trampoline parks, VR arcades, and climbing gyms. ALSO find 2 options for the final spot - scenic venues with views for sundowner drinks OR nice restaurants where the group can eat and celebrate. The final plan will use 2 activities + 1 winding down spot."
+  // "Ultimate Friday": "Find the HOTTEST event happening THIS COMING FRIDAY in the city. Search for: concerts, DJ nights, album launch parties, club events, live performances, themed parties, festival events, comedy shows, or special Friday night events. The MAIN EVENT should be a specific ticketed or promoted event happening THIS FRIDAY with a known lineup, artist, or theme. Then find 1 pregame spot (bar/lounge for drinks before) and 1 after-party spot (late-night venue for after). Include the specific date in recommendations.",
+  // "Ultimate Saturday": "Find the BEST event happening THIS COMING SATURDAY in the city. Search for: day parties, pool parties, brunch events, concerts, festivals, sports viewing parties, DJ events, live shows, art exhibitions, food festivals, or special Saturday events. Since it's Saturday, plan for a FULL DAY experience - if the main event is at night, include daytime activities or an earlier pregame starting midday. The MAIN EVENT should be a specific promoted event happening THIS SATURDAY. Find 1-2 pregame spots and 1 after-party/wind-down spot. Include the specific date in recommendations."
 };
 
 // In-depth theme definitions for AI context
@@ -92,6 +94,8 @@ const THEME_DEFINITIONS: Record<string, string> = {
   "Equestrian": "Hands-on horse riding experiences - riding schools offering lessons for beginners to advanced riders, equestrian centers with scenic trail rides, ranch experiences with horseback adventures, and immersive horse riding activities. For those who want to actually ride horses.",
   "Excitement": "Thrilling daytime and evening experiences that create unforgettable memories. Amusement parks with roller coasters, fun fairs with carnival games and rides, circuses with live performances, gondola rides with scenic views, ferris wheels for panoramic city vistas, theme parks with immersive attractions, water parks for splashing fun, zip lines for adrenaline, and unique city attractions. Perfect for groups wanting excitement, adventure, and Instagram-worthy moments.",
   "Activities": "Interactive group activity experiences - Find 4-5 fun competitive activities like bowling alleys, paintball arenas, laser tag centers, escape rooms, go-karting tracks, mini golf courses, trampoline parks, axe throwing, VR arcades, or climbing walls (to ensure 2 survive validation). PLUS 2 options for final winding down venues - rooftop bars/scenic viewpoints with beautiful views for sundowner drinks, OR nice restaurants where the group can eat, celebrate, and share stories from the activities. The final curated plan will feature 2 activities + 1 winding down spot. The perfect group day out."
+  // "Ultimate Friday": "The ultimate Friday night experience built around a SPECIFIC EVENT happening THIS COMING FRIDAY. Structure: 1) PREGAME (18:00-20:00) - A trendy bar, rooftop, or lounge for pre-event drinks and catching up with friends. 2) MAIN EVENT (21:00-00:00) - The headline attraction: a concert, DJ set, comedy show, album launch, themed party, or special club night ACTUALLY HAPPENING this Friday. This should be a real, promoted event with specific artists, DJs, or themes. 3) AFTER-PARTY (00:00-03:00) - A late-night venue to keep the energy going: club, speakeasy, or 24-hour spot. The plan title MUST include the date (e.g., '24th Jan Ultimate Friday: [Event Name]'). Focus on what's actually happening in the city this Friday.",
+  // "Ultimate Saturday": "The ultimate Saturday experience built around a SPECIFIC EVENT happening THIS COMING SATURDAY. Since Saturdays allow for full-day plans, structure depends on the main event timing: FOR NIGHT EVENTS: 1) DAYTIME ACTIVITY (12:00-15:00) - Brunch, day drinking, pool party, or chill activity to start the day. 2) PREGAME (17:00-20:00) - Rooftop sundowners, happy hour, or dinner to build energy. 3) MAIN EVENT (21:00+) - The headline: concert, club night, festival, DJ event happening THIS Saturday. 4) WIND-DOWN - Late-night food or chill spot. FOR DAY EVENTS: 1) BRUNCH START (11:00-13:00) - Energizing brunch spot. 2) MAIN EVENT - Day party, festival, sports event, art exhibition happening this Saturday. 3) EVENING WIND-DOWN - Dinner or drinks to recap the day. The plan title MUST include the date (e.g., '25th Jan Ultimate Saturday: [Event Name]'). Prioritize real, promoted events over generic venue suggestions."
 };
 
 // Opening hours period structure (from Google Places)
@@ -117,6 +121,8 @@ interface Activity {
   whyRecommended?: string;
   estimatedRating?: number;
   popularitySignals?: string[];
+  // Category for Activities/Excitement/Ultimate themes
+  category?: 'activity' | 'winddown' | 'pregame' | 'main_event' | 'afterparty';
   // Validation status from Agent 2
   isValidated?: boolean;
   validationNotes?: string;
@@ -290,28 +296,41 @@ serve(async (req: Request) => {
           // This catches cases where Google finds a venue with similar name in a different city
           const aiCoords = activity.coordinates;
           const googleCoords = googleResult.coordinates;
-          const distanceKm = calculateDistanceKm(
-            aiCoords.latitude, aiCoords.longitude,
-            googleCoords.latitude, googleCoords.longitude
-          );
 
-          // If Google's location is more than 50km from AI's expected location, reject it
-          // This means Google found a different venue with a similar name in another city
-          const MAX_DISTANCE_KM = 50;
-          if (distanceKm > MAX_DISTANCE_KM) {
-            rejectedVenues.push({
-              name: activity.venueName,
-              reason: `Google found venue ${Math.round(distanceKm)}km away from ${city} - likely a different venue with similar name`
-            });
-            console.log(`   ❌ REJECTED: ${activity.venueName}`);
-            console.log(`   Reason: Google Places found venue ${Math.round(distanceKm)}km away from expected location`);
-            console.log(`   AI expected: ${aiCoords.latitude}, ${aiCoords.longitude}`);
-            console.log(`   Google found: ${googleCoords.latitude}, ${googleCoords.longitude} (${googleResult.address})`);
-            continue;
+          // Only do distance check if AI provided valid coordinates (not 0,0 or missing)
+          const hasValidAiCoords = aiCoords &&
+            aiCoords.latitude !== 0 &&
+            aiCoords.longitude !== 0 &&
+            Math.abs(aiCoords.latitude) <= 90 &&
+            Math.abs(aiCoords.longitude) <= 180;
+
+          if (hasValidAiCoords) {
+            const distanceKm = calculateDistanceKm(
+              aiCoords.latitude, aiCoords.longitude,
+              googleCoords.latitude, googleCoords.longitude
+            );
+
+            // If Google's location is more than 50km from AI's expected location, reject it
+            // This means Google found a different venue with a similar name in another city
+            const MAX_DISTANCE_KM = 50;
+            if (distanceKm > MAX_DISTANCE_KM) {
+              rejectedVenues.push({
+                name: activity.venueName,
+                reason: `Google found venue ${Math.round(distanceKm)}km away from ${city} - likely a different venue with similar name`
+              });
+              console.log(`   ❌ REJECTED: ${activity.venueName}`);
+              console.log(`   Reason: Google Places found venue ${Math.round(distanceKm)}km away from expected location`);
+              console.log(`   AI expected: ${aiCoords.latitude}, ${aiCoords.longitude}`);
+              console.log(`   Google found: ${googleCoords.latitude}, ${googleCoords.longitude} (${googleResult.address})`);
+              continue;
+            }
+            console.log(`   📏 Distance from expected: ${Math.round(distanceKm * 10) / 10}km (max ${MAX_DISTANCE_KM}km)`);
+          } else {
+            console.log(`   ⚠️ AI coordinates invalid/missing - skipping distance check, relying on city name match`);
           }
 
           // CHECK: Verify city name appears in the Google address (English OR local language)
-          const cityCheck = addressContainsCity(googleResult.address, cityNames.english, cityNames.local);
+          const cityCheck = addressContainsCity(googleResult.address, cityNames.english, cityNames.local, city);
           if (!cityCheck.matches) {
             rejectedVenues.push({
               name: activity.venueName,
@@ -354,7 +373,6 @@ serve(async (req: Request) => {
 
           console.log(`   ✅ VERIFIED: ${googleResult.venueName}`);
           console.log(`   📍 Address: ${googleResult.address}`);
-          console.log(`   📏 Distance from expected: ${Math.round(distanceKm * 10) / 10}km (max ${MAX_DISTANCE_KM}km)`);
           console.log(`   ⭐ Confidence: ${googleResult.confidence}`);
           console.log(`   🏪 Business status: ${googleResult.businessStatus || 'Unknown'}`);
           if (googleResult.openingHours && googleResult.openingHours.length > 0) {
@@ -408,11 +426,79 @@ serve(async (req: Request) => {
     // Reorders venues chronologically based on adjusted times
     // ═══════════════════════════════════════════════════════════════════════
     console.log(`\n[AGENT 3.5] 🕐 TIMING ADJUSTER - Adjusting times to fit opening hours...`);
-    const scheduledActivities = await agent35_optimizeSchedule(
+    let scheduledActivities = await agent35_optimizeSchedule(
       validatedActivities,
       theme,
       city
     );
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // VENUE SELECTION: For Activities/Excitement themes
+    // Pick exactly 2 activities + 1 winddown for the final plan
+    // ═══════════════════════════════════════════════════════════════════════
+    const isActivitiesTheme = theme === 'Activities' || theme === 'Excitement';
+    if (isActivitiesTheme && scheduledActivities.length > 0) {
+      console.log(`\n[SELECTOR] 🎯 Selecting 2 activities + 1 winddown for ${theme} theme...`);
+      console.log(`   Total venues available: ${scheduledActivities.length}`);
+      scheduledActivities.forEach((v, i) => {
+        console.log(`      ${i + 1}. ${v.venueName} (category: ${v.category || 'NOT SET'})`);
+      });
+
+      let activities = scheduledActivities.filter(a => a.category === 'activity');
+      let winddowns = scheduledActivities.filter(a => a.category === 'winddown');
+
+      console.log(`   Categorized: ${activities.length} activities, ${winddowns.length} winddowns`);
+
+      // FALLBACK: If categories weren't set by Agent 1, infer them
+      // Assume first N-1 venues are activities, last venue is winddown
+      if (activities.length === 0 && winddowns.length === 0 && scheduledActivities.length >= 2) {
+        console.log(`   ⚠️ No categories set - inferring from position...`);
+        // Take first venues as activities, last as winddown
+        const allVenues = [...scheduledActivities];
+        winddowns = [allVenues.pop()!]; // Last venue is winddown
+        activities = allVenues; // Rest are activities
+
+        // Set categories for logging
+        activities.forEach(a => a.category = 'activity');
+        winddowns.forEach(a => a.category = 'winddown');
+
+        console.log(`   Inferred: ${activities.length} activities, ${winddowns.length} winddowns`);
+      }
+
+      // Select exactly 2 activities and 1 winddown
+      const selectedActivities = activities.slice(0, 2);
+      const selectedWinddown = winddowns.slice(0, 1);
+
+      if (selectedActivities.length < 2) {
+        console.log(`   ⚠️ Only ${selectedActivities.length} activity venues available`);
+      }
+      if (selectedWinddown.length < 1) {
+        console.log(`   ⚠️ No winddown venues available`);
+        // If no winddown but we have 3+ activities, use the 3rd as winddown
+        if (activities.length > 2) {
+          const thirdActivity = activities[2];
+          thirdActivity.category = 'winddown';
+          selectedWinddown.push(thirdActivity);
+          console.log(`   Using "${thirdActivity.venueName}" as winddown`);
+        }
+      }
+
+      // Combine: exactly 2 activities + 1 winddown = 3 venues max
+      const finalSelection = [...selectedActivities, ...selectedWinddown]
+        .sort((a, b) => a.order - b.order)
+        .map((a, idx) => ({ ...a, order: idx + 1 }));
+
+      // Ensure we have exactly 3 venues (or fewer if not enough available)
+      const maxVenues = Math.min(finalSelection.length, 3);
+      const trimmedSelection = finalSelection.slice(0, maxVenues);
+
+      console.log(`   ✅ Final selection: ${trimmedSelection.length} venues`);
+      trimmedSelection.forEach((v, i) => {
+        console.log(`      ${i + 1}. ${v.venueName} (${v.category})`);
+      });
+
+      scheduledActivities = trimmedSelection;
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     // AGENT 4: NARRATIVE CREATOR - Create immersive descriptions
@@ -610,7 +696,18 @@ async function agent1_discoverVenues(
   const isLowBudget = theme === 'Low Budget';
   const isActivities = theme === 'Activities';
   const isExcitement = theme === 'Excitement';
-  const venueCount = (isActivities || isExcitement) ? 7 : 3; // Request more venues for Activities/Excitement to survive validation
+  const isUltimateFriday = theme === 'Ultimate Friday';
+  const isUltimateSaturday = theme === 'Ultimate Saturday';
+  const isEventBased = isUltimateFriday || isUltimateSaturday;
+
+  // Calculate venue count based on theme
+  let venueCount = 3;
+  if (isActivities || isExcitement) venueCount = 7;
+  if (isUltimateFriday) venueCount = 3; // pregame + main event + afterparty
+  if (isUltimateSaturday) venueCount = 4; // daytime/brunch + pregame + main event + winddown
+
+  // Get date context for event-based themes
+  const dateContext = getUpcomingDates();
 
   const systemPrompt = `You are an expert local guide for ${city}${country ? `, ${country}` : ''} with deep knowledge of the BEST venues.
 
@@ -624,7 +721,65 @@ SPECIAL FOR ACTIVITIES THEME:
 SPECIAL FOR EXCITEMENT THEME:
 - Find 4-5 THRILLING excitement venues (amusement parks, fun fairs, ferris wheels, gondola rides, theme parks, water parks, carnivals, circuses, zip lines, etc.)
 - PLUS 2 winding down spots (rooftop bars, scenic restaurants, or nice places to relax with views and drinks)
-- This ensures enough venues survive validation for a final plan of 2-3 excitement spots + 1 dining/drinks spot` : ''}
+- This ensures enough venues survive validation for a final plan of 2-3 excitement spots + 1 dining/drinks spot` : ''}${isUltimateFriday ? `
+
+SPECIAL FOR ULTIMATE FRIDAY THEME:
+📅 TODAY IS: ${dateContext.today}
+📅 THIS COMING FRIDAY IS: ${dateContext.nextFriday} (${dateContext.nextFridayFormatted})
+
+YOUR MISSION: Build a Friday night plan around a REAL EVENT happening on ${dateContext.nextFridayFormatted}.
+
+STRUCTURE (3 venues):
+1. PREGAME (category: "pregame") - 18:00-20:00
+   A trendy bar, rooftop, or lounge for pre-event drinks
+
+2. MAIN EVENT (category: "main_event") - 21:00-00:00
+   ⭐ THE HEADLINE: A SPECIFIC event happening THIS FRIDAY ${dateContext.nextFridayFormatted}
+   Examples: Concert, DJ night, album launch, comedy show, themed party, club night
+   MUST be a real, promoted event with artist names, DJ lineups, or specific themes
+
+3. AFTER-PARTY (category: "afterparty") - 00:00-03:00
+   A late-night venue: club, speakeasy, or 24-hour spot
+
+⚠️ The MAIN EVENT must be something ACTUALLY HAPPENING on ${dateContext.nextFridayFormatted}
+⚠️ Include the event name/artist in the venue description
+⚠️ The plan title MUST include "${dateContext.nextFridayFormatted}" (e.g., "${dateContext.nextFridayFormatted} Ultimate Friday: [Event Name]")` : ''}${isUltimateSaturday ? `
+
+SPECIAL FOR ULTIMATE SATURDAY THEME:
+📅 TODAY IS: ${dateContext.today}
+📅 THIS COMING SATURDAY IS: ${dateContext.nextSaturday} (${dateContext.nextSaturdayFormatted})
+
+YOUR MISSION: Build a FULL DAY Saturday plan around a REAL EVENT happening on ${dateContext.nextSaturdayFormatted}.
+
+STRUCTURE FOR NIGHT EVENTS (4 venues):
+1. DAYTIME (category: "pregame") - 12:00-15:00
+   Brunch spot, day drinking venue, or chill daytime activity
+
+2. PREGAME (category: "pregame") - 17:00-20:00
+   Rooftop sundowners, happy hour spot, or dinner venue
+
+3. MAIN EVENT (category: "main_event") - 21:00+
+   ⭐ THE HEADLINE: A SPECIFIC event happening THIS SATURDAY ${dateContext.nextSaturdayFormatted}
+   Examples: Concert, festival, DJ night, day party, sports event, art exhibition
+
+4. WIND-DOWN (category: "winddown") - Late night
+   Late-night food spot or chill bar to end the night
+
+STRUCTURE FOR DAY EVENTS (4 venues):
+1. BRUNCH (category: "pregame") - 11:00-13:00
+   Energizing brunch to start the day
+
+2. MAIN EVENT (category: "main_event") - 14:00-18:00
+   ⭐ Day party, festival, sports event, or daytime attraction
+
+3. DINNER (category: "winddown") - 19:00-21:00
+   Nice restaurant to recap the day
+
+4. NIGHTCAP (category: "winddown") - 21:00+
+   Bar or lounge for evening drinks
+
+⚠️ The MAIN EVENT must be something ACTUALLY HAPPENING on ${dateContext.nextSaturdayFormatted}
+⚠️ The plan title MUST include "${dateContext.nextSaturdayFormatted}" (e.g., "${dateContext.nextSaturdayFormatted} Ultimate Saturday: [Event Name]")` : ''}
 
 THEME CONTEXT:
 ${themeDefinition}
@@ -685,13 +840,28 @@ FOR ACTIVITIES THEME - YOU MUST INCLUDE:
 1. First 4-5 venues: Fun competitive ACTIVITIES (bowling, escape rooms, laser tag, go-karting, VR arcades, paintball, mini golf, trampoline parks, etc.)
 2. Last 1-2 venues: WINDING DOWN spots - either a nice RESTAURANT for dinner OR a BAR/ROOFTOP with views for sundowner drinks
 
-⚠️ The last venue(s) MUST be a restaurant or bar - NOT another activity!` : ''}${isExcitement ? `
+⚠️ The last venue(s) MUST be a restaurant or bar - NOT another activity!
+⚠️ Mark each venue with category: "activity" for competitive spots, "winddown" for restaurants/bars` : ''}${isExcitement ? `
 
 FOR EXCITEMENT THEME - YOU MUST INCLUDE:
 1. First 4-5 venues: THRILLING experiences (amusement parks, fun fairs, ferris wheels, gondola rides, theme parks, water parks, carnivals, circuses, zip lines, unique attractions, etc.)
 2. Last 2 venues: WINDING DOWN spots - either a nice RESTAURANT for dinner OR a BAR/ROOFTOP with scenic views for sundowner drinks
 
-⚠️ The last 2 venues MUST be restaurants or bars with views - NOT more excitement venues!` : ''}
+⚠️ The last 2 venues MUST be restaurants or bars with views - NOT more excitement venues!
+⚠️ Mark each venue with category: "activity" for excitement spots, "winddown" for restaurants/bars` : ''}
+
+⚠️ FOR ACTIVITIES/EXCITEMENT THEMES: You MUST include a "category" field for EACH venue:
+   - "activity" = fun competitive activities or thrilling excitement venues
+   - "winddown" = restaurants, bars, rooftops for winding down${isEventBased ? `
+
+⚠️ FOR ULTIMATE FRIDAY/SATURDAY THEMES: You MUST include a "category" field for EACH venue:
+   - "pregame" = bars, lounges, brunch spots, daytime activities before the main event
+   - "main_event" = THE headline event (concert, DJ night, festival, etc.) - must be a REAL event happening on the specified date
+   - "afterparty" = late-night venues after the main event
+   - "winddown" = restaurants or chill spots to end the night
+
+📅 CRITICAL: The MAIN EVENT must be a REAL, PROMOTED event happening on the SPECIFIC DATE.
+📅 The plan title MUST start with the date (e.g., "${isUltimateFriday ? dateContext.nextFridayFormatted : dateContext.nextSaturdayFormatted} Ultimate ${isUltimateFriday ? 'Friday' : 'Saturday'}: [Event Name]")` : ''}
 
 Return JSON:
 {
@@ -709,6 +879,7 @@ Return JSON:
         "duration": 90,
         "description": "Brief description of what to expect",
         "order": 1,
+        "category": "${isEventBased ? 'pregame, main_event, afterparty, or winddown' : 'activity or winddown'} (REQUIRED)",
         "whyRecommended": "Why this is one of the BEST (ratings, reviews, popularity)",
         "estimatedRating": 4.5,
         "popularitySignals": ["Featured in...", "Known for...", "Award-winning..."]
@@ -872,6 +1043,22 @@ Return JSON:
 
       if (decision.approved) {
         // Apply corrected name if venue was renamed
+        const venueName = decision.correctedName || activity.venueName;
+
+        // PROGRAMMATIC DUPLICATE CHECK: Check if this venue is similar to already approved ones
+        const isDuplicate = approved.some(existing => {
+          return areVenueNamesSimilar(existing.venueName, venueName);
+        });
+
+        if (isDuplicate) {
+          console.log(`   🔄 Duplicate detected: "${venueName}" - rejecting`);
+          rejected.push({
+            name: venueName,
+            reason: 'Duplicate venue - similar to already approved venue'
+          });
+          continue;
+        }
+
         if (decision.correctedName) {
           console.log(`   📝 Name correction: "${activity.venueName}" → "${decision.correctedName}"`);
           approved.push({
@@ -914,11 +1101,15 @@ async function agent35_optimizeSchedule(
     if (a.openingHoursText && a.openingHoursText.length > 0) {
       hoursInfo = `Opening hours:\n${a.openingHoursText.map(h => `      ${h}`).join('\n')}`;
     }
+    const categoryInfo = a.category ? `Category: ${a.category}` : '';
     return `Venue #${i + 1}: ${a.venueName}
    Current suggested time: ${a.startTime}
    Duration: ${a.duration} minutes
+   ${categoryInfo}
    ${hoursInfo}`;
   }).join('\n\n');
+
+  const isActivitiesOrExcitement = theme === 'Activities' || theme === 'Excitement';
 
   const systemPrompt = `You are a timing specialist for ${city} entertainment plans.
 Your job is to ADJUST the start times of venues to fit their ACTUAL opening hours.
@@ -929,6 +1120,7 @@ YOUR TASKS:
 1. Adjust start times so each venue is visited during its ACTUAL opening hours
 2. If needed, REORDER venues to create a logical chronological flow based on the adjusted times
 3. The final order should follow the timeline (earliest start time first)
+4. Set appropriate durations for each venue based on the theme
 
 RULES:
 1. Every venue MUST be visited during its ACTUAL opening hours from Google Places
@@ -938,9 +1130,16 @@ RULES:
    - Bars: 17:00 - 02:00
    - Brunch spots: 09:00 - 15:00
    - Rooftop bars: 17:00 - 01:00
+   - Activity venues (bowling, laser tag, etc.): 10:00 - 23:00
 3. Ensure there's 15-30 minutes travel time between venues
 4. The overall timing should make sense for a "${theme}" experience
 5. After setting times, ORDER the venues chronologically (earliest to latest)
+${isActivitiesOrExcitement ? `
+⚠️ SPECIAL FOR ACTIVITIES/EXCITEMENT THEMES:
+- Activity/excitement venues (category: "activity") MUST have a MINIMUM duration of 180 minutes (3 hours)
+- This allows groups to fully enjoy activities like bowling, laser tag, escape rooms, theme parks, etc.
+- Wind-down venues (category: "winddown" - restaurants/bars) can have shorter durations (60-90 minutes)
+- Plan for a full day experience starting in the early afternoon (12:00-14:00)` : ''}
 
 THEME-SPECIFIC START TIMES:
 - "Nightlife" → Evening/night start (19:00-22:00)
@@ -949,6 +1148,8 @@ THEME-SPECIFIC START TIMES:
 - "Bar Hopping" → Evening start (18:00-21:00)
 - "Rooftop" → Late afternoon/sunset (17:00-19:00)
 - "Jazz" → Evening start (19:00-21:00)
+- "Activities" → Early afternoon start (12:00-14:00), with 3+ hours per activity
+- "Excitement" → Early afternoon start (12:00-14:00), with 3+ hours per attraction
 
 RESPOND WITH VALID JSON ONLY.`;
 
@@ -961,6 +1162,12 @@ INSTRUCTIONS:
 2. If NOT, adjust the start time to when the venue IS open
 3. After adjusting times, REORDER the venues chronologically (earliest time first)
 4. Make sure the overall plan flows logically with travel time between venues
+5. Set appropriate durations for each venue${isActivitiesOrExcitement ? `
+
+⚠️ FOR ACTIVITIES/EXCITEMENT THEMES:
+- Activity venues (category: "activity") MUST have duration of AT LEAST 180 minutes (3 hours)
+- Wind-down venues (category: "winddown") can be 60-90 minutes
+- Start the day around 12:00-14:00 for a full day experience` : ''}
 
 Return JSON:
 {
@@ -970,8 +1177,9 @@ Return JSON:
       "venueName": "Venue Name",
       "originalTime": "HH:MM",
       "adjustedTime": "HH:MM",
+      "adjustedDuration": 180,
       "newOrder": 1,
-      "reason": "Why this time (e.g., 'Opens at 18:00, adjusted from 16:00' or 'Within opening hours, no change')"
+      "reason": "Why this time and duration"
     }
   ],
   "planStartTime": "HH:MM",
@@ -993,6 +1201,7 @@ Return JSON:
         venueName: string;
         originalTime: string;
         adjustedTime: string;
+        adjustedDuration?: number;
         newOrder: number;
         reason: string;
       }>;
@@ -1022,10 +1231,12 @@ Return JSON:
 
       const timeChanged = adjustment.originalTime !== adjustment.adjustedTime;
       const orderChanged = adjustment.venueIndex !== newIndex;
+      const durationChanged = adjustment.adjustedDuration && adjustment.adjustedDuration !== originalActivity.duration;
 
-      if (timeChanged || orderChanged) {
+      if (timeChanged || orderChanged || durationChanged) {
         const changes = [];
         if (timeChanged) changes.push(`${adjustment.originalTime} → ${adjustment.adjustedTime}`);
+        if (durationChanged) changes.push(`duration: ${originalActivity.duration}min → ${adjustment.adjustedDuration}min`);
         if (orderChanged) changes.push(`moved to #${newIndex + 1}`);
         console.log(`   🔄 ${adjustment.venueName}: ${changes.join(', ')}`);
         console.log(`      ${adjustment.reason}`);
@@ -1036,6 +1247,7 @@ Return JSON:
       return {
         ...originalActivity,
         startTime: adjustment.adjustedTime,
+        duration: adjustment.adjustedDuration || originalActivity.duration,
         order: newIndex + 1
       };
     });
@@ -1180,6 +1392,67 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
 }
 
 /**
+ * Get upcoming Friday and Saturday dates for event-based themes
+ */
+function getUpcomingDates(): {
+  today: string;
+  nextFriday: string;
+  nextFridayFormatted: string;
+  nextSaturday: string;
+  nextSaturdayFormatted: string;
+} {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+
+  // Calculate days until next Friday (5)
+  let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+  if (daysUntilFriday === 0) daysUntilFriday = 7; // If today is Friday, get next Friday
+
+  // Calculate days until next Saturday (6)
+  let daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
+  if (daysUntilSaturday === 0) daysUntilSaturday = 7; // If today is Saturday, get next Saturday
+
+  const nextFriday = new Date(now);
+  nextFriday.setDate(now.getDate() + daysUntilFriday);
+
+  const nextSaturday = new Date(now);
+  nextSaturday.setDate(now.getDate() + daysUntilSaturday);
+
+  // Format dates
+  const formatDate = (date: Date): string => {
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD
+  };
+
+  const formatDateHuman = (date: Date): string => {
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const suffix = getDaySuffix(day);
+    return `${day}${suffix} ${month}`;
+  };
+
+  return {
+    today: formatDate(now),
+    nextFriday: formatDate(nextFriday),
+    nextFridayFormatted: formatDateHuman(nextFriday),
+    nextSaturday: formatDate(nextSaturday),
+    nextSaturdayFormatted: formatDateHuman(nextSaturday),
+  };
+}
+
+/**
+ * Get ordinal suffix for a day (1st, 2nd, 3rd, etc.)
+ */
+function getDaySuffix(day: number): string {
+  if (day >= 11 && day <= 13) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+/**
  * Get the local language name of a city
  * Returns both English and local names for matching
  */
@@ -1225,19 +1498,27 @@ Examples:
 
 /**
  * Check if an address contains the city name (in English or local language)
+ * More lenient matching for international addresses
  */
 function addressContainsCity(
   address: string,
   cityEnglish: string,
-  cityLocal: string
+  cityLocal: string,
+  originalCity: string
 ): { matches: boolean; matchedName: string | null } {
   const addressLower = address.toLowerCase();
   const englishLower = cityEnglish.toLowerCase();
   const localLower = cityLocal.toLowerCase();
+  const originalLower = originalCity.toLowerCase();
 
   // Check English name
   if (addressLower.includes(englishLower) || addressLower.includes(englishLower.replace(/\s+/g, ''))) {
     return { matches: true, matchedName: cityEnglish };
+  }
+
+  // Check original city name (as user typed it)
+  if (addressLower.includes(originalLower) || addressLower.includes(originalLower.replace(/\s+/g, ''))) {
+    return { matches: true, matchedName: originalCity };
   }
 
   // Check local name (if different from English)
@@ -1247,7 +1528,125 @@ function addressContainsCity(
     }
   }
 
+  // Common city name variations and abbreviations
+  const cityVariations: Record<string, string[]> = {
+    'new york': ['nyc', 'manhattan', 'brooklyn', 'queens', 'bronx', 'staten island', 'ny'],
+    'los angeles': ['la', 'hollywood', 'beverly hills', 'santa monica', 'west hollywood'],
+    'san francisco': ['sf', 'san fran'],
+    'barcelona': ['bcn', 'barna', 'catalonia', 'catalunya'],
+    'madrid': ['comunidad de madrid'],
+    'paris': ['île-de-france', 'ile-de-france'],
+    'london': ['greater london', 'uk'],
+    'berlin': ['deutschland', 'germany'],
+    'rome': ['roma', 'lazio'],
+    'milan': ['milano', 'lombardy', 'lombardia'],
+    'amsterdam': ['noord-holland', 'netherlands', 'nederland'],
+    'dubai': ['uae', 'emirates'],
+    'tokyo': ['東京', 'japan'],
+    'bangkok': ['กรุงเทพ', 'thailand'],
+    'singapore': ['sg'],
+    'hong kong': ['hk', '香港'],
+    'sydney': ['nsw', 'australia'],
+    'melbourne': ['vic', 'victoria', 'australia'],
+    'toronto': ['on', 'ontario', 'canada'],
+    'chicago': ['il', 'illinois'],
+    'miami': ['fl', 'florida'],
+    'las vegas': ['nv', 'nevada'],
+    'nairobi': ['kenya'],
+    'cape town': ['western cape', 'south africa'],
+    'lagos': ['nigeria'],
+    'cairo': ['القاهرة', 'egypt'],
+    'istanbul': ['türkiye', 'turkey'],
+    'moscow': ['москва', 'russia'],
+    'mumbai': ['maharashtra', 'india'],
+    'delhi': ['new delhi', 'india'],
+    'sao paulo': ['são paulo', 'brazil', 'brasil'],
+    'rio de janeiro': ['brazil', 'brasil'],
+    'mexico city': ['cdmx', 'ciudad de mexico', 'df'],
+    'buenos aires': ['argentina'],
+    'lisbon': ['lisboa', 'portugal'],
+    'prague': ['praha', 'czech republic', 'czechia'],
+    'vienna': ['wien', 'austria'],
+    'munich': ['münchen', 'bavaria', 'bayern'],
+    'zurich': ['zürich', 'switzerland'],
+    'geneva': ['genève', 'switzerland'],
+    'brussels': ['bruxelles', 'belgium', 'belgique'],
+    'stockholm': ['sweden', 'sverige'],
+    'copenhagen': ['københavn', 'denmark', 'danmark'],
+    'oslo': ['norway', 'norge'],
+    'helsinki': ['finland', 'suomi'],
+    'dublin': ['ireland'],
+    'edinburgh': ['scotland', 'uk'],
+    'athens': ['αθήνα', 'greece'],
+    'ibiza': ['eivissa', 'balearic islands', 'baleares', 'spain', 'españa'],
+    'marbella': ['costa del sol', 'malaga', 'málaga', 'andalusia', 'spain', 'españa'],
+    'seville': ['sevilla', 'andalusia', 'spain', 'españa'],
+    'valencia': ['spain', 'españa'],
+  };
+
+  // Check variations for common cities
+  const variations = cityVariations[englishLower] || cityVariations[originalLower] || [];
+  for (const variation of variations) {
+    if (addressLower.includes(variation)) {
+      return { matches: true, matchedName: variation };
+    }
+  }
+
+  // Check if address contains country name for European cities (more lenient)
+  const countryNames = ['spain', 'españa', 'france', 'italy', 'italia', 'germany', 'deutschland',
+    'uk', 'united kingdom', 'netherlands', 'portugal', 'greece', 'austria', 'switzerland'];
+  for (const country of countryNames) {
+    if (addressLower.includes(country)) {
+      // If address has a known country, it's likely a valid international address
+      // Do a more lenient check - if the city name starts with same letters
+      const cityStart = englishLower.substring(0, 4);
+      if (addressLower.includes(cityStart)) {
+        return { matches: true, matchedName: `${cityEnglish} (${country})` };
+      }
+    }
+  }
+
   return { matches: false, matchedName: null };
+}
+
+/**
+ * Check if two venue names are similar (potential duplicates)
+ * Returns true if names are likely the same venue
+ */
+function areVenueNamesSimilar(name1: string, name2: string): boolean {
+  // Normalize names for comparison
+  const normalize = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/^the\s+/i, '')        // Remove leading "The"
+      .replace(/['"`'']/g, '')        // Remove quotes
+      .replace(/[^a-z0-9\s]/g, '')    // Remove special characters
+      .replace(/\s+/g, ' ')           // Normalize whitespace
+      .trim();
+  };
+
+  const n1 = normalize(name1);
+  const n2 = normalize(name2);
+
+  // Exact match after normalization
+  if (n1 === n2) return true;
+
+  // One contains the other (handles "Sky Lounge" vs "Sky Lounge Nairobi")
+  if (n1.includes(n2) || n2.includes(n1)) return true;
+
+  // Check word overlap - if 80%+ words match, likely duplicate
+  const words1 = new Set(n1.split(' ').filter(w => w.length > 2));
+  const words2 = new Set(n2.split(' ').filter(w => w.length > 2));
+
+  if (words1.size === 0 || words2.size === 0) return false;
+
+  const intersection = [...words1].filter(w => words2.has(w));
+  const overlapRatio = intersection.length / Math.min(words1.size, words2.size);
+
+  // 80% word overlap = likely duplicate
+  if (overlapRatio >= 0.8) return true;
+
+  return false;
 }
 
 /**

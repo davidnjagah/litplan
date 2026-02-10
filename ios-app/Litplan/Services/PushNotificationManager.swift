@@ -304,6 +304,8 @@ struct PushNotificationPayload {
 extension Notification.Name {
     static let cityDiscoveryComplete = Notification.Name("cityDiscoveryComplete")
     static let cityDiscoveryFailed = Notification.Name("cityDiscoveryFailed")
+    static let navigateToDiscoveredCity = Notification.Name("navigateToDiscoveredCity")
+    static let navigateToVibezWithCity = Notification.Name("navigateToVibezWithCity")
 }
 
 // MARK: - UNUserNotificationCenterDelegate

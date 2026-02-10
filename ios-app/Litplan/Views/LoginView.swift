@@ -31,7 +31,7 @@ struct LoginView: View {
 
                 Spacer()
 
-                // Main content
+                // Main content - conditionally show different sections
                 if authManager.emailConfirmationNeeded {
                     emailConfirmationSection
                 } else if showEmailLogin {
@@ -129,23 +129,21 @@ struct LoginView: View {
                 .cornerRadius(Spacing.sm)
             }
 
-            // Divider
+            // Divider with "or"
             HStack {
                 Rectangle()
-                    .fill(Color.surfaceSecondary)
+                    .fill(Color.textTertiary.opacity(0.3))
                     .frame(height: 1)
-
                 Text("or")
                     .font(.callout)
                     .foregroundColor(.textTertiary)
-                    .padding(.horizontal, Spacing.md)
-
                 Rectangle()
-                    .fill(Color.surfaceSecondary)
+                    .fill(Color.textTertiary.opacity(0.3))
                     .frame(height: 1)
             }
+            .padding(.vertical, Spacing.xs)
 
-            // Email login button
+            // Continue with Email button
             SecondaryButton(title: "Continue with Email") {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showEmailLogin = true

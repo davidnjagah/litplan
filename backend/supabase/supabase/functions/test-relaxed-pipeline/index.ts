@@ -412,7 +412,7 @@ EXAMPLE - WRONG TIMING (DO NOT DO THIS):
 - Venue 1: Starts 18:00, Duration 90min
 - Venue 2: Starts 19:00 (WRONG! Venue 1 doesn't end until 19:30)
 
-TIMING GUIDELINES:
+TIMING GUIDELINES BY ACTIVITY TYPE:
 - Dinner: 90-120 minutes
 - Cocktail bar: 60-90 minutes
 - Club/Nightlife: 120-180 minutes
@@ -420,6 +420,48 @@ TIMING GUIDELINES:
 - Museum/Cultural: 60-90 minutes
 - Travel within same neighborhood: 10 minutes
 - Travel between neighborhoods: 15-25 minutes
+
+═══════════════════════════════════════════════════════════════════════════════
+PLAN TYPE → START TIME MAPPING (CRITICAL!)
+═══════════════════════════════════════════════════════════════════════════════
+
+NOT ALL PLANS ARE NIGHT PLANS! Match start times to the experience:
+
+🌅 MORNING/DAYTIME PLANS (Start 09:00-11:00):
+- FAMILY: Start at 09:00-10:00 - Kids are energetic in morning, parks/museums open early
+  Example: "Family Fun Day" → 10:00 zoo → 12:30 lunch → 14:30 park
+- FREE_EXPERIENCES: Start at 09:00-10:00 - Markets, walking tours, public spaces
+  Example: "Exploring the City" → 09:30 market → 11:30 walking tour → 14:00 viewpoint
+- GIRLS_TRIPS (day adventure): Start at 10:00-11:00 - Shopping, brunch, spa
+  Example: "Glamorous Girls Getaway" → 10:00 brunch → 12:30 shopping → 15:00 spa
+
+☀️ AFTERNOON PLANS (Start 14:00-17:00):
+- BOYS_TRIPS (adventure): Start at 14:00-15:00 - Beach, sports, activities
+  Example: "Conquering the Island" → 14:00 beach club → 17:00 sunset spot → 19:30 dinner
+- FRIEND_GROUPS (day hang): Start at 14:00-16:00 - Casual activities, food crawls
+  Example: "Friendship Fiesta" → 14:00 lunch → 16:30 activity → 19:00 drinks
+
+🌆 SUNSET/EVENING PLANS (Start 17:00-19:00):
+- COUPLES: Start at 17:30-18:30 - Romantic sunset + dinner
+  Example: "Romantic Sunset" → 17:30 rooftop → 19:30 dinner → 22:00 lounge
+- ROMANTIC: Start at 18:00-19:00 - Dinner dates, intimate venues
+  Example: "Intimate Evening" → 18:30 wine bar → 20:30 dinner → 22:30 walk
+- LUXURY: Start at 17:00-18:00 - High-end experiences, sunset cocktails
+  Example: "Opulent Experience" → 17:00 spa → 19:30 fine dining → 22:00 lounge
+
+🌙 NIGHT PLANS (Start 20:00-22:00):
+- GIRLS_NIGHT_OUT: Start at 20:00-21:00 - Dinner then dancing
+  Example: "Chic Ladies Night" → 20:00 dinner → 22:30 cocktails → 00:30 club
+- BOYS_NIGHT_OUT: Start at 20:00-21:00 - Pre-drinks then party
+  Example: "Gentlemen's Night" → 20:00 steakhouse → 22:30 bar → 01:00 club
+- FRIEND_GROUPS (night out): Start at 19:00-20:00 - Social evening
+  Example: "Night on the Town" → 19:30 dinner → 22:00 bar → 00:00 club
+
+⚠️ MATCHING TITLE TO TIME:
+- Titles with "Day", "Morning", "Brunch", "Exploration", "Tour", "Museum" → DAYTIME
+- Titles with "Sunset", "Evening", "Dinner" → SUNSET/EVENING
+- Titles with "Night", "After Dark", "Nightlife", "Party" → NIGHT
+- Family/Kids activities → ALWAYS DAYTIME (09:00-10:00 start)
 
 ═══════════════════════════════════════════════════════════════════════════════
 

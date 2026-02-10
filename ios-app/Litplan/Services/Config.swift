@@ -118,11 +118,11 @@ enum Config {
             return "\(apiBaseURL)/cities-discover"
         }
 
-        /// Bolt pipeline endpoint - Railway (longer timeout support)
+        /// Bolt pipeline endpoint - Supabase Edge Function
         /// Generates custom group plans for any city/theme combination
-        /// Uses Railway for longer-running AI pipeline requests (non-strict validation)
+        /// Uses Supabase Edge Function with 4-agent pipeline (discovery, relevance, Google Places, narrative)
         static var boltPipeline: String {
-            return "\(railwayAPIBaseURL)/api/pipeline/bolt"
+            return "\(apiBaseURL)/bolt-pipeline"
         }
     }
 
@@ -160,13 +160,14 @@ enum Config {
     }
 
     /// Enable StoreKit testing mode (bypasses real payments)
-    /// Set to true to test Pro features without actual payment
+    /// Set to false for production - only enable for local development testing
     static let enableStoreKitTesting = false
 
     /// Test user emails that should automatically get Pro access
+    /// Note: Only works when enableStoreKitTesting = true
     static let testProUserEmails: [String] = [
         "davidwoguya@gmail.com",
-        "test@litplanz.com",
+        "iamcallanhughes@gmail.com",
         "demo@litplanz.com"
     ]
 

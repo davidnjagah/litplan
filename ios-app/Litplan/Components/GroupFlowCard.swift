@@ -75,7 +75,7 @@ struct GroupFlowCard: View {
         )
         .opacity(isProUser ? 1.0 : 0.85)
         .accessibilityLabel("\(groupFlow.title), \(groupFlow.difficulty) difficulty")
-        .accessibilityHint(isProUser ? "Double tap to view full itinerary. \(groupFlow.formattedDuration) total, \(groupFlow.formattedCost) estimated cost" : "Group flows require Litplan Pro. Double tap to unlock")
+        .accessibilityHint(isProUser ? "Double tap to view full itinerary. \(groupFlow.formattedDuration) total, \(groupFlow.formattedCost) estimated cost" : "Group flows require LitPlanz Pro. Double tap to unlock")
         .accessibilityAddTraits(.isButton)
     }
 
@@ -134,24 +134,11 @@ struct GroupFlowCard: View {
     private var difficultyBadge: some View {
         Text(groupFlow.difficulty.capitalized)
             .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(difficultyColor)
+            .foregroundColor(groupFlow.difficultyColor)
             .padding(.horizontal, Spacing.sm)
             .padding(.vertical, 6)
-            .background(difficultyColor.opacity(0.15))
+            .background(groupFlow.difficultyColor.opacity(0.15))
             .cornerRadius(8)
-    }
-
-    private var difficultyColor: Color {
-        switch groupFlow.difficulty {
-        case "easy":
-            return .success
-        case "moderate":
-            return .warning
-        case "intense":
-            return .error
-        default:
-            return .textSecondary
-        }
     }
 
     // MARK: - Timeline Visual

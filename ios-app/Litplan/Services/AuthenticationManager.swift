@@ -716,6 +716,9 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         // Check if user should have test Pro access (for testing without payment)
         SubscriptionManager.shared.checkTestProAccess()
+
+        // Check if user has manual Pro access (demo accounts, granted via app_metadata)
+        SubscriptionManager.shared.checkManualProAccess()
     }
 
     // MARK: - Helper Methods

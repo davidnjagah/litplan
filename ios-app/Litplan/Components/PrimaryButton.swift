@@ -64,7 +64,7 @@ struct PrimaryButton: View {
             .font(.displayMedium)
             .foregroundColor(.textPrimary)
 
-        PrimaryButton(title: "Unlock Litplan Pro", action: {})
+        PrimaryButton(title: "Unlock LitPlanz Pro", action: {})
 
         PrimaryButton(title: "Start Free Trial", action: {})
 

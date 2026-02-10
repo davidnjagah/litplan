@@ -38,7 +38,7 @@ enum BackendErrorCode: String {
             return (
                 icon: "lock.shield",
                 title: "Premium Feature",
-                message: "This feature requires Litplan Pro. Upgrade to unlock unlimited access."
+                message: "This feature requires LitPlanz Pro. Upgrade to unlock unlimited access."
             )
         case .notFound:
             return (

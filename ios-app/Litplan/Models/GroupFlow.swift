@@ -315,6 +315,12 @@ extension GroupFlow {
         weekday: "Friday",
         planType: "couples"
     )
+
+    /// Sample group flows for HomeView display
+    static let sampleGroupFlows: [GroupFlow] = [
+        sampleNYCFlow,
+        sampleLAFlow
+    ]
 }
 
 // Note: Activity.CodingKeys is now defined inside the Activity struct

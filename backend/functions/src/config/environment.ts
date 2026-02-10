@@ -96,12 +96,12 @@ function getCorsOrigins(): string[] {
   switch (env) {
   case 'production':
     return [
-      'https://litplan.app',
-      'https://www.litplan.app',
+      'https://litplanz.com',
+      'https://www.litplanz.com',
     ];
   case 'staging':
     return [
-      'https://staging.litplan.app',
+      'https://staging.litplanz.com',
       'http://localhost:3000',
       'http://localhost:8080',
     ];
@@ -260,7 +260,7 @@ export function getTierLimits(tier: 'free' | 'pro') {
  */
 export function logConfiguration(): void {
   console.log('========================================');
-  console.log('🔧 Litplan Backend Configuration');
+  console.log('🔧 LitPlanz Backend Configuration');
   console.log('========================================');
   console.log(`Environment: ${config.env}`);
   console.log(`Logging Level: ${config.logging.level}`);

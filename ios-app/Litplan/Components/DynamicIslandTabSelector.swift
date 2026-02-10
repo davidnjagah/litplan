@@ -72,7 +72,7 @@ struct ThemeTag: Identifiable, Equatable {
         "Afro Beats": "Afrobeats music experiences - clubs playing Nigerian and West African pop music, afrobeats dance nights, venues hosting afrobeats artists, African nightlife spots, and parties featuring Burna Boy, Wizkid, Davido style music. High-energy African pop culture vibes.",
         "Equestrian": "Horse riding experiences and equestrian culture - riding schools offering lessons, equestrian centers with trail rides, ranch experiences, and horseback adventures. For hands-on riding experiences.",
         "Excitement": "Thrilling daytime and evening experiences - amusement parks, fun fairs, circuses, gondola rides, ferris wheels, theme parks, water parks, and unique city attractions. Perfect for groups wanting excitement and Instagram-worthy moments.",
-        "Activities": "Interactive group activities - 2 fun competitive activities like bowling, paintball, laser tag, escape rooms, go-karting, mini golf, or arcades. Plus 1 final venue for winding down with drinks or a nice meal.",
+        "Activities": "Interactive group activities - 2 fun competitive activities like bowling, paintball, laser tag, escape rooms, go-karting, mini golf, axe throwing, or arcades. Plus 1 final venue for winding down with drinks or a nice meal.",
         "Low Budget": "Budget-friendly experiences under $50 per person - happy hours, free entry venues, affordable eats, public spaces, free events, and wallet-friendly fun without sacrificing quality."
     ]
 }

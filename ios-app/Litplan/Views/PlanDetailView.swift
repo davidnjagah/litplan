@@ -655,26 +655,50 @@ struct PlanDetailView: View {
     // MARK: - Share Text
 
     private var shareText: String {
-        var text = "\(plan.title)\n\n"
-        text += "Venue: \(plan.venueName)\n"
-        text += "Location: \(plan.cityName) - \(plan.location.neighborhood)\n"
-        text += "When: \(plan.formattedDate) at \(plan.formattedTimeRange)\n"
-        text += "Duration: \(plan.formattedDuration)\n\n"
+        var text = "\u{1F389} \(plan.title)\n\n"
 
+        // Plan description
+        text += "\(plan.description)\n\n"
+
+        text += "---\n\n"
+        text += "\u{1F3AF} VENUE DETAILS\n\n"
+
+        // Venue info
+        text += "\u{1F3DB} \(plan.venueName)\n"
+        text += "\u{1F4CD} \(plan.location.address)\n"
+        if !plan.location.neighborhood.isEmpty {
+            text += "\u{1F3D9} Neighborhood: \(plan.location.neighborhood)\n"
+        }
+        text += "\n"
+
+        // Timing
+        text += "\u{1F4C5} When: \(plan.formattedDate)\n"
+        text += "\u{23F0} Time: \(plan.formattedTimeRange)\n"
+        text += "\u{23F1} Duration: \(plan.formattedDuration)\n\n"
+
+        // Pricing
         if plan.pricing.entryFee > 0 {
-            text += "Entry: \(plan.pricing.currency) \(String(format: "%.0f", plan.pricing.entryFee))\n"
+            text += "\u{1F3AB} Entry: \(plan.pricing.currency) \(String(format: "%.0f", plan.pricing.entryFee))\n"
         } else {
-            text += "Entry: Free\n"
+            text += "\u{1F3AB} Entry: Free\n"
         }
+        text += "\u{1F4B5} Price Range: \(plan.pricing.priceRange)\n\n"
 
+        // Category
+        text += "\u{1F3AD} Category: \(plan.category)\n\n"
+
+        // Vibes/tags
         if !plan.aiTags.isEmpty {
-            text += "\nVibes: \(plan.aiTags.joined(separator: ", "))\n"
+            text += "\u{2728} Vibes: \(plan.aiTags.joined(separator: " \u{2022} "))\n\n"
         }
 
-        text += "\n\(plan.description)\n"
-        text += "\nAddress: \(plan.location.address)\n"
-        text += "\nGet Directions: maps://maps.apple.com/?daddr=\(plan.location.coordinates.latitude),\(plan.location.coordinates.longitude)&saddr=Current%20Location\n"
-        text += "\n---\nShared via Litplan"
+        // Directions link
+        text += "\u{1F5FA} Get Directions:\n"
+        text += "maps://maps.apple.com/?daddr=\(plan.location.coordinates.latitude),\(plan.location.coordinates.longitude)&saddr=Current%20Location\n\n"
+
+        text += "---\n"
+        text += "Plan your perfect night out with LitPlanz\n"
+        text += "Download: https://litplanz.com"
 
         return text
     }

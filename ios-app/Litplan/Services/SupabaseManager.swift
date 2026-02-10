@@ -223,11 +223,13 @@ struct SupabaseUser: Codable, Identifiable {
         let fullName: String?
         let avatarUrl: String?
         let provider: String?
+        let manualProAccess: Bool?
 
         enum CodingKeys: String, CodingKey {
             case fullName = "full_name"
             case avatarUrl = "avatar_url"
             case provider
+            case manualProAccess = "manual_pro_access"
         }
     }
 
@@ -237,11 +239,25 @@ struct SupabaseUser: Codable, Identifiable {
         self.phone = supabaseUser.phone
         self.createdAt = supabaseUser.createdAt
         self.updatedAt = supabaseUser.updatedAt
-        self.appMetadata = nil
+
+        // Extract app_metadata including is_pro flag
+        var extractedAppMetadata: [String: String] = [:]
+        if let isPro = supabaseUser.appMetadata["is_pro"]?.boolValue {
+            extractedAppMetadata["is_pro"] = isPro ? "true" : "false"
+        }
+        if let subscriptionType = supabaseUser.appMetadata["subscription_type"]?.stringValue {
+            extractedAppMetadata["subscription_type"] = subscriptionType
+        }
+        if let provider = supabaseUser.appMetadata["provider"]?.stringValue {
+            extractedAppMetadata["provider"] = provider
+        }
+        self.appMetadata = extractedAppMetadata.isEmpty ? nil : extractedAppMetadata
+
         self.userMetadata = UserMetadata(
             fullName: supabaseUser.userMetadata["full_name"]?.stringValue,
             avatarUrl: supabaseUser.userMetadata["avatar_url"]?.stringValue,
-            provider: supabaseUser.appMetadata["provider"]?.stringValue
+            provider: supabaseUser.appMetadata["provider"]?.stringValue,
+            manualProAccess: supabaseUser.userMetadata["manual_pro_access"]?.boolValue
         )
     }
 

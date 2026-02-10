@@ -102,6 +102,9 @@ class CitySearchManager: NSObject, ObservableObject {
         searchQuery = ""
         searchResults = []
         isSearching = false
+
+        // Save to search history
+        SearchHistoryManager.shared.addCity(city)
     }
 
     /// Clear selected city

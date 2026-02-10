@@ -407,4 +407,10 @@ extension Plan {
             rank: 3
         )
     )
+
+    /// Sample weekend plans for HomeView display
+    static let sampleWeekendPlans: [Plan] = [
+        sampleBlueNote,
+        sampleLeBain
+    ]
 }

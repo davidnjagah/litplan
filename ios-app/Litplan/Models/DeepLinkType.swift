@@ -16,6 +16,7 @@ enum DeepLinkType: Equatable {
     case magicLink(tokenHash: String)
     case invite(tokenHash: String)
     case oauthCallback(url: URL)
+    case city(name: String)  // Navigate to a specific city (from email notification)
     case unknown
 
     /// Parse a URL into a DeepLinkType
@@ -37,6 +38,20 @@ enum DeepLinkType: Equatable {
 
         // Route based on host or type parameter
         switch host {
+        case "city":
+            // Format: com.litplanz.app://city/cityname
+            // The city name is in the path
+            let path = url.path
+            if !path.isEmpty {
+                // Remove leading "/" and decode URL encoding
+                let cityName = String(path.dropFirst())
+                    .removingPercentEncoding ?? String(path.dropFirst())
+                if !cityName.isEmpty {
+                    return .city(name: cityName)
+                }
+            }
+            return .unknown
+
         case "email-verified", "verify":
             if let token = tokenHash {
                 return .emailVerification(tokenHash: token)
@@ -136,6 +151,8 @@ enum DeepLinkType: Equatable {
             return "Invitation"
         case .oauthCallback:
             return "Sign In"
+        case .city(let name):
+            return "City: \(name)"
         case .unknown:
             return "Unknown"
         }
@@ -149,7 +166,7 @@ enum DeepLinkType: Equatable {
              .magicLink(let token),
              .invite(let token):
             return token
-        case .oauthCallback, .unknown:
+        case .oauthCallback, .city, .unknown:
             return nil
         }
     }

@@ -13,6 +13,9 @@
 import SwiftUI
 
 struct SearchedCitiesView: View {
+    // MARK: - Environment
+    @Environment(\.dismiss) private var dismiss
+
     // MARK: - State Properties
     @State private var viewedCities: [ViewedCity] = []
     @State private var recommendedCities: [City] = []
@@ -35,8 +38,21 @@ struct SearchedCitiesView: View {
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
+    // Search history manager for local search history
+    @ObservedObject private var searchHistoryManager = SearchHistoryManager.shared
+
     private var isProUser: Bool {
         subscriptionManager.isProUser
+    }
+
+    /// Combined count of local history and API cities
+    private var combinedTotalCount: Int {
+        searchHistoryManager.totalCount + totalCount
+    }
+
+    /// Check if we have any cities to display (local or API)
+    private var hasAnyCities: Bool {
+        !searchHistoryManager.searchHistory.isEmpty || !viewedCities.isEmpty
     }
 
     var body: some View {
@@ -45,15 +61,16 @@ struct SearchedCitiesView: View {
                 Color.appBackground
                     .ignoresSafeArea()
 
-                if isLoading && viewedCities.isEmpty {
+                if isLoading && viewedCities.isEmpty && searchHistoryManager.searchHistory.isEmpty {
                     loadingView
                         .transition(.opacity)
-                } else if viewedCities.isEmpty {
-                    // Show recommended cities instead of error or empty state
-                    recommendedCitiesView
+                } else if hasAnyCities {
+                    // Show combined local history and API cities
+                    combinedCitiesList
                         .transition(.opacity)
                 } else {
-                    viewedCitiesList
+                    // Show recommended cities when no history exists
+                    recommendedCitiesView
                         .transition(.opacity)
                 }
             }
@@ -91,19 +108,35 @@ struct SearchedCitiesView: View {
     private var recommendedCitiesView: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                // Header section
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    // Main title
-                    Text(showingRecommendations ? "Discover Cities" : "Start Exploring")
-                        .font(.displayLarge)
-                        .foregroundColor(.textPrimary)
+                // Header section with back button
+                HStack(alignment: .top) {
+                    // Back button
+                    Button(action: {
+                        HapticManager.shared.light()
+                        dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 40, height: 40)
+                            .background(Color.surfacePrimary)
+                            .cornerRadius(10)
+                    }
 
-                    // Subtitle
-                    Text(showingRecommendations ? "Popular destinations to explore" : "Check out these popular destinations")
-                        .font(.callout)
-                        .foregroundColor(.textSecondary)
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        // Main title
+                        Text(showingRecommendations ? "Discover Cities" : "Start Exploring")
+                            .font(.displayLarge)
+                            .foregroundColor(.textPrimary)
+
+                        // Subtitle
+                        Text(showingRecommendations ? "Popular destinations to explore" : "Check out these popular destinations")
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    Spacer()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Spacing.md)
                 .padding(.top, 60) // Account for safe area
                 .padding(.bottom, Spacing.lg)
@@ -169,8 +202,21 @@ struct SearchedCitiesView: View {
     private var viewedCitiesList: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                // Header
-                HStack {
+                // Header with back button
+                HStack(alignment: .top) {
+                    // Back button
+                    Button(action: {
+                        HapticManager.shared.light()
+                        dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 40, height: 40)
+                            .background(Color.surfacePrimary)
+                            .cornerRadius(10)
+                    }
+
                     VStack(alignment: .leading, spacing: Spacing.xxs) {
                         Text("Searched Cities")
                             .font(.displayLarge)
@@ -220,6 +266,148 @@ struct SearchedCitiesView: View {
         .refreshable {
             await refreshViewedCities()
         }
+    }
+
+    // MARK: - Combined Cities List (Local History + API)
+    private var combinedCitiesList: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                // Header with back button
+                HStack(alignment: .top) {
+                    // Back button
+                    Button(action: {
+                        HapticManager.shared.light()
+                        dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 40, height: 40)
+                            .background(Color.surfacePrimary)
+                            .cornerRadius(10)
+                    }
+
+                    VStack(alignment: .leading, spacing: Spacing.xxs) {
+                        Text("Searched Cities")
+                            .font(.displayLarge)
+                            .foregroundColor(.textPrimary)
+
+                        Text("\(combinedTotalCount) cit\(combinedTotalCount == 1 ? "y" : "ies") searched")
+                            .font(.callout)
+                            .foregroundColor(.textSecondary)
+                    }
+
+                    Spacer()
+
+                    // Clear history button (if there's local history)
+                    if !searchHistoryManager.searchHistory.isEmpty {
+                        Button(action: {
+                            HapticManager.shared.light()
+                            searchHistoryManager.clearHistory()
+                        }) {
+                            Text("Clear")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+                }
+                .padding(.horizontal, Spacing.md)
+                .padding(.top, 60) // Account for safe area
+                .padding(.bottom, Spacing.lg)
+
+                // Local search history section
+                if !searchHistoryManager.searchHistory.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text("Recent Searches")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.textSecondary)
+                            .padding(.horizontal, Spacing.md)
+
+                        LazyVStack(spacing: Spacing.sm) {
+                            ForEach(searchHistoryManager.searchHistory) { historyCity in
+                                SearchHistoryCityCard(city: historyCity) {
+                                    handleHistoryCityTap(historyCity)
+                                } onDelete: {
+                                    searchHistoryManager.removeCity(historyCity)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Spacing.md)
+                    }
+                    .padding(.bottom, Spacing.lg)
+                }
+
+                // API-tracked viewed cities section
+                if !viewedCities.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text("Previously Viewed")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.textSecondary)
+                            .padding(.horizontal, Spacing.md)
+
+                        LazyVStack(spacing: Spacing.md) {
+                            ForEach(viewedCities) { viewedCity in
+                                ViewedCityCard(viewedCity: viewedCity) {
+                                    handleCityTap(viewedCity)
+                                }
+                                .onAppear {
+                                    // Load more when reaching near the end
+                                    if viewedCity.id == viewedCities.last?.id && hasMoreData && !isLoadingMore {
+                                        loadMoreCities()
+                                    }
+                                }
+                            }
+
+                            // Loading more indicator
+                            if isLoadingMore {
+                                HStack {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .accentPrimary))
+                                    Text("Loading more...")
+                                        .font(.callout)
+                                        .foregroundColor(.textSecondary)
+                                }
+                                .padding(.vertical, Spacing.md)
+                            }
+                        }
+                        .padding(.horizontal, Spacing.md)
+                    }
+                }
+
+                Spacer()
+                    .frame(height: Spacing.xl)
+            }
+        }
+        .refreshable {
+            searchHistoryManager.refresh()
+            await refreshViewedCities()
+        }
+    }
+
+    // MARK: - Handle History City Tap
+    private func handleHistoryCityTap(_ historyCity: SearchHistoryCity) {
+        HapticManager.shared.medium()
+
+        // Create a basic City from history data for navigation
+        let city = City(
+            id: "\(historyCity.name.lowercased().replacingOccurrences(of: " ", with: "-"))-\(historyCity.country.lowercased().replacingOccurrences(of: " ", with: "-"))",
+            name: historyCity.name,
+            country: historyCity.country,
+            displayAssets: City.DisplayAssets(
+                heroImageUrl: "",
+                thumbnailUrl: "",
+                countryFlag: ""
+            ),
+            coordinates: City.Coordinates(latitude: 0, longitude: 0),
+            metadata: City.CityMetadata(
+                timezone: "UTC",
+                currency: "USD",
+                featured: false,
+                planCount: 0
+            )
+        )
+
+        selectedCity = city
     }
 
     // MARK: - Data Loading Functions
@@ -530,6 +718,91 @@ struct RecommendedCityCard: View {
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel("\(city.name), \(city.country)")
         .accessibilityHint("Double tap to explore 50 nightlife plans")
+    }
+}
+
+// MARK: - Search History City Card Component
+/// Card component for displaying cities from local search history
+struct SearchHistoryCityCard: View {
+    let city: SearchHistoryCity
+    let onTap: () -> Void
+    let onDelete: () -> Void
+
+    private var formattedDate: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: city.searchedAt, relativeTo: Date())
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: Spacing.sm) {
+                // Left: Location icon
+                ZStack {
+                    Circle()
+                        .fill(Color.accentPrimary.opacity(0.15))
+                        .frame(width: 50, height: 50)
+
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.accentPrimary)
+                }
+
+                // Middle: City info
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    // City name
+                    Text(city.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+
+                    // Country and time
+                    HStack(spacing: 4) {
+                        if !city.country.isEmpty {
+                            Text(city.country)
+                                .font(.system(size: 13))
+                                .foregroundColor(.textSecondary)
+                                .lineLimit(1)
+
+                            Text("\u{2022}")
+                                .foregroundColor(.textTertiary)
+                        }
+
+                        Text(formattedDate)
+                            .font(.system(size: 12))
+                            .foregroundColor(.textTertiary)
+                    }
+                }
+
+                Spacer()
+
+                // Right: Delete button
+                Button(action: {
+                    HapticManager.shared.light()
+                    onDelete()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.textTertiary)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                // Chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(Spacing.sm)
+            .background(Color.surfacePrimary)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.surfaceSecondary, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel("\(city.name), \(city.country)")
+        .accessibilityHint("Double tap to view city details")
     }
 }
 

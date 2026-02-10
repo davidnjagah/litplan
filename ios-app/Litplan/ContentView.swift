@@ -13,6 +13,7 @@ struct ContentView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var selectedTab = 0
     @State private var showingLaunchScreen = true
+    @State private var pendingVibezCity: SearchedCity? = nil
 
     var body: some View {
         ZStack {
@@ -74,7 +75,7 @@ struct ContentView: View {
                 .tag(1)
 
             // Vibez Tab (Center position with 3D card)
-            BoltView()
+            BoltView(pendingCity: $pendingVibezCity)
                 .tabItem {
                     Image(systemName: selectedTab == 2 ? "bolt.fill" : "bolt")
                     Text("Vibez")
@@ -102,6 +103,15 @@ struct ContentView: View {
             // Guest mode banner
             if authManager.isGuest {
                 guestModeBanner
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToVibezWithCity)) { notification in
+            // Extract city from notification and navigate to Vibez tab
+            if let city = notification.userInfo?["city"] as? SearchedCity {
+                pendingVibezCity = city
+                withAnimation {
+                    selectedTab = 2 // Vibez tab
+                }
             }
         }
     }

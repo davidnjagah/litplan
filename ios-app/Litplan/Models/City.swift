@@ -16,8 +16,37 @@ struct City: Identifiable, Codable {
     let coordinates: Coordinates
     let metadata: CityMetadata
 
+    // Flag to indicate if plans are being generated for this city
+    var isGenerating: Bool = false
+
     // Computed property for convenience
     var cityId: String { id }
+
+    // Custom CodingKeys to handle isGenerating (not in API response)
+    enum CodingKeys: String, CodingKey {
+        case id, name, country, displayAssets, coordinates, metadata
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        country = try container.decode(String.self, forKey: .country)
+        displayAssets = try container.decode(DisplayAssets.self, forKey: .displayAssets)
+        coordinates = try container.decode(Coordinates.self, forKey: .coordinates)
+        metadata = try container.decode(CityMetadata.self, forKey: .metadata)
+        isGenerating = false // Default to false when decoding from API
+    }
+
+    init(id: String, name: String, country: String, displayAssets: DisplayAssets, coordinates: Coordinates, metadata: CityMetadata, isGenerating: Bool = false) {
+        self.id = id
+        self.name = name
+        self.country = country
+        self.displayAssets = displayAssets
+        self.coordinates = coordinates
+        self.metadata = metadata
+        self.isGenerating = isGenerating
+    }
 
     struct DisplayAssets: Codable {
         let heroImageUrl: String

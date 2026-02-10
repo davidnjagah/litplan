@@ -67,10 +67,12 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Supabase Production Plan | 🔲 Check | Ensure adequate limits |
+| Supabase Production Plan | ✅ Done | Pro plan ($25/month) |
 | Custom Domain SSL | ✅ Done | auth.litplanz.com |
-| Database Backups | 🔲 Check | Enable in Supabase |
-| **Rate Limiting** | 🔲 Check | Configure in Supabase |
+| Database Backups | ⏭️ Skipped | PITR available if needed later |
+| Custom SMTP (Resend) | ✅ Done | Higher email limits, branded emails |
+| Auth Rate Limits | ✅ Done | Default limits sufficient |
+| App Rate Limiting | ✅ Built-in | BoltTokenManager: Pro=5/week, Free=0 |
 | Monitoring/Alerts | ⚪ Optional | |
 
 ### Table 3: App Store Connect

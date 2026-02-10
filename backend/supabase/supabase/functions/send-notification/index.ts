@@ -39,7 +39,7 @@ const APNS_ENVIRONMENT = Deno.env.get('APNS_ENVIRONMENT') || 'development'; // '
 
 // Resend Configuration
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
-const FROM_EMAIL = 'noreply@litplanz.com';
+const FROM_EMAIL = 'hello@notify.litplanz.com';
 const FROM_NAME = 'LitPlanz';
 
 // Types
@@ -59,13 +59,10 @@ interface EmailNotificationRequest {
   subject: string;
   templateData: {
     name?: string;
-    cityName?: string;
-    country?: string;
-    plansGenerated?: number;
-    failed?: boolean;
+    subject?: string;
+    body?: string;
     [key: string]: any;
   };
-  template?: 'city_discovery' | 'welcome' | 'generic';
 }
 
 type NotificationRequest = PushNotificationRequest | EmailNotificationRequest;
@@ -207,37 +204,9 @@ async function sendPushNotification(request: PushNotificationRequest): Promise<{
   }
 }
 
-// Generate email HTML for city discovery
-function generateCityDiscoveryEmail(data: EmailNotificationRequest['templateData']): string {
-  const { name, cityName, country, plansGenerated, failed } = data;
-
-  if (failed) {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${cityName} Discovery Update</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #0a0a0a;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%); border-radius: 16px; padding: 40px; border: 1px solid #333;">
-      <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 20px 0;">Hey ${name || 'there'},</h1>
-      <p style="color: #cccccc; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-        We hit a snag while discovering ${cityName}, ${country}. Our team is looking into it, and we'll automatically try again soon.
-      </p>
-      <p style="color: #cccccc; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-        Don't worry - you're still on the list, and we'll notify you as soon as ${cityName} is ready!
-      </p>
-      <p style="color: #666666; font-size: 14px; margin: 30px 0 0 0;">
-        The LitPlanz Team
-      </p>
-    </div>
-  </div>
-</body>
-</html>`;
-  }
+// Generate generic email HTML
+function generateGenericEmail(data: EmailNotificationRequest['templateData']): string {
+  const { name, subject, body } = data;
 
   return `
 <!DOCTYPE html>
@@ -245,31 +214,16 @@ function generateCityDiscoveryEmail(data: EmailNotificationRequest['templateData
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${cityName} is Now Available!</title>
+  <title>${subject || 'LitPlanz'}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #0a0a0a;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%); border-radius: 16px; padding: 40px; border: 1px solid #333;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <span style="font-size: 48px;">🎉</span>
-      </div>
-      <h1 style="color: #ffffff; font-size: 28px; margin: 0 0 20px 0; text-align: center;">${cityName} is Ready!</h1>
+      <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 20px 0;">Hey ${name || 'there'},</h1>
       <p style="color: #cccccc; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-        Hey ${name || 'there'},
+        ${body || 'Thanks for using LitPlanz!'}
       </p>
-      <p style="color: #cccccc; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-        Great news! We've just finished discovering ${cityName}, ${country} and ${plansGenerated} amazing plans are now available for you to explore.
-      </p>
-      <div style="background: linear-gradient(135deg, #00D9FF 0%, #00FF88 100%); border-radius: 12px; padding: 20px; margin: 30px 0; text-align: center;">
-        <p style="color: #000000; font-size: 32px; font-weight: bold; margin: 0;">${plansGenerated}</p>
-        <p style="color: #000000; font-size: 14px; margin: 5px 0 0 0;">New Plans Available</p>
-      </div>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="com.litplanz.app://city/${encodeURIComponent(cityName.toLowerCase())}" style="display: inline-block; background: linear-gradient(135deg, #00D9FF 0%, #00FF88 100%); color: #000000; text-decoration: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; font-size: 16px;">
-          Explore ${cityName}
-        </a>
-      </div>
-      <p style="color: #666666; font-size: 14px; margin: 30px 0 0 0; text-align: center;">
+      <p style="color: #666666; font-size: 14px; margin: 30px 0 0 0;">
         The LitPlanz Team
       </p>
     </div>
@@ -286,15 +240,8 @@ async function sendEmail(request: EmailNotificationRequest): Promise<{ success: 
       return { success: false, error: 'Resend not configured' };
     }
 
-    // Generate HTML based on template
-    let html: string;
-    switch (request.template || 'city_discovery') {
-      case 'city_discovery':
-        html = generateCityDiscoveryEmail(request.templateData);
-        break;
-      default:
-        html = generateCityDiscoveryEmail(request.templateData);
-    }
+    // Generate HTML
+    const html = generateGenericEmail(request.templateData);
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',

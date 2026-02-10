@@ -3,98 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confirm Your New Email Address</title>
+  <title>Confirm Your New Email - LitPlanz</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0f;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0a0a0a; padding: 40px 20px;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" style="width: 100%; max-width: 480px; border-collapse: collapse;">
-
-          <!-- Header -->
+      <td align="center">
+        <!-- Header -->
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px;">
           <tr>
-            <td align="center" style="padding-bottom: 32px;">
+            <td align="center" style="padding-bottom: 30px;">
               <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">LitPlanz</h1>
-              <p style="margin: 8px 0 0 0; font-size: 14px; color: #a855f7;">Discover your perfect night out</p>
+              <p style="margin: 8px 0 0 0; font-size: 16px; color: #a855f7;">Discover your perfect night out</p>
             </td>
           </tr>
+        </table>
 
-          <!-- Main Card -->
+        <!-- Main Card -->
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #1a1a1a; border-radius: 16px; overflow: hidden;">
           <tr>
-            <td style="background-color: #18181b; border-radius: 16px; padding: 40px 32px;">
-
+            <td style="padding: 48px 40px; text-align: center;">
               <!-- Icon -->
-              <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td align="center" style="padding-bottom: 24px;">
-                    <div style="width: 64px; height: 64px; background-color: rgba(168, 85, 247, 0.15); border-radius: 50%; display: inline-block; line-height: 64px; text-align: center;">
-                      <span style="font-size: 28px;">&#128231;</span>
-                    </div>
-                  </td>
-                </tr>
-              </table>
+              <div style="width: 80px; height: 80px; margin: 0 auto 24px; background-color: rgba(168, 85, 247, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 40px;">📧</span>
+              </div>
 
-              <!-- Title -->
-              <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #ffffff; text-align: center;">
-                Confirm Email Change
-              </h2>
+              <h2 style="margin: 0 0 16px 0; font-size: 28px; font-weight: 600; color: #ffffff;">Confirm Your New Email</h2>
 
-              <!-- Message -->
-              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #a1a1aa; text-align: center;">
-                You requested to change your email address. Click the button below to confirm this change.
+              <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 1.6; color: #a0a0a0;">
+                You requested to change your email address. Click the button below to confirm your new email and continue using LitPlanz.
               </p>
 
               <!-- CTA Button -->
-              <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td align="center" style="padding: 8px 0 24px 0;">
-                    <a href="{{ .ConfirmationURL }}" style="display: inline-block; background-color: #a855f7; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 14px 32px; border-radius: 10px;">
-                      Confirm New Email
-                    </a>
-                  </td>
-                </tr>
-              </table>
+              <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 12px; box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);">
+                Confirm New Email
+              </a>
 
-              <!-- Link fallback -->
-              <p style="margin: 0 0 24px 0; font-size: 13px; color: #71717a; text-align: center;">
-                Or copy and paste this link into your browser:<br>
-                <a href="{{ .ConfirmationURL }}" style="color: #a855f7; word-break: break-all;">{{ .ConfirmationURL }}</a>
-              </p>
-
-              <!-- Expiry notice -->
-              <div style="background-color: #27272a; border-radius: 8px; padding: 12px 16px;">
-                <p style="margin: 0; font-size: 13px; color: #a1a1aa; text-align: center;">
-                  This link will expire in 24 hours.
-                </p>
-              </div>
-
-            </td>
-          </tr>
-
-          <!-- Security Notice -->
-          <tr>
-            <td style="padding: 24px 0;">
-              <div style="background-color: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 16px;">
-                <p style="margin: 0; font-size: 13px; color: #fbbf24; text-align: center;">
-                  <strong>Didn't request this?</strong><br>
-                  <span style="color: #a1a1aa;">If you didn't request an email change, please secure your account immediately by resetting your password and contact <a href="mailto:support@litplanz.com" style="color: #a855f7;">support@litplanz.com</a>.</span>
+              <!-- Security Note -->
+              <div style="margin-top: 32px; padding: 16px 24px; background-color: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                <p style="margin: 0; font-size: 14px; color: #808080;">
+                  This link will expire in 24 hours for security reasons.
                 </p>
               </div>
             </td>
           </tr>
+        </table>
 
-          <!-- Footer -->
+        <!-- Warning Card -->
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 16px;">
           <tr>
-            <td align="center" style="padding-top: 16px; border-top: 1px solid #27272a;">
-              <p style="margin: 0 0 8px 0; font-size: 13px; color: #71717a;">
-                Questions? Contact us at <a href="mailto:support@litplanz.com" style="color: #a855f7; text-decoration: none;">support@litplanz.com</a>
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #52525b;">
-                &copy; {{ .CurrentYear }} LitPlanz. All rights reserved.
+            <td style="padding: 20px 24px; background-color: rgba(234, 179, 8, 0.1); border-radius: 12px; border-left: 4px solid #eab308;">
+              <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #eab308;">Didn't request this change?</p>
+              <p style="margin: 0; font-size: 14px; color: #a0a0a0;">
+                If you didn't request to change your email, please secure your account immediately by resetting your password.
               </p>
             </td>
           </tr>
+        </table>
 
+        <!-- Footer -->
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 40px;">
+          <tr>
+            <td align="center">
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #606060;">
+                © 2026 LitPlanz. All rights reserved.
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #404040;">
+                This is an automated security email from LitPlanz.
+              </p>
+            </td>
+          </tr>
         </table>
       </td>
     </tr>

@@ -9,6 +9,7 @@
 
 import SwiftUI
 import StoreKit
+import AuthenticationServices
 
 struct PaywallView: View {
     @Environment(\.dismiss) var dismiss
@@ -827,6 +828,22 @@ struct GuestLoginPromptView: View {
 
                     // Login options
                     VStack(spacing: Spacing.md) {
+                        // Sign in with Apple (required by App Store when offering other social sign-in)
+                        SignInWithAppleButton(.signIn) { request in
+                            authManager.handleSignInWithAppleRequest(request)
+                        } onCompletion: { result in
+                            Task {
+                                await authManager.handleSignInWithAppleCompletion(result)
+                                if authManager.isAuthenticated {
+                                    onLoginSuccess()
+                                }
+                            }
+                        }
+                        .signInWithAppleButtonStyle(.white)
+                        .frame(height: 50)
+                        .cornerRadius(Spacing.sm)
+                        .disabled(authManager.isLoading)
+
                         // Google Sign In button
                         Button(action: {
                             Task {
@@ -930,6 +947,8 @@ struct EmailLoginSheet: View {
     @State private var fullName = ""
     @State private var isSignUp = false
     @State private var showForgotPassword = false
+    @State private var showErrorAlert = false
+    @State private var errorAlertMessage = ""
 
     let onLoginSuccess: () -> Void
     let onCancel: () -> Void
@@ -942,125 +961,114 @@ struct EmailLoginSheet: View {
 
                 ScrollView {
                     VStack(spacing: Spacing.lg) {
-                        // Header
-                        VStack(spacing: Spacing.sm) {
-                            Text(isSignUp ? "Create Account" : "Sign In")
-                                .font(.displayMedium)
-                                .foregroundColor(.textPrimary)
+                        // Show email confirmation view if needed
+                        if authManager.emailConfirmationNeeded {
+                            emailConfirmationView
+                        } else {
+                            // Header
+                            VStack(spacing: Spacing.sm) {
+                                Text(isSignUp ? "Create Account" : "Sign In")
+                                    .font(.displayMedium)
+                                    .foregroundColor(.textPrimary)
 
-                            Text(isSignUp ? "Sign up to subscribe to Pro" : "Sign in to continue with your subscription")
-                                .font(.body)
-                                .foregroundColor(.textSecondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.top, Spacing.xl)
-
-                        // Sign up: Full name field
-                        if isSignUp {
-                            VStack(alignment: .leading, spacing: Spacing.xs) {
-                                Text("Full Name")
-                                    .font(.callout)
+                                Text(isSignUp ? "Sign up to subscribe to Pro" : "Sign in to continue with your subscription")
+                                    .font(.body)
                                     .foregroundColor(.textSecondary)
-
-                                TextField("", text: $fullName)
-                                    .textFieldStyle(LitplanTextFieldStyle())
-                                    .textContentType(.name)
+                                    .multilineTextAlignment(.center)
                             }
-                        }
+                            .padding(.top, Spacing.xl)
 
-                        // Email field
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            Text("Email")
-                                .font(.callout)
-                                .foregroundColor(.textSecondary)
+                            // Sign up: Full name field
+                            if isSignUp {
+                                VStack(alignment: .leading, spacing: Spacing.xs) {
+                                    Text("Full Name")
+                                        .font(.callout)
+                                        .foregroundColor(.textSecondary)
 
-                            TextField("", text: $email)
-                                .textFieldStyle(LitplanTextFieldStyle())
-                                .textContentType(.emailAddress)
-                                .autocapitalization(.none)
-                                .keyboardType(.emailAddress)
-                        }
-
-                        // Password field
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            HStack {
-                                Text("Password")
-                                    .font(.callout)
-                                    .foregroundColor(.textSecondary)
-                                Spacer()
-                                if isSignUp {
-                                    Text("Min 8 characters")
-                                        .font(.caption)
-                                        .foregroundColor(.textTertiary)
+                                    TextField("", text: $fullName)
+                                        .textFieldStyle(LitplanTextFieldStyle())
+                                        .textContentType(.name)
                                 }
                             }
 
-                            SecureField("", text: $password)
-                                .textFieldStyle(LitplanTextFieldStyle())
-                                .textContentType(isSignUp ? .newPassword : .password)
-                        }
+                            // Email field
+                            VStack(alignment: .leading, spacing: Spacing.xs) {
+                                Text("Email")
+                                    .font(.callout)
+                                    .foregroundColor(.textSecondary)
 
-                        // Forgot password (sign in only)
-                        if !isSignUp {
-                            HStack {
-                                Spacer()
-                                Button(action: {
-                                    showForgotPassword = true
-                                }) {
-                                    Text("Forgot Password?")
+                                TextField("", text: $email)
+                                    .textFieldStyle(LitplanTextFieldStyle())
+                                    .textContentType(.emailAddress)
+                                    .autocapitalization(.none)
+                                    .keyboardType(.emailAddress)
+                            }
+
+                            // Password field
+                            VStack(alignment: .leading, spacing: Spacing.xs) {
+                                HStack {
+                                    Text("Password")
                                         .font(.callout)
+                                        .foregroundColor(.textSecondary)
+                                    Spacer()
+                                    if isSignUp {
+                                        Text("Min 8 characters")
+                                            .font(.caption)
+                                            .foregroundColor(.textTertiary)
+                                    }
+                                }
+
+                                SecureField("", text: $password)
+                                    .textFieldStyle(LitplanTextFieldStyle())
+                                    .textContentType(isSignUp ? .newPassword : .password)
+                            }
+
+                            // Forgot password (sign in only)
+                            if !isSignUp {
+                                HStack {
+                                    Spacer()
+                                    Button(action: {
+                                        showForgotPassword = true
+                                    }) {
+                                        Text("Forgot Password?")
+                                            .font(.callout)
+                                            .foregroundColor(.accentPrimary)
+                                    }
+                                }
+                            }
+
+                            // Primary action button
+                            PrimaryButton(
+                                title: isSignUp ? "Create Account" : "Sign In",
+                                action: {
+                                    Task {
+                                        await performAuthentication()
+                                    }
+                                },
+                                isLoading: authManager.isLoading,
+                                isDisabled: isSignUp ? (email.isEmpty || password.count < 8) : (email.isEmpty || password.isEmpty)
+                            )
+
+                            // Toggle between sign in and sign up
+                            HStack {
+                                Text(isSignUp ? "Already have an account?" : "Don't have an account?")
+                                    .font(.callout)
+                                    .foregroundColor(.textSecondary)
+
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        isSignUp.toggle()
+                                        password = "" // Clear password when switching
+                                    }
+                                }) {
+                                    Text(isSignUp ? "Sign In" : "Sign Up")
+                                        .font(.callout)
+                                        .fontWeight(.semibold)
                                         .foregroundColor(.accentPrimary)
                                 }
                             }
+                            .padding(.top, Spacing.sm)
                         }
-
-                        // Primary action button
-                        PrimaryButton(
-                            title: isSignUp ? "Create Account" : "Sign In",
-                            action: {
-                                Task {
-                                    do {
-                                        if isSignUp {
-                                            try await authManager.signUp(
-                                                email: email,
-                                                password: password,
-                                                fullName: fullName.isEmpty ? nil : fullName
-                                            )
-                                        } else {
-                                            try await authManager.signIn(email: email, password: password)
-                                        }
-                                        if authManager.isAuthenticated {
-                                            onLoginSuccess()
-                                            dismiss()
-                                        }
-                                    } catch {
-                                        // Error is handled by authManager.errorMessage
-                                    }
-                                }
-                            },
-                            isLoading: authManager.isLoading,
-                            isDisabled: isSignUp ? (email.isEmpty || password.count < 8) : (email.isEmpty || password.isEmpty)
-                        )
-
-                        // Toggle between sign in and sign up
-                        HStack {
-                            Text(isSignUp ? "Already have an account?" : "Don't have an account?")
-                                .font(.callout)
-                                .foregroundColor(.textSecondary)
-
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    isSignUp.toggle()
-                                    password = "" // Clear password when switching
-                                }
-                            }) {
-                                Text(isSignUp ? "Sign In" : "Sign Up")
-                                    .font(.callout)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.accentPrimary)
-                            }
-                        }
-                        .padding(.top, Spacing.sm)
                     }
                     .padding(.horizontal, Spacing.lg)
                     .padding(.bottom, Spacing.xl)
@@ -1070,6 +1078,7 @@ struct EmailLoginSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
+                        authManager.clearEmailConfirmation()
                         onCancel()
                         dismiss()
                     }
@@ -1077,15 +1086,125 @@ struct EmailLoginSheet: View {
                 }
             }
         }
-        .alert("Error", isPresented: .constant(authManager.errorMessage != nil)) {
+        .alert("Error", isPresented: $showErrorAlert) {
             Button("OK") {
-                authManager.clearError()
+                showErrorAlert = false
+                errorAlertMessage = ""
             }
         } message: {
-            Text(authManager.errorMessage ?? "")
+            Text(errorAlertMessage)
         }
         .sheet(isPresented: $showForgotPassword) {
             ForgotPasswordSheet(email: $email)
+        }
+        .onDisappear {
+            // Clear confirmation state when sheet is dismissed
+            if authManager.emailConfirmationNeeded {
+                authManager.clearEmailConfirmation()
+            }
+        }
+    }
+
+    // MARK: - Email Confirmation View
+
+    private var emailConfirmationView: some View {
+        VStack(spacing: Spacing.xl) {
+            Spacer()
+
+            // Success icon
+            ZStack {
+                Circle()
+                    .fill(Color.accentPrimary.opacity(0.15))
+                    .frame(width: 100, height: 100)
+
+                Image(systemName: "envelope.badge.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.accentPrimary)
+            }
+
+            // Title and message
+            VStack(spacing: Spacing.sm) {
+                Text("Check Your Email")
+                    .font(.displayMedium)
+                    .foregroundColor(.textPrimary)
+
+                Text("We've sent a confirmation link to:")
+                    .font(.body)
+                    .foregroundColor(.textSecondary)
+
+                Text(authManager.pendingConfirmationEmail ?? email)
+                    .font(.body)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.accentPrimary)
+
+                Text("Click the link in your email to verify your account, then come back and sign in.")
+                    .font(.body)
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, Spacing.sm)
+            }
+            .padding(.horizontal, Spacing.md)
+
+            Spacer()
+
+            // Actions
+            VStack(spacing: Spacing.md) {
+                PrimaryButton(title: "I've Confirmed My Email") {
+                    // Switch to sign-in mode
+                    authManager.clearEmailConfirmation()
+                    isSignUp = false
+                    password = ""
+                }
+
+                Button(action: {
+                    authManager.clearEmailConfirmation()
+                    onCancel()
+                    dismiss()
+                }) {
+                    Text("I'll do this later")
+                        .font(.callout)
+                        .foregroundColor(.textSecondary)
+                        .underline()
+                }
+            }
+            .padding(.bottom, Spacing.xl)
+        }
+    }
+
+    // MARK: - Authentication Action
+
+    private func performAuthentication() async {
+        do {
+            if isSignUp {
+                print("[EmailLoginSheet] Starting sign up for: \(email)")
+                try await authManager.signUp(
+                    email: email,
+                    password: password,
+                    fullName: fullName.isEmpty ? nil : fullName
+                )
+                print("[EmailLoginSheet] Sign up completed. isAuthenticated: \(authManager.isAuthenticated), emailConfirmationNeeded: \(authManager.emailConfirmationNeeded)")
+
+                // If email confirmation is needed, the view will update to show confirmation screen
+                // If authenticated directly (no confirmation required), proceed with success
+                if authManager.isAuthenticated {
+                    onLoginSuccess()
+                    dismiss()
+                }
+                // If emailConfirmationNeeded is true, the UI will automatically show the confirmation view
+            } else {
+                print("[EmailLoginSheet] Starting sign in for: \(email)")
+                try await authManager.signIn(email: email, password: password)
+                print("[EmailLoginSheet] Sign in completed. isAuthenticated: \(authManager.isAuthenticated)")
+
+                if authManager.isAuthenticated {
+                    onLoginSuccess()
+                    dismiss()
+                }
+            }
+        } catch {
+            print("[EmailLoginSheet] Authentication error: \(error.localizedDescription)")
+            errorAlertMessage = authManager.errorMessage ?? error.localizedDescription
+            showErrorAlert = true
         }
     }
 }

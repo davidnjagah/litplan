@@ -83,13 +83,15 @@
 		F556E3FEBDF38C02C780C820 /* PlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49329656D85F82B7ABE55280 /* PlanDetailView.swift */; };
 		F7EB5BA37FED0DC4739E5379 /* GroupFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C94516B2740331C2C25E62F /* GroupFlow.swift */; };
 		F856FD405E7DF693348E896A /* LoadingStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */; };
-		SP13001 /* MyPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP13002 /* MyPlansView.swift */; };
-		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
-		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
 		OB01001 /* OnboardingPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB01002 /* OnboardingPage.swift */; };
 		OB02001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB02002 /* OnboardingView.swift */; };
 		OB03001 /* OnboardingPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB03002 /* OnboardingPageView.swift */; };
 		OB04001 /* ProComparisonPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB04002 /* ProComparisonPageView.swift */; };
+		SP13001 /* MyPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP13002 /* MyPlansView.swift */; };
+		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
+		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
+		CD01001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD01002 /* AppDelegate.swift */; };
+		CD02001 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD02002 /* PushNotificationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -172,13 +174,15 @@
 		E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingStateView.swift; sourceTree = "<group>"; };
 		F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		FDA6A160B87640F8AF932512 /* AsyncImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
-		SP13002 /* MyPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPlansView.swift; sourceTree = "<group>"; };
-		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
-		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
 		OB01002 /* OnboardingPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPage.swift; sourceTree = "<group>"; };
 		OB02002 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		OB03002 /* OnboardingPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPageView.swift; sourceTree = "<group>"; };
 		OB04002 /* ProComparisonPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProComparisonPageView.swift; sourceTree = "<group>"; };
+		SP13002 /* MyPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPlansView.swift; sourceTree = "<group>"; };
+		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
+		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
+		CD01002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		CD02002 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,16 +197,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		OB05000 /* Onboarding */ = {
-			isa = PBXGroup;
-			children = (
-				OB02002 /* OnboardingView.swift */,
-				OB03002 /* OnboardingPageView.swift */,
-				OB04002 /* ProComparisonPageView.swift */,
-			);
-			path = Onboarding;
-			sourceTree = "<group>";
-		};
 		21FFB3BD2F32913700B056E5 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
@@ -229,6 +223,7 @@
 			children = (
 				BCC5992D4C6E4CE2B28FBE34 /* Assets.xcassets */,
 				101 /* LitplanApp.swift */,
+				CD01002 /* AppDelegate.swift */,
 				102 /* ContentView.swift */,
 				310 /* Views */,
 				311 /* Components */,
@@ -341,6 +336,7 @@
 				B5AD98C0DE0BC26B446A974A /* CitySearchManager.swift */,
 				B7A662B1B8B6BDB69709844A /* BoltTokenManager.swift */,
 				384C562426CBDB498F28A1D2 /* SearchHistoryManager.swift */,
+				CD02002 /* PushNotificationManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -371,6 +367,16 @@
 				125 /* Products.plist */,
 			);
 			path = StoreKit;
+			sourceTree = "<group>";
+		};
+		OB05000 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				OB02002 /* OnboardingView.swift */,
+				OB03002 /* OnboardingPageView.swift */,
+				OB04002 /* ProComparisonPageView.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -529,6 +535,8 @@
 				OB02001 /* OnboardingView.swift in Sources */,
 				OB03001 /* OnboardingPageView.swift in Sources */,
 				OB04001 /* ProComparisonPageView.swift in Sources */,
+				CD01001 /* AppDelegate.swift in Sources */,
+				CD02001 /* PushNotificationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -672,9 +680,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Litplan/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LitPlanz;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "LitPlanz needs camera access to scan QR codes for group activities.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "LitPlanz uses your location to find nearby nightlife venues and events.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LitPlanz needs photo library access to let you share or save images.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -703,9 +712,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Litplan/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LitPlanz;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "LitPlanz needs camera access to scan QR codes for group activities.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "LitPlanz uses your location to find nearby nightlife venues and events.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LitPlanz needs photo library access to let you share or save images.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

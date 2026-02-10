@@ -40,9 +40,11 @@ struct CityDetailsView: View {
 
     // Track which days are expanded (show all plans vs top 3)
     @State private var expandedWeekdays: Set<String> = []
+    @State private var expandedGroupFlowDays: Set<String> = []
 
     // Number of plans to show per day before "See More"
     private let plansPerDayLimit = 3
+    private let groupFlowsPerDayLimit = 3
 
     // Subscription manager for premium gating
     @ObservedObject private var subscriptionManager = SubscriptionManager.shared
@@ -93,6 +95,41 @@ struct CityDetailsView: View {
     /// Check if there are any weekday plans
     private var hasWeekdayPlans: Bool {
         !weekdayPlans.isEmpty
+    }
+
+    // MARK: - Group Flow Day Organization
+
+    /// All possible days in order for group flow display
+    private let groupFlowDayOrder = ["Friday", "Saturday", "Sunday", "Weekend", "Weekday", "Any Day"]
+
+    /// Group flows organized by their display day
+    private var groupFlowsByDay: [(day: String, flows: [GroupFlow])] {
+        var result: [(day: String, flows: [GroupFlow])] = []
+
+        for day in groupFlowDayOrder {
+            let dayFlows = groupFlows.filter { $0.displayDay == day }
+            if !dayFlows.isEmpty {
+                result.append((day: day, flows: dayFlows))
+            }
+        }
+
+        return result
+    }
+
+    /// Icon for a group flow day
+    private func iconForGroupFlowDay(_ day: String) -> String {
+        switch day.lowercased() {
+        case "friday", "saturday":
+            return "moon.stars.fill"
+        case "sunday":
+            return "sun.max.fill"
+        case "weekend":
+            return "moon.stars.fill"
+        case "weekday":
+            return "calendar.badge.clock"
+        default:
+            return "calendar"
+        }
     }
 
     // MARK: - This Week Date Range (Sprint 14)
@@ -514,7 +551,7 @@ struct CityDetailsView: View {
                 .padding(.horizontal, Spacing.lg)
                 .transition(.opacity)
             } else if plans.isEmpty && hasLoadedOnce {
-                // Coming Soon state - shown for newly discovered cities
+                // Coming Soon state - shown for cities without plans yet
                 VStack(spacing: Spacing.md) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 48))
@@ -524,26 +561,32 @@ struct CityDetailsView: View {
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.textPrimary)
 
-                    Text("We're curating the best nightlife experiences in \(city.name). Check back in a few days!")
+                    Text("We're curating the best nightlife experiences in \(city.name). Check back soon!")
                         .font(.system(size: 16))
                         .foregroundColor(.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, Spacing.lg)
 
+                    // Generate in Vibez button
                     Button(action: {
-                        loadData()
+                        navigateToVibez()
                     }) {
                         HStack(spacing: Spacing.xs) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 14, weight: .medium))
-                            Text("Check for Updates")
-                                .font(.system(size: 14, weight: .medium))
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Generate in Vibez")
+                                .font(.system(size: 14, weight: .semibold))
                         }
-                        .foregroundColor(.accentPrimary)
+                        .foregroundColor(.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.accentPrimary)
+                        .cornerRadius(12)
                     }
+                    .padding(.horizontal, Spacing.xl)
                     .padding(.top, Spacing.sm)
                 }
-                .frame(height: 260)
+                .frame(height: 300)
                 .padding(.horizontal, Spacing.lg)
                 .transition(.opacity)
             } else {
@@ -562,22 +605,16 @@ struct CityDetailsView: View {
         .animation(.easeInOut(duration: 0.2), value: isLoading)
     }
 
-    // MARK: - This Week Header (Sprint 14)
+    // MARK: - This Week Header (Sprint 14, Updated Sprint 16 - Removed specific dates)
     private var thisWeekHeader: some View {
         HStack(spacing: Spacing.sm) {
             Image(systemName: "calendar")
                 .font(.system(size: 18))
                 .foregroundColor(.accentPrimary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("This Week")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.textPrimary)
-
-                Text(formattedWeekRange)
-                    .font(.system(size: 14))
-                    .foregroundColor(.textSecondary)
-            }
+            Text("This Week")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.textPrimary)
 
             Spacer()
         }
@@ -586,46 +623,27 @@ struct CityDetailsView: View {
     }
 
     // MARK: - Individual Plans List (Sprint 14 - Week-based, Weekend/Weekday sections)
+    // Note: Empty state is handled in plansListSection - this view only shows when plans exist
     private var individualPlansList: some View {
         LazyVStack(spacing: Spacing.lg) {
-            if plans.isEmpty {
-                // Coming Soon empty state
-                VStack(spacing: Spacing.md) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 40))
-                        .foregroundColor(.accentPrimary)
+            // Weekend Plans Section (Fri-Sun) - Pro-gated with 2 free
+            if hasWeekendPlans {
+                WeekendPlansSection(
+                    plans: weekendPlans,
+                    isProUser: isProUser,
+                    onPlanTap: { plan in
+                        handleWeekendPlanTap(plan)
+                    },
+                    onUpgrade: {
+                        HapticManager.shared.warning()
+                        paywallTrigger = .weekendPlan(cityName: city.name)
+                    }
+                )
+            }
 
-                    Text("Plans Coming Soon!")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.textPrimary)
-
-                    Text("We're finding the best spots in \(city.name)")
-                        .font(.system(size: 14))
-                        .foregroundColor(.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Spacing.xxl)
-            } else {
-                // Weekend Plans Section (Fri-Sun) - Pro-gated with 2 free
-                if hasWeekendPlans {
-                    WeekendPlansSection(
-                        plans: weekendPlans,
-                        isProUser: isProUser,
-                        onPlanTap: { plan in
-                            handleWeekendPlanTap(plan)
-                        },
-                        onUpgrade: {
-                            HapticManager.shared.warning()
-                            paywallTrigger = .weekendPlan(cityName: city.name)
-                        }
-                    )
-                }
-
-                // Weekday Plans Section (Mon-Thu) - Free for all
-                if hasWeekdayPlans {
-                    weekdayPlansSection
-                }
+            // Weekday Plans Section (Mon-Thu) - Free for all
+            if hasWeekdayPlans {
+                weekdayPlansSection
             }
         }
     }
@@ -849,36 +867,209 @@ struct CityDetailsView: View {
                         .foregroundColor(.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, Spacing.xl)
+
+                    // Generate in Vibez button
+                    Button(action: {
+                        navigateToVibez()
+                    }) {
+                        HStack(spacing: Spacing.xs) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Generate in Vibez")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.accentPrimary)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.top, Spacing.sm)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.xxl)
+            } else if groupFlowsByDay.isEmpty {
+                // All group flows exist but none have day classification yet
+                // Show all without day grouping (backwards compatibility)
+                allGroupFlowsSection
             } else {
-                // Show first 3-5 group flows
-                let displayCount = isProUser ? min(groupFlows.count, 5) : min(groupFlows.count, 3)
+                // Show group flows organized by day
+                groupFlowsByDaySection
+            }
+        }
+    }
 
-                ForEach(groupFlows.prefix(displayCount)) { groupFlow in
-                    GroupFlowCard(
-                        groupFlow: groupFlow,
-                        isProUser: isProUser,
-                        onTapViewItinerary: {
-                            selectedGroupFlow = groupFlow
-                        },
-                        onTapUnlock: {
-                            paywallTrigger = .groupFlow(cityName: city.name)
-                        }
-                    )
-                }
+    // MARK: - All Group Flows Section (No Day Grouping)
+    private var allGroupFlowsSection: some View {
+        VStack(spacing: Spacing.md) {
+            // Section header
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.textSecondary)
 
-                // Paywall card for free users after showing 3 group plans
-                if !isProUser && groupFlows.count > 3 {
-                    GroupPlansPaywallCard {
+                Text("Group Experiences")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                Spacer()
+
+                Text("\(groupFlows.count) plans")
+                    .font(.system(size: 13))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(.horizontal, Spacing.sm)
+
+            // Show all group flows for pro users, 3 for free users
+            let displayFlows = isProUser ? groupFlows : Array(groupFlows.prefix(3))
+
+            ForEach(displayFlows) { groupFlow in
+                GroupFlowCard(
+                    groupFlow: groupFlow,
+                    isProUser: isProUser,
+                    onTapViewItinerary: {
+                        selectedGroupFlow = groupFlow
+                    },
+                    onTapUnlock: {
                         paywallTrigger = .groupFlow(cityName: city.name)
                     }
+                )
+            }
+
+            // Paywall card for free users after showing 3 group plans
+            if !isProUser && groupFlows.count > 3 {
+                GroupPlansPaywallCard {
+                    paywallTrigger = .groupFlow(cityName: city.name)
                 }
             }
         }
     }
+
+    // MARK: - Group Flows By Day Section
+    private var groupFlowsByDaySection: some View {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
+            // Track total shown for free user limit
+            let _ = freeUserGroupFlowTracker()
+
+            ForEach(Array(groupFlowsByDay.enumerated()), id: \.element.day) { dayIndex, dayGroup in
+                groupFlowDaySection(dayGroup: dayGroup, dayIndex: dayIndex)
+            }
+        }
+    }
+
+    /// Helper to track how many group flows free users have seen
+    private func freeUserGroupFlowTracker() -> Int {
+        // This is just for calculating display limits
+        return 0
+    }
+
+    /// Section for a single day's group flows
+    private func groupFlowDaySection(dayGroup: (day: String, flows: [GroupFlow]), dayIndex: Int) -> some View {
+        let isExpanded = expandedGroupFlowDays.contains(dayGroup.day)
+        let visibleFlows = isExpanded ? dayGroup.flows : Array(dayGroup.flows.prefix(groupFlowsPerDayLimit))
+        let hasMoreFlows = dayGroup.flows.count > groupFlowsPerDayLimit
+
+        return VStack(alignment: .leading, spacing: Spacing.md) {
+            // Day header
+            groupFlowDayHeader(day: dayGroup.day, flowCount: dayGroup.flows.count)
+
+            // Group flow cards for this day
+            ForEach(visibleFlows) { groupFlow in
+                GroupFlowCard(
+                    groupFlow: groupFlow,
+                    isProUser: isProUser,
+                    onTapViewItinerary: {
+                        selectedGroupFlow = groupFlow
+                    },
+                    onTapUnlock: {
+                        paywallTrigger = .groupFlow(cityName: city.name)
+                    }
+                )
+            }
+
+            // "See More" button if there are more flows for this day
+            if hasMoreFlows && isProUser {
+                groupFlowSeeMoreButton(for: dayGroup.day, isExpanded: isExpanded, remainingCount: dayGroup.flows.count - groupFlowsPerDayLimit)
+            }
+
+            // Paywall for free users on first day section only
+            if dayIndex == 0 && !isProUser && groupFlows.count > 3 {
+                GroupPlansPaywallCard {
+                    paywallTrigger = .groupFlow(cityName: city.name)
+                }
+            }
+        }
+    }
+
+    /// Header for a group flow day section
+    private func groupFlowDayHeader(day: String, flowCount: Int) -> some View {
+        HStack(spacing: Spacing.xs) {
+            Image(systemName: iconForGroupFlowDay(day))
+                .font(.system(size: 16))
+                .foregroundColor(.accentPrimary)
+
+            Text(day)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.textPrimary)
+
+            Spacer()
+
+            Text("\(flowCount) \(flowCount == 1 ? "plan" : "plans")")
+                .font(.system(size: 13))
+                .foregroundColor(.textTertiary)
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.top, Spacing.sm)
+    }
+
+    /// "See More" button for group flows
+    private func groupFlowSeeMoreButton(for day: String, isExpanded: Bool, remainingCount: Int) -> some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if isExpanded {
+                    expandedGroupFlowDays.remove(day)
+                } else {
+                    expandedGroupFlowDays.insert(day)
+                }
+            }
+            HapticManager.shared.light()
+        }) {
+            HStack(spacing: Spacing.xs) {
+                Text(isExpanded ? "Show Less" : "See \(remainingCount) More")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.accentPrimary)
+
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.accentPrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.sm)
+            .background(Color.surfaceSecondary.opacity(0.5))
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, Spacing.sm)
+    }
     // MARK: - Action Handlers
+
+    private func navigateToVibez() {
+        HapticManager.shared.medium()
+
+        // Create SearchedCity from current city
+        let searchedCity = SearchedCity(name: city.name, country: city.country)
+
+        // Post notification to navigate to Vibez tab with this city
+        NotificationCenter.default.post(
+            name: .navigateToVibezWithCity,
+            object: nil,
+            userInfo: ["city": searchedCity]
+        )
+
+        // Dismiss this view
+        onDismiss()
+    }
 
     private func handlePlanTap(_ plan: Plan) {
         // Haptic feedback on plan tap
@@ -942,7 +1133,7 @@ struct GroupPlansPaywallCard: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.textPrimary)
 
-            Text("Upgrade to Litplan Pro to access curated group flows and premium experiences")
+            Text("Upgrade to LitPlanz Pro to access curated group flows and premium experiences")
                 .font(.system(size: 14))
                 .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)

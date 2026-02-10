@@ -36,7 +36,7 @@ struct AuthFlowContainerView: View {
             case .invite(let tokenHash):
                 InviteAcceptView(tokenHash: tokenHash, onComplete: handleCompletion)
 
-            case .oauthCallback, .unknown:
+            case .oauthCallback, .city, .unknown:
                 // These shouldn't reach this view, but handle gracefully
                 unknownStateView
             }

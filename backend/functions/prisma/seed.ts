@@ -646,7 +646,7 @@ async function seedUsers() {
   const freeUser = await prisma.user.create({
     data: {
       supabaseUserId: 'supabase_test_free_user',
-      email: 'free@test.litplan.app',
+      email: 'free@test.litplanz.com',
       displayName: 'Free Test User',
       imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop',
     },
@@ -674,7 +674,7 @@ async function seedUsers() {
   const proUser = await prisma.user.create({
     data: {
       supabaseUserId: 'supabase_test_pro_user',
-      email: 'pro@test.litplan.app',
+      email: 'pro@test.litplanz.com',
       displayName: 'Pro Test User',
       imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop',
     },
@@ -857,13 +857,13 @@ async function main() {
     console.log('Test Users:');
     console.log('  Free User:');
     console.log('    - Supabase ID: supabase_test_free_user');
-    console.log('    - Email: free@test.litplan.app');
+    console.log('    - Email: free@test.litplanz.com');
     console.log('    - Max Cities: 1/week');
     console.log('    - Max Plans: 10/city');
     console.log('');
     console.log('  Pro User:');
     console.log('    - Supabase ID: supabase_test_pro_user');
-    console.log('    - Email: pro@test.litplan.app');
+    console.log('    - Email: pro@test.litplanz.com');
     console.log('    - Max Cities: 100/week');
     console.log('    - Max Plans: 50/city');
     console.log('    - Weekend Access: Yes');

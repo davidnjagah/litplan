@@ -39,6 +39,32 @@ extension Color {
     /// Medium Grey - Tertiary text
     static let textTertiary = Color(hex: "#636366")
 
+    // MARK: - Bolt View Gradient Colors (Purple to Pink)
+
+    /// Bolt gradient start - Deep Purple
+    static let boltGradientStart = Color(hex: "#6B3FA0")
+
+    /// Bolt gradient middle - Magenta
+    static let boltGradientMiddle = Color(hex: "#9B4DCA")
+
+    /// Bolt gradient end - Hot Pink
+    static let boltGradientEnd = Color(hex: "#FF6B9D")
+
+    /// Bolt view background gradient
+    static var boltGradient: LinearGradient {
+        LinearGradient(
+            colors: [boltGradientStart, boltGradientMiddle, boltGradientEnd],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    /// Bolt card background - darker variant for 3D card
+    static let boltCardBackground = Color(hex: "#1A0A2E")
+
+    /// Bolt card portal glow
+    static let boltPortalGlow = Color(hex: "#8B5CF6")
+
     // MARK: - Semantic Colors
 
     /// Green - Success states

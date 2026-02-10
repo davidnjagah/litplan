@@ -160,18 +160,27 @@ struct RouteMapView: View {
 
     private var shareText: String {
         let sortedVenues = venues.sorted { $0.order < $1.order }
-        var text = "🗺️ \(planTitle)\n\n"
+        var text = "\u{1F5FA} \(planTitle)\n\n"
+
+        text += "\u{1F4CD} \(sortedVenues.count) stops on this route\n\n"
+
+        text += "---\n\n"
+        text += "\u{1F6A9} ROUTE ITINERARY\n\n"
 
         for (index, venue) in sortedVenues.enumerated() {
             let venueNumber = index + 1
-            text += "\(venueNumber). \(venue.name)"
+            let stepLabel = venueNumber == 1 ? "Start" : (venueNumber == sortedVenues.count ? "Final Stop" : "Stop \(venueNumber)")
+
+            text += "\(venueNumber). \(venue.name) [\(stepLabel)]\n"
             if !venue.address.isEmpty {
-                text += " - \(venue.address)"
+                text += "   \u{1F4CD} \(venue.address)\n"
             }
-            text += "\nmaps://maps.apple.com/?daddr=\(venue.coordinate.latitude),\(venue.coordinate.longitude)\n\n"
+            text += "   \u{1F517} maps://maps.apple.com/?daddr=\(venue.coordinate.latitude),\(venue.coordinate.longitude)\n\n"
         }
 
-        text += "---\nShared via Litplan"
+        text += "---\n"
+        text += "Plan your perfect night out with LitPlanz\n"
+        text += "Download: https://litplanz.com"
         return text
     }
 

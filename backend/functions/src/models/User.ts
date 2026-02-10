@@ -1,6 +1,6 @@
 /**
  * User Data Model
- * Represents a user in the Litplan system
+ * Represents a user in the LitPlanz system
  */
 
 export interface User {

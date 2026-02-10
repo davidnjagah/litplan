@@ -16,6 +16,7 @@ enum ToastType {
     case warning
     case error
     case info
+    case retry
 
     var icon: String {
         switch self {
@@ -26,6 +27,8 @@ enum ToastType {
         case .error:
             return "xmark.circle.fill"
         case .info:
+            return "bolt.circle.fill"
+        case .retry:
             return "bolt.circle.fill"
         }
     }
@@ -40,6 +43,8 @@ enum ToastType {
             return .red
         case .info:
             return .boltGradientEnd
+        case .retry:
+            return .boltGradientEnd
         }
     }
 }
@@ -50,6 +55,13 @@ struct ToastData: Identifiable, Equatable {
     let id = UUID()
     let type: ToastType
     let message: String
+    let persistent: Bool
+
+    init(type: ToastType, message: String, persistent: Bool = false) {
+        self.type = type
+        self.message = message
+        self.persistent = persistent
+    }
 
     static func == (lhs: ToastData, rhs: ToastData) -> Bool {
         return lhs.id == rhs.id
@@ -94,6 +106,13 @@ struct ToastView: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // Dismiss hint for persistent toasts
+            if toast.persistent {
+                Text("Tap anywhere to close")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.5))
+            }
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 28)
@@ -158,9 +177,11 @@ struct ToastView: View {
                 opacity = 1
             }
 
-            // Auto-dismiss after 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                dismissToast()
+            // Auto-dismiss after 3 seconds (unless persistent)
+            if !toast.persistent {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    dismissToast()
+                }
             }
         }
         .onTapGesture {

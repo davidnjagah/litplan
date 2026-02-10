@@ -138,7 +138,7 @@ struct BoltThemeSelector: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("What Vibe are you looking for?")
+                Text("What's your vibe this week?")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
 
@@ -262,29 +262,54 @@ private struct FlowingTagsLayout: View {
     }
 
     private func tagButton(_ tag: ThemeTag) -> some View {
-        Button(action: { onSelect(tag) }) {
-            Text(tag.name)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(selectedTag?.id == tag.id ? .black : .white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(
-                    Capsule()
-                        .fill(selectedTag?.id == tag.id ? Color.white : Color.white.opacity(0.1))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
+        let isRooftop = tag.name == "Rooftop"
+        let isSelected = selectedTag?.id == tag.id
+
+        return Button(action: { onSelect(tag) }) {
+            HStack(spacing: 6) {
+                if isRooftop && !isSelected {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.boltGradientEnd)
+                }
+                Text(tag.name)
+                    .font(.system(size: 15, weight: isRooftop ? .semibold : .medium))
+            }
+            .foregroundColor(isSelected ? .black : .white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                ZStack {
+                    if isSelected {
+                        Capsule().fill(Color.white)
+                    } else if isRooftop {
+                        Capsule().fill(
                             LinearGradient(
-                                colors: selectedTag?.id == tag.id
-                                    ? [Color.clear, Color.clear]
-                                    : [Color.boltGradientStart.opacity(0.3), Color.boltGradientEnd.opacity(0.2)],
+                                colors: [Color.boltGradientStart.opacity(0.3), Color.boltGradientEnd.opacity(0.3)],
                                 startPoint: .leading,
                                 endPoint: .trailing
-                            ),
-                            lineWidth: 1
+                            )
                         )
-                )
+                    } else {
+                        Capsule().fill(Color.white.opacity(0.1))
+                    }
+                }
+            )
+            .overlay(
+                Capsule()
+                    .stroke(
+                        LinearGradient(
+                            colors: isSelected
+                                ? [Color.clear, Color.clear]
+                                : isRooftop
+                                    ? [Color.boltGradientStart.opacity(0.8), Color.boltGradientEnd.opacity(0.6)]
+                                    : [Color.boltGradientStart.opacity(0.3), Color.boltGradientEnd.opacity(0.2)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: isRooftop && !isSelected ? 1.5 : 1
+                    )
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }

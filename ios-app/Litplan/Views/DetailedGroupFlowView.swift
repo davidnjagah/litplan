@@ -748,17 +748,35 @@ struct DetailedGroupFlowView: View {
     // MARK: - Share Text
     private var shareText: String {
         var text = "\u{1F389} \(groupFlow.title)\n\n"
-        text += "Duration: \(groupFlow.formattedDuration)\n"
-        text += "Cost: \(groupFlow.formattedCost)\n\n"
-        text += "Itinerary:\n"
 
-        for activity in groupFlow.sortedActivities {
-            text += "\(activity.order). \(activity.venueName)\n"
-            text += "   \u{1F4CD} \(activity.location.address)\n"
-            text += "   \u{23F0} \(formatTime(activity.startTime)) (\(activity.duration) min)\n\n"
+        // Plan description
+        text += "\(groupFlow.description)\n\n"
+
+        // Plan details
+        text += "\u{23F1} Duration: \(groupFlow.formattedDuration)\n"
+        text += "\u{1F4B0} Estimated Cost: \(groupFlow.formattedCost)\n"
+        text += "\u{1F465} Best for: \(groupFlow.bestFor.joined(separator: ", "))\n\n"
+
+        // Vibes/tags
+        if !groupFlow.aiTags.isEmpty {
+            text += "\u{2728} Vibes: \(groupFlow.aiTags.joined(separator: " \u{2022} "))\n\n"
         }
 
-        text += "---\nShared via Litplan"
+        text += "---\n\n"
+        text += "\u{1F5FA} ITINERARY\n\n"
+
+        for activity in groupFlow.sortedActivities {
+            let stepLabel = stepLabel(for: activity.order)
+            text += "\(activity.order). \(activity.venueName) [\(stepLabel)]\n"
+            text += "   \u{23F0} \(formatTime(activity.startTime)) (\(activity.duration) min)\n"
+            text += "   \u{1F4CD} \(activity.location.address)\n"
+            text += "   \n"
+            text += "   \(activity.description)\n\n"
+        }
+
+        text += "---\n"
+        text += "Plan your perfect night out with LitPlanz\n"
+        text += "Download: https://litplanz.com"
         return text
     }
 

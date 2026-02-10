@@ -100,6 +100,9 @@ class SubscriptionManager: ObservableObject {
         // Check for persisted test access
         checkPersistedTestAccess()
 
+        // Check for persisted manual Pro access (demo accounts)
+        checkPersistedManualAccess()
+
         // Set up app lifecycle observers for automatic refresh
         setupLifecycleObservers()
 
@@ -848,6 +851,56 @@ class SubscriptionManager: ObservableObject {
         )
     }
 
+    // MARK: - Manual Pro Access (Demo Accounts)
+
+    /// Check if the current user has manual Pro access granted via app_metadata
+    /// This is used for demo accounts and special users granted Pro without payment
+    /// Call this after user signs in
+    func checkManualProAccess() {
+        guard let user = SupabaseManager.shared.currentUser else { return }
+
+        // Check app_metadata for is_pro flag (set via Supabase admin)
+        if let appMetadata = user.appMetadata,
+           let isProString = appMetadata["is_pro"],
+           isProString == "true" {
+            grantManualProAccess()
+            print("[SubscriptionManager] Manual Pro access granted for: \(user.email ?? "unknown")")
+            return
+        }
+
+        // Fallback: Check user_metadata for manual_pro_access
+        if let manualPro = user.userMetadata?.manualProAccess,
+           manualPro == true {
+            grantManualProAccess()
+            print("[SubscriptionManager] Manual Pro access (via user_metadata) granted for: \(user.email ?? "unknown")")
+        }
+    }
+
+    /// Grant manual Pro access (for demo/special accounts)
+    private func grantManualProAccess() {
+        isProUser = true
+        isTestMode = true  // Reuse test mode flag to indicate non-StoreKit Pro
+        subscriptionState = .active
+        currentSubscriptionType = .monthly
+
+        // Persist access
+        UserDefaults.standard.set(true, forKey: "manualProAccess")
+
+        print("[SubscriptionManager] Manual Pro access GRANTED - isProUser: \(isProUser)")
+    }
+
+    /// Check for persisted manual Pro access on app launch
+    private func checkPersistedManualAccess() {
+        if UserDefaults.standard.bool(forKey: "manualProAccess") {
+            // Re-verify with server on next sign-in, but grant access for now
+            isProUser = true
+            isTestMode = true
+            subscriptionState = .active
+            currentSubscriptionType = .monthly
+            print("[SubscriptionManager] Restored persisted manual Pro access")
+        }
+    }
+
     // MARK: - Test Mode Methods
 
     /// Check if the current user should have test Pro access
@@ -928,6 +981,7 @@ class SubscriptionManager: ObservableObject {
 
         // Clear persisted data
         UserDefaults.standard.removeObject(forKey: "testProAccess")
+        UserDefaults.standard.removeObject(forKey: "manualProAccess")
         UserDefaults.standard.removeObject(forKey: "subscriptionStatus")
         UserDefaults.standard.removeObject(forKey: "cachedProAccess")
         UserDefaults.standard.removeObject(forKey: cacheStateKey)

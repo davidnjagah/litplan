@@ -12,6 +12,7 @@ import SwiftUI
 
 /// Manages device motion data (gyroscope/accelerometer) for 3D parallax effects
 /// Provides pitch and roll values that can be used for card rotation effects
+/// Optimized for comfortable phone holding angle (30-45°) with smooth response
 final class MotionManager: ObservableObject {
     static let shared = MotionManager()
 
@@ -26,14 +27,31 @@ final class MotionManager: ObservableObject {
     /// Whether motion updates are active
     @Published var isActive: Bool = false
 
-    /// Sensitivity multiplier for motion effect (higher = more responsive)
-    var sensitivity: Double = 12.0
+    /// Sensitivity multiplier for motion effect (lower = smoother, less reactive)
+    var sensitivity: Double = 4.0
 
     /// Maximum rotation angle in degrees
-    var maxRotation: Double = 18.0
+    var maxRotation: Double = 12.0
 
     /// Whether to invert the rotation (phone tilts one way, card tilts opposite)
     var invertRotation: Bool = true
+
+    // MARK: - Smooth Motion Configuration
+
+    /// Reference pitch angle in radians (50° = comfortable viewing angle)
+    /// This is the "neutral" position where the card appears flat
+    private let referencePitch: Double = 0.873 // 50 degrees in radians
+
+    /// Deadzone threshold - movements smaller than this are ignored (in radians)
+    /// Prevents jittery response to small hand tremors
+    private let deadzone: Double = 0.08 // ~4.5 degrees
+
+    /// Smoothing factor for low-pass filter (0-1, higher = smoother but slower)
+    private let smoothingFactor: Double = 0.15
+
+    /// Previous smoothed values for interpolation
+    private var smoothedPitch: Double = 0
+    private var smoothedRoll: Double = 0
 
     private init() {}
 
@@ -48,23 +66,40 @@ final class MotionManager: ObservableObject {
 
         guard !isActive else { return }
 
-        motionManager.deviceMotionUpdateInterval = 1.0 / 60.0 // 60 FPS
+        // Lower update rate for smoother, less jittery updates
+        motionManager.deviceMotionUpdateInterval = 1.0 / 30.0 // 30 FPS is sufficient for smooth tilt
         motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
             guard let self = self, let motion = motion, error == nil else { return }
 
             // Get attitude (device orientation relative to reference frame)
             let attitude = motion.attitude
 
-            // Apply sensitivity and clamp values
-            // Pitch: forward/backward tilt (negative = tilted toward user)
-            // Roll: left/right tilt
-            // Invert: phone tilts anticlockwise -> card tilts clockwise
-            let invertMultiplier = self.invertRotation ? -1.0 : 1.0
+            // Calculate pitch relative to comfortable holding angle (30-45°)
+            // When phone is at ~37.5°, relativePitch is 0 (neutral)
+            let relativePitch = attitude.pitch - self.referencePitch
 
-            // Use smoother animation with higher response time and damping
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.85, blendDuration: 0.1)) {
-                self.pitch = self.clampedValue(attitude.pitch * self.sensitivity * invertMultiplier)
-                self.roll = self.clampedValue(attitude.roll * self.sensitivity * invertMultiplier)
+            // Apply deadzone - ignore small movements
+            let filteredPitch = self.applyDeadzone(relativePitch)
+            let filteredRoll = self.applyDeadzone(attitude.roll)
+
+            // Apply low-pass filter for smooth interpolation
+            self.smoothedPitch = self.lerp(self.smoothedPitch, filteredPitch, t: self.smoothingFactor)
+            self.smoothedRoll = self.lerp(self.smoothedRoll, filteredRoll, t: self.smoothingFactor)
+
+            // Invert roll (left/right) but NOT pitch (up/down)
+            // Phone tilts backward → card tilts up (follows phone)
+            // Phone tilts left/right → card tilts opposite (natural feel)
+            let rollInvertMultiplier = self.invertRotation ? -1.0 : 1.0
+
+            // Apply sensitivity and clamp
+            // Pitch: NOT inverted - card follows phone tilt direction
+            let newPitch = self.clampedValue(self.smoothedPitch * self.sensitivity)
+            let newRoll = self.clampedValue(self.smoothedRoll * self.sensitivity * rollInvertMultiplier)
+
+            // Use slow, smooth animation for card movement
+            withAnimation(.easeOut(duration: 0.3)) {
+                self.pitch = newPitch
+                self.roll = newRoll
             }
         }
 
@@ -101,6 +136,21 @@ final class MotionManager: ObservableObject {
 
     private func clampedRotation(_ value: Double) -> Double {
         return max(-maxRotation, min(maxRotation, value * maxRotation))
+    }
+
+    /// Apply deadzone to filter out small movements
+    private func applyDeadzone(_ value: Double) -> Double {
+        if abs(value) < deadzone {
+            return 0
+        }
+        // Smoothly ramp from deadzone edge (avoids sudden jump when exiting deadzone)
+        let sign = value > 0 ? 1.0 : -1.0
+        return sign * (abs(value) - deadzone)
+    }
+
+    /// Linear interpolation for smooth transitions
+    private func lerp(_ from: Double, _ to: Double, t: Double) -> Double {
+        return from + (to - from) * t
     }
 }
 

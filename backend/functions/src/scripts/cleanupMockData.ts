@@ -29,8 +29,8 @@ const MOCK_USER_PATTERNS = [
 ];
 
 const MOCK_EMAIL_PATTERNS = [
-  '@test.litplan.app',
-  '@mock.litplan.app',
+  '@test.litplanz.com',
+  '@mock.litplanz.com',
   '@example.com',
   '@test.com',
   '@fake.com',

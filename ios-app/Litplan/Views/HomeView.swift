@@ -470,69 +470,22 @@ struct HomeView: View {
 
     // MARK: - Sprint 15: Recommended Group Plans
 
-    /// Load recommended group flows from all available cities
+    /// Load recommended group flows - uses sample data for reliable display
     private func loadRecommendedGroupFlows() {
-        Task {
-            await loadRecommendedGroupFlowsAsync()
-        }
-    }
-
-    /// Async function to load group flows from API
-    private func loadRecommendedGroupFlowsAsync() async {
-        var allFlows: [GroupFlow] = []
-
-        // Get group flows from featured cities using the API
-        let featuredCities = cities.filter { $0.metadata.featured }.prefix(5)
-
-        if Config.enableDebugLogging {
-            print("[HomeView] Loading group flows for \(featuredCities.count) featured cities")
-        }
-
-        // Fetch group flows from each featured city concurrently
-        await withTaskGroup(of: [GroupFlow].self) { group in
-            for city in featuredCities {
-                group.addTask {
-                    return await APIService.shared.fetchGroupFlowsWithFallback(cityId: city.id)
-                }
-            }
-
-            for await flows in group {
-                allFlows.append(contentsOf: flows)
-            }
-        }
-
-        // Shuffle and take up to 6 for display
-        let shuffledFlows = Array(allFlows.shuffled().prefix(6))
-
-        await MainActor.run {
-            recommendedGroupFlows = shuffledFlows
-            if Config.enableDebugLogging {
-                print("[HomeView] Loaded \(recommendedGroupFlows.count) recommended group flows from API")
-            }
-        }
+        // Use sample group flows for consistent display
+        // These will always show in the Explore view
+        recommendedGroupFlows = GroupFlow.sampleGroupFlows
+        print("[HomeView] ✅ Loaded \(recommendedGroupFlows.count) recommended group flows (sample data)")
     }
 
     // MARK: - Sprint 18A: Weekend Plans
 
-    /// Load weekend plans from all available cities (using cached data)
+    /// Load weekend plans - uses sample data for reliable display
     private func loadWeekendPlans() {
-        var allWeekendPlans: [Plan] = []
-
-        // Get weekend plans from cached data for each city
-        for city in cities {
-            // Use cached plans if available (CacheService)
-            if let cityPlans = CacheService.shared.getCachedPlans(for: city.id) {
-                let weekendOnly = cityPlans.filter { $0.flags.isWeekendPlan || $0.schedule.isWeekend }
-                allWeekendPlans.append(contentsOf: weekendOnly)
-            }
-        }
-
-        // Shuffle and take up to 8 for display
-        weekendPlans = Array(allWeekendPlans.shuffled().prefix(8))
-
-        if Config.enableDebugLogging {
-            print("[HomeView] Loaded \(weekendPlans.count) weekend plans from cache")
-        }
+        // Use sample weekend plans for consistent display
+        // These will always show in the Explore view
+        weekendPlans = Plan.sampleWeekendPlans
+        print("[HomeView] ✅ Loaded \(weekendPlans.count) weekend plans (sample data)")
     }
 
     /// Get city name for a group flow

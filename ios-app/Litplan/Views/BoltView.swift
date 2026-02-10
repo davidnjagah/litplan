@@ -59,6 +59,19 @@ struct BoltView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var supabaseManager: SupabaseManager
 
+    /// Binding for city passed from CityDetailsView via ContentView
+    @Binding var pendingCity: SearchedCity?
+
+    /// Default initializer for standalone use (previews, etc.)
+    init() {
+        self._pendingCity = .constant(nil)
+    }
+
+    /// Initializer with pending city binding (used from ContentView)
+    init(pendingCity: Binding<SearchedCity?>) {
+        self._pendingCity = pendingCity
+    }
+
     // MARK: - Shared Managers (use @ObservedObject for singletons)
     //
     // These are externally-managed singletons. Using @ObservedObject ensures:
@@ -71,6 +84,9 @@ struct BoltView: View {
 
     /// Token manager for Bolt generation limits - @MainActor singleton
     @ObservedObject private var tokenManager = BoltTokenManager.shared
+
+    /// Saved items manager for saving group flows - syncs with DetailedGroupFlowView
+    @ObservedObject private var savedItemsManager = SavedItemsManager.shared
 
     // MARK: - UI State
     //
@@ -114,17 +130,14 @@ struct BoltView: View {
     /// Controls sheet for paywall presentation
     @State private var showPaywall = false
 
-    /// Controls error alert presentation
-    @State private var showError = false
-
-    /// Error message to display in alert
-    @State private var errorMessage = ""
-
-    /// Whether the current flow is saved/favorited
-    @State private var isSaved = false
-
     /// Toast notification data for transient messages
     @State private var toast: ToastData? = nil
+
+    /// Whether the current flow is saved/favorited (computed from SavedItemsManager)
+    private var isSaved: Bool {
+        guard let flow = currentGroupFlow else { return false }
+        return savedItemsManager.isGroupFlowSaved(flow)
+    }
 
     // MARK: - Animation States
 
@@ -229,18 +242,13 @@ struct BoltView: View {
                 // Both selectors side by side - each handles its own overlay
                 HStack(spacing: 8) {
                     BoltCitySelector(selectedCity: $selectedCity)
-                        .disabled(!subscriptionManager.isProUser)
                     BoltThemeSelector(selectedTag: $selectedTheme)
-                        .disabled(!subscriptionManager.isProUser)
                 }
 
                 Spacer()
             }
 
-            // Pro-only overlay for free users
-            if !subscriptionManager.isProUser && !isLoading {
-                freeUserOverlay
-            }
+            // Pro-only overlay removed - paywall shows on FAB tap instead
         }
         .ignoresSafeArea()
         .onAppear {
@@ -250,14 +258,21 @@ struct BoltView: View {
         .onDisappear {
             stopMotionTracking()
         }
-        .onChange(of: selectedTheme) { _, _ in
-            // Reset saved state when theme changes
-            isSaved = false
+        .onChange(of: pendingCity) { _, newCity in
+            // Handle city passed from CityDetailsView
+            if let city = newCity {
+                selectedCity = city
+                // Clear the pending city after consuming it
+                pendingCity = nil
+                // Show toast to confirm city selection
+                toast = ToastData(
+                    type: .info,
+                    message: "\(city.name) selected! Choose a theme to generate."
+                )
+            }
         }
-        .onChange(of: selectedCity) { _, _ in
-            // Reset saved state when city changes
-            isSaved = false
-        }
+        // Note: isSaved is computed from SavedItemsManager based on currentGroupFlow
+        // When a new flow is generated, isSaved automatically reflects its saved state
         // Note: Selector expansion is handled internally by BoltCitySelector and BoltThemeSelector
         .fullScreenCover(isPresented: $showDetailedFlow) {
             if let flow = currentGroupFlow {
@@ -276,16 +291,6 @@ struct BoltView: View {
         .sheet(isPresented: $showPaywall) {
             PaywallView(trigger: .groupFlow(cityName: selectedCity?.name ?? currentGroupFlow.map { getCityName(for: $0) } ?? ""))
         }
-        .alert("Generation Failed", isPresented: $showError) {
-            Button("Try Again") {
-                if canGenerate {
-                    generateGroupFlow()
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(errorMessage)
-        }
         .toast($toast)
     }
 
@@ -293,11 +298,9 @@ struct BoltView: View {
 
     private var saveButton: some View {
         Button(action: {
+            guard let flow = currentGroupFlow else { return }
             HapticManager.shared.light()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                isSaved.toggle()
-            }
-            // TODO: Actually save to SavedItemsManager when implemented
+            savedItemsManager.toggleGroupFlowSave(flow)
         }) {
             Image(systemName: isSaved ? "heart.fill" : "heart")
                 .font(.system(size: 20, weight: .semibold))
@@ -635,8 +638,7 @@ struct BoltView: View {
 
         // Check if user has tokens BEFORE starting (don't consume yet)
         guard tokenManager.canGenerate else {
-            errorMessage = "No tokens available. Please wait until next refresh."
-            showError = true
+            toast = ToastData(type: .info, message: "No tokens available. Please try again later.")
             return
         }
 
@@ -665,8 +667,7 @@ struct BoltView: View {
                 await MainActor.run {
                     // FAILURE: Token NOT consumed, user keeps their token
                     isGenerating = false
-                    errorMessage = "Failed to generate plan: \(error.localizedDescription)"
-                    showError = true
+                    toast = ToastData(type: .retry, message: "Unable to generate plan. Please try again.", persistent: true)
                 }
             }
         }

@@ -56,6 +56,22 @@ class DeepLinkHandler: ObservableObject {
             }
             return true
 
+        case .city(let cityName):
+            // Navigate to the city using the same notification used by discovery flow
+            if Config.enableDebugLogging {
+                print("[DeepLinkHandler] Navigating to city: \(cityName)")
+            }
+            // Post notification to navigate to the city
+            // Use a small delay to ensure the app is fully loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NotificationCenter.default.post(
+                    name: .navigateToDiscoveredCity,
+                    object: nil,
+                    userInfo: ["cityName": cityName, "country": "", "isGenerating": false]
+                )
+            }
+            return true
+
         case .emailVerification, .passwordReset, .magicLink, .invite:
             // Show the auth flow UI for these types
             activeDeepLink = deepLinkType
