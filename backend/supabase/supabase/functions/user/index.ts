@@ -18,6 +18,16 @@ import { createServiceClient, createAuthenticatedClient } from '../_shared/supab
 import { verifyAuth } from '../_shared/auth.ts';
 
 /**
+ * Generate a CUID-like ID compatible with Prisma's @default(cuid())
+ * Format: starts with 'c', followed by timestamp + random chars
+ */
+function generateCuid(): string {
+  const timestamp = Date.now().toString(36);
+  const random = () => Math.random().toString(36).substring(2, 8);
+  return `c${timestamp}${random()}${random()}`;
+}
+
+/**
  * Get country flag emoji from country code
  */
 function getCountryFlag(countryCode: string): string {
@@ -55,6 +65,21 @@ function transformCityForIOS(city: any, planCount?: number) {
   };
 }
 
+/**
+ * Resolve Supabase Auth UUID to the database CUID from the User table.
+ * Returns null if no User record exists for this auth user.
+ */
+async function resolveDbUserId(supabase: any, authUserId: string): Promise<string | null> {
+  const { data: user, error } = await supabase
+    .from('User')
+    .select('id')
+    .eq('supabaseUserId', authUserId)
+    .single();
+
+  if (error || !user) return null;
+  return user.id;
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -82,42 +107,55 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization') || '';
     const supabase = createAuthenticatedClient(authHeader);
     const serviceClient = createServiceClient();
-    const userId = authResult.user.id;
+    const authUserId = authResult.user.id; // Supabase Auth UUID
 
-    console.log(`[user] Authenticated user: ${userId} | route: ${pathParts[1] || 'none'}`);
+    console.log(`[user] Authenticated auth user: ${authUserId} | route: ${pathParts[1] || 'none'}`);
 
-    // Route: POST /user/sync
+    // Route: POST /user/sync — uses authUserId directly (creates/updates User record)
     if (pathParts[1] === 'sync' && method === 'POST') {
       const body = await req.json();
-      return await syncUser(serviceClient, userId, body);
+      return await syncUser(serviceClient, authUserId, body);
     }
+
+    // Route: DELETE /user/account — uses authUserId directly (does its own lookup)
+    if (pathParts[1] === 'account' && method === 'DELETE') {
+      return await deleteAccount(serviceClient, authUserId);
+    }
+
+    // All other routes need the DB CUID
+    const dbUserId = await resolveDbUserId(serviceClient, authUserId);
+    if (!dbUserId) {
+      console.log(`[user] No DB user found for auth user: ${authUserId}`);
+      return errorResponse('User not found. Please sync your account first.', 404, 'USER_NOT_SYNCED');
+    }
+    console.log(`[user] Resolved auth ${authUserId} -> db ${dbUserId}`);
 
     // Route: GET /user/profile
     if (pathParts[1] === 'profile' && method === 'GET') {
-      return await getProfile(serviceClient, userId);
+      return await getProfile(serviceClient, dbUserId);
     }
 
     // Route: PUT /user/profile
     if (pathParts[1] === 'profile' && method === 'PUT') {
       const body = await req.json();
-      return await updateProfile(serviceClient, userId, body);
+      return await updateProfile(serviceClient, dbUserId, body);
     }
 
     // Route: GET /user/viewed-cities
     if (pathParts[1] === 'viewed-cities' && method === 'GET') {
-      return await getViewedCities(serviceClient, userId, url.searchParams);
+      return await getViewedCities(serviceClient, dbUserId, url.searchParams);
     }
 
     // Route: POST /user/viewed-cities/:cityId
     if (pathParts[1] === 'viewed-cities' && pathParts[2] && method === 'POST') {
       const cityId = pathParts[2];
-      return await recordCityView(serviceClient, userId, cityId);
+      return await recordCityView(serviceClient, dbUserId, cityId);
     }
 
     // Route: POST /user/device-token - Register device token
     if (pathParts[1] === 'device-token' && method === 'POST') {
       const body = await req.json();
-      return await registerDeviceToken(serviceClient, userId, body);
+      return await registerDeviceToken(serviceClient, dbUserId, body);
     }
 
     // Route: DELETE /user/device-token - Remove device token
@@ -126,12 +164,7 @@ serve(async (req: Request) => {
       if (!token) {
         return errorResponse('Token parameter required', 400, 'MISSING_PARAM');
       }
-      return await removeDeviceToken(serviceClient, userId, token);
-    }
-
-    // Route: DELETE /user/account - Delete user account and all data
-    if (pathParts[1] === 'account' && method === 'DELETE') {
-      return await deleteAccount(serviceClient, userId);
+      return await removeDeviceToken(serviceClient, dbUserId, token);
     }
 
     return errorResponse('Not found', 404, 'NOT_FOUND');
@@ -143,43 +176,78 @@ serve(async (req: Request) => {
 
 /**
  * Sync user data from auth provider
+ *
+ * The User table uses a CUID for `id` and stores the Supabase Auth UUID
+ * in `supabaseUserId`. Column names: displayName (not fullName), no provider column.
  */
-async function syncUser(supabase: any, userId: string, data: any) {
-  const { email, fullName, provider } = data;
+async function syncUser(supabase: any, authUserId: string, data: any) {
+  const { email, fullName } = data;
 
-  // Upsert user record
-  const { data: user, error } = await supabase
+  console.log(`[user] Syncing auth user: ${authUserId}, email: ${email}`);
+
+  // Check if user already exists by supabaseUserId
+  const { data: existingUser } = await supabase
     .from('User')
-    .upsert({
-      id: userId,
-      email,
-      fullName,
-      provider,
-      updatedAt: new Date().toISOString(),
-    }, {
-      onConflict: 'id',
-    })
-    .select()
+    .select('id')
+    .eq('supabaseUserId', authUserId)
     .single();
 
-  if (error) {
-    console.error('[user] Sync error:', error);
-    return errorResponse('Failed to sync user', 500, 'DATABASE_ERROR');
-  }
+  if (existingUser) {
+    // Update existing user
+    const { data: user, error } = await supabase
+      .from('User')
+      .update({
+        email,
+        displayName: fullName || undefined,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', existingUser.id)
+      .select()
+      .single();
 
-  console.log(`[user] Synced user: ${userId}`);
-  return jsonResponse({ success: true, user });
+    if (error) {
+      console.error('[user] Sync update error:', error);
+      return errorResponse('Failed to sync user', 500, 'DATABASE_ERROR');
+    }
+
+    console.log(`[user] Updated existing user: ${existingUser.id}`);
+    return jsonResponse({ success: true, user });
+  } else {
+    // Create new user with a generated CUID (Prisma generates these app-side, DB has no default)
+    const newId = generateCuid();
+    console.log(`[user] Generating new CUID: ${newId} for auth user: ${authUserId}`);
+    const { data: user, error } = await supabase
+      .from('User')
+      .insert({
+        id: newId,
+        supabaseUserId: authUserId,
+        email,
+        displayName: fullName || null,
+        updatedAt: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[user] Sync insert error:', error);
+      return errorResponse('Failed to sync user', 500, 'DATABASE_ERROR');
+    }
+
+    console.log(`[user] Created new user: ${user.id} for auth: ${authUserId}`);
+    return jsonResponse({ success: true, user });
+  }
 }
 
 /**
  * Get user profile with subscription info
+ * @param dbUserId - The CUID from the User table
  */
-async function getProfile(supabase: any, userId: string) {
-  // Get user with subscription
+async function getProfile(supabase: any, dbUserId: string) {
+  // Get user by DB id (CUID)
   const { data: user, error: userError } = await supabase
     .from('User')
     .select('*')
-    .eq('id', userId)
+    .eq('id', dbUserId)
     .single();
 
   if (userError) {
@@ -194,14 +262,14 @@ async function getProfile(supabase: any, userId: string) {
   const { data: subscription } = await supabase
     .from('Subscription')
     .select('*')
-    .eq('userId', userId)
+    .eq('userId', dbUserId)
     .single();
 
   const profile = {
     id: user.id,
     email: user.email,
-    fullName: user.fullName,
-    avatarUrl: user.avatarUrl,
+    fullName: user.displayName,
+    avatarUrl: user.imageUrl,
     subscriptionTier: subscription?.tier || 'free',
     subscriptionExpiresAt: subscription?.expiresAt,
     createdAt: user.createdAt,
@@ -213,21 +281,22 @@ async function getProfile(supabase: any, userId: string) {
 
 /**
  * Update user profile
+ * @param dbUserId - The CUID from the User table
  */
-async function updateProfile(supabase: any, userId: string, data: any) {
+async function updateProfile(supabase: any, dbUserId: string, data: any) {
   const { fullName, avatarUrl } = data;
 
   const updates: Record<string, any> = {
     updatedAt: new Date().toISOString(),
   };
 
-  if (fullName !== undefined) updates.fullName = fullName;
-  if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+  if (fullName !== undefined) updates.displayName = fullName;
+  if (avatarUrl !== undefined) updates.imageUrl = avatarUrl;
 
   const { data: user, error } = await supabase
     .from('User')
     .update(updates)
-    .eq('id', userId)
+    .eq('id', dbUserId)
     .select()
     .single();
 
@@ -236,18 +305,18 @@ async function updateProfile(supabase: any, userId: string, data: any) {
     return errorResponse('Failed to update profile', 500, 'DATABASE_ERROR');
   }
 
-  // Get subscription info for response
+  // Get subscription info
   const { data: subscription } = await supabase
     .from('Subscription')
     .select('*')
-    .eq('userId', userId)
+    .eq('userId', dbUserId)
     .single();
 
   const profile = {
     id: user.id,
     email: user.email,
-    fullName: user.fullName,
-    avatarUrl: user.avatarUrl,
+    fullName: user.displayName,
+    avatarUrl: user.imageUrl,
     subscriptionTier: subscription?.tier || 'free',
     subscriptionExpiresAt: subscription?.expiresAt,
     createdAt: user.createdAt,
@@ -438,6 +507,11 @@ async function removeDeviceToken(supabase: any, userId: string, token: string) {
 
 /**
  * Delete user account and all associated data
+ *
+ * The User table uses a CUID as its `id` column, with the Supabase Auth UUID
+ * stored in `supabaseUserId`. Related tables reference User.id (the CUID).
+ * So we must first look up the CUID, then delete by that.
+ *
  * Deletes in order to respect foreign key constraints:
  * 1. Device tokens
  * 2. Viewed cities
@@ -446,39 +520,54 @@ async function removeDeviceToken(supabase: any, userId: string, token: string) {
  * 5. Subscription
  * 6. User record
  */
-async function deleteAccount(supabase: any, userId: string) {
-  console.log(`[user] === ACCOUNT DELETION START for user: ${userId} ===`);
+async function deleteAccount(supabase: any, authUserId: string) {
+  console.log(`[user] === ACCOUNT DELETION START for auth user: ${authUserId} ===`);
 
-  // Delete all related records (order matters for foreign keys)
+  // Look up the User record by supabaseUserId to get the CUID
+  const { data: user, error: lookupError } = await supabase
+    .from('User')
+    .select('id')
+    .eq('supabaseUserId', authUserId)
+    .single();
+
+  if (lookupError || !user) {
+    console.error(`[user] User lookup failed for supabaseUserId=${authUserId}:`, JSON.stringify(lookupError));
+    return errorResponse('User not found', 404, 'NOT_FOUND');
+  }
+
+  const dbUserId = user.id; // This is the CUID
+  console.log(`[user] Resolved auth user ${authUserId} -> DB user ${dbUserId}`);
+
+  // Delete all related records using the CUID (order matters for foreign keys)
   const tables = ['DeviceToken', 'ViewedCity', 'SavedCity', 'SearchHistory', 'Subscription'];
 
   for (const table of tables) {
-    console.log(`[user] Deleting from ${table} for user: ${userId}...`);
+    console.log(`[user] Deleting from ${table} for userId: ${dbUserId}...`);
     const { error } = await supabase
       .from(table)
       .delete()
-      .eq('userId', userId);
+      .eq('userId', dbUserId);
 
     if (error) {
       console.error(`[user] Error deleting from ${table}:`, JSON.stringify(error));
-      // Continue deleting other tables even if one fails (table might not exist or have no rows)
+      // Continue deleting other tables even if one fails
     } else {
       console.log(`[user] Deleted from ${table} OK`);
     }
   }
 
-  // Delete the user record
-  console.log(`[user] Deleting User record for: ${userId}...`);
+  // Delete the user record by its CUID
+  console.log(`[user] Deleting User record id: ${dbUserId}...`);
   const { error: userError } = await supabase
     .from('User')
     .delete()
-    .eq('id', userId);
+    .eq('id', dbUserId);
 
   if (userError) {
     console.error(`[user] Error deleting user record:`, JSON.stringify(userError));
     return errorResponse(`Failed to delete account: ${userError.message}`, 500, 'DELETE_ERROR');
   }
 
-  console.log(`[user] === ACCOUNT DELETION COMPLETE for user: ${userId} ===`);
+  console.log(`[user] === ACCOUNT DELETION COMPLETE for auth user: ${authUserId} (db: ${dbUserId}) ===`);
   return jsonResponse({ success: true, data: { message: 'Account deleted successfully' } });
 }
