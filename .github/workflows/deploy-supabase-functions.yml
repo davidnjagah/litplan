@@ -1,0 +1,76 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/supabase/supabase/functions/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Detect changed functions
+        id: changed
+        run: |
+          FUNCTIONS_DIR="backend/supabase/supabase/functions"
+
+          # Get changed files in the functions directory
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- "$FUNCTIONS_DIR")
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Extract unique function names (top-level dirs, skip _shared)
+          FUNCTIONS=$(echo "$CHANGED_FILES" \
+            | sed "s|^$FUNCTIONS_DIR/||" \
+            | cut -d'/' -f1 \
+            | sort -u \
+            | grep -v '^_shared$' \
+            | grep -v '^\s*$')
+
+          # If _shared changed, deploy all functions
+          if echo "$CHANGED_FILES" | grep -q "$FUNCTIONS_DIR/_shared/"; then
+            echo "Shared utilities changed — deploying all functions"
+            FUNCTIONS=$(ls -d $FUNCTIONS_DIR/*/ \
+              | xargs -n1 basename \
+              | grep -v '^_shared$')
+          fi
+
+          echo "Functions to deploy:"
+          echo "$FUNCTIONS"
+
+          # Set output (newline-separated to space-separated)
+          FUNC_LIST=$(echo "$FUNCTIONS" | tr '\n' ' ')
+          echo "functions=$FUNC_LIST" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy functions
+        if: steps.changed.outputs.functions != ''
+        working-directory: backend/supabase/supabase
+        run: |
+          for FUNC in ${{ steps.changed.outputs.functions }}; do
+            echo "Deploying $FUNC..."
+            supabase functions deploy "$FUNC" --project-ref "$SUPABASE_PROJECT_REF"
+            echo "$FUNC deployed successfully"
+          done
+
+      - name: Summary
+        if: steps.changed.outputs.functions != ''
+        run: |
+          echo "### Deployed Functions" >> $GITHUB_STEP_SUMMARY
+          for FUNC in ${{ steps.changed.outputs.functions }}; do
+            echo "- \`$FUNC\`" >> $GITHUB_STEP_SUMMARY
+          done
