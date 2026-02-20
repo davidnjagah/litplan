@@ -192,7 +192,15 @@
       "Bash('TEST_EMAIL=test-email-flow-$\\(date +%s\\)@gmail.com' curl -X POST https://auth.litplanz.com/auth/v1/signup -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa3RkaWdhbmtqc3p1cHZyc3F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwMTY0MzcsImV4cCI6MjA4MjU5MjQzN30.lxRTafWUnKoQ4DBDTQEC9oioxYDejqtkT3apMC2Ervk' -H 'Content-Type: application/json' -d '{email: $TEST_EMAIL, password: TestPassword123}')",
       "Bash('TEST_EMAIL=testflow$\\(date +%s\\)@gmail.com' curl -X POST https://auth.litplanz.com/auth/v1/signup -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa3RkaWdhbmtqc3p1cHZyc3F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwMTY0MzcsImV4cCI6MjA4MjU5MjQzN30.lxRTafWUnKoQ4DBDTQEC9oioxYDejqtkT3apMC2Ervk' -H 'Content-Type: application/json' -d '{email: $TEST_EMAIL, password: LitPlanz2026Secure}')",
       "Bash(/dev/null find /Users/davidnjagah/Documents/GitHub/litplanAI/ios-app -name *6.5* -o -name *6''5* -o -name *65*)",
-      "Bash(/dev/null echo --- find /Users/davidnjagah/Documents/GitHub/litplanAI/ios-app -name *.png -newer /Users/davidnjagah/Documents/GitHub/litplanAI/ios-app/Litplan)"
+      "Bash(/dev/null echo --- find /Users/davidnjagah/Documents/GitHub/litplanAI/ios-app -name *.png -newer /Users/davidnjagah/Documents/GitHub/litplanAI/ios-app/Litplan)",
+      "Bash(convert:*)",
+      "WebFetch(domain:community.revenuecat.com)",
+      "WebFetch(domain:adapty.io)",
+      "WebFetch(domain:www.revenuecat.com)",
+      "WebFetch(domain:www.browserstack.com)",
+      "Bash(ANON_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa3RkaWdhbmtqc3p1cHZyc3F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwMTY0MzcsImV4cCI6MjA4MjU5MjQzN30.lxRTafWUnKoQ4DBDTQEC9oioxYDejqtkT3apMC2Ervk\":*)",
+      "Bash(BASE_URL=\"https://auth.litplanz.com\")",
+      "Bash(TOKEN=\"eyJhbGciOiJFUzI1NiIsImtpZCI6IjIyMjhmMzE0LTZmNmYtNDY4Zi05NmJhLWNmMjdjNTRkYTljNyIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsa3RkaWdhbmtqc3p1cHZyc3F0LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJhYzA0YWE1Mi02NmYxLTRhOGItYWIwMy0wMjJjZjA3ZTk0MmUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzcxNTk4MzQzLCJpYXQiOjE3NzE1OTQ3NDMsImVtYWlsIjoiZGVsZXRlLXRlc3QtMTc3MTU5NDc0MkB0ZXN0LmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJkZWxldGUtdGVzdC0xNzcxNTk0NzQyQHRlc3QuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiYWMwNGFhNTItNjZmMS00YThiLWFiMDMtMDIyY2YwN2U5NDJlIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NzE1OTQ3NDN9XSwic2Vzc2lvbl9pZCI6ImQ2MmNkZDM5LTY3YTctNDk3ZS04ZjBhLThhY2MzYWMzOGIxZCIsImlzX2Fub255bW91cyI6ZmFsc2V9.DQAi017iDxQrqG2PHhChzOBaiPzH191ewh_ChQgH6a5Gle0pTfoEz1WTWGb0njMyioouXxzws7kGLi9dPhUiGA\")"
     ]
   }
 }
