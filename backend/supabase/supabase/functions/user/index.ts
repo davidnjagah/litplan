@@ -65,13 +65,17 @@ serve(async (req: Request) => {
     const pathParts = url.pathname.split('/').filter(Boolean);
     const method = req.method;
 
+    console.log(`[user] ${method} ${url.pathname} | pathParts: [${pathParts.join(', ')}]`);
+
     // Verify authentication
     const authResult = await verifyAuth(req, true);
     if (authResult.error) {
+      console.log(`[user] Auth failed for ${method} ${url.pathname}`);
       return authResult.error;
     }
 
     if (!authResult.user) {
+      console.log(`[user] No user found for ${method} ${url.pathname}`);
       return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
     }
 
@@ -79,6 +83,8 @@ serve(async (req: Request) => {
     const supabase = createAuthenticatedClient(authHeader);
     const serviceClient = createServiceClient();
     const userId = authResult.user.id;
+
+    console.log(`[user] Authenticated user: ${userId} | route: ${pathParts[1] || 'none'}`);
 
     // Route: POST /user/sync
     if (pathParts[1] === 'sync' && method === 'POST') {
@@ -441,34 +447,38 @@ async function removeDeviceToken(supabase: any, userId: string, token: string) {
  * 6. User record
  */
 async function deleteAccount(supabase: any, userId: string) {
-  console.log(`[user] Deleting account for user: ${userId}`);
+  console.log(`[user] === ACCOUNT DELETION START for user: ${userId} ===`);
 
   // Delete all related records (order matters for foreign keys)
   const tables = ['DeviceToken', 'ViewedCity', 'SavedCity', 'SearchHistory', 'Subscription'];
 
   for (const table of tables) {
+    console.log(`[user] Deleting from ${table} for user: ${userId}...`);
     const { error } = await supabase
       .from(table)
       .delete()
       .eq('userId', userId);
 
     if (error) {
-      console.error(`[user] Error deleting from ${table}:`, error);
-      // Continue deleting other tables even if one fails
+      console.error(`[user] Error deleting from ${table}:`, JSON.stringify(error));
+      // Continue deleting other tables even if one fails (table might not exist or have no rows)
+    } else {
+      console.log(`[user] Deleted from ${table} OK`);
     }
   }
 
   // Delete the user record
+  console.log(`[user] Deleting User record for: ${userId}...`);
   const { error: userError } = await supabase
     .from('User')
     .delete()
     .eq('id', userId);
 
   if (userError) {
-    console.error('[user] Error deleting user record:', userError);
-    return errorResponse('Failed to delete account', 500, 'DELETE_ERROR');
+    console.error(`[user] Error deleting user record:`, JSON.stringify(userError));
+    return errorResponse(`Failed to delete account: ${userError.message}`, 500, 'DELETE_ERROR');
   }
 
-  console.log(`[user] Account deleted successfully for user: ${userId}`);
+  console.log(`[user] === ACCOUNT DELETION COMPLETE for user: ${userId} ===`);
   return jsonResponse({ success: true, data: { message: 'Account deleted successfully' } });
 }

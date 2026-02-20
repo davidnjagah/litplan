@@ -304,7 +304,13 @@ struct AccountSettingsView: View {
 
         Task {
             do {
+                print("[AccountSettings] Starting account deletion...")
+                print("[AccountSettings] User ID: \(supabaseManager.currentUser?.id ?? "nil")")
+                print("[AccountSettings] User email: \(supabaseManager.currentUser?.email ?? "nil")")
+
                 try await APIService.shared.deleteAccount()
+
+                print("[AccountSettings] Account deletion succeeded, signing out...")
 
                 await MainActor.run {
                     isDeleting = false
@@ -314,9 +320,19 @@ struct AccountSettingsView: View {
                 // Sign out after dismissing the settings sheet
                 await authManager.signOut()
             } catch {
+                print("[AccountSettings] Account deletion failed: \(error)")
+                let errorMessage: String
+                if let apiError = error as? APIError {
+                    errorMessage = apiError.errorDescription ?? "Unknown error"
+                    print("[AccountSettings] APIError: \(errorMessage)")
+                } else {
+                    errorMessage = error.localizedDescription
+                    print("[AccountSettings] Error: \(errorMessage)")
+                }
+
                 await MainActor.run {
                     isDeleting = false
-                    deleteError = "Failed to delete account. Please try again."
+                    deleteError = errorMessage
                 }
             }
         }

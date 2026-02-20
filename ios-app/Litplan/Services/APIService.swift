@@ -546,11 +546,24 @@ class APIService: ObservableObject {
 
     /// Delete the current user's account and all associated data
     func deleteAccount() async throws {
-        let _: AccountDeleteResponse = try await request(
-            endpoint: Config.Endpoints.deleteAccount,
-            method: .DELETE,
-            requiresAuth: true
-        )
+        let endpoint = Config.Endpoints.deleteAccount
+        print("[APIService] DELETE account -> \(endpoint)")
+
+        do {
+            let response: AccountDeleteResponse = try await request(
+                endpoint: endpoint,
+                method: .DELETE,
+                requiresAuth: true
+            )
+            print("[APIService] Delete account response: success=\(response.success), message=\(response.data?.message ?? "nil")")
+        } catch {
+            print("[APIService] Delete account FAILED: \(error)")
+            print("[APIService] Error type: \(type(of: error))")
+            if let apiError = error as? APIError {
+                print("[APIService] APIError details: \(apiError.errorDescription ?? "unknown")")
+            }
+            throw error
+        }
     }
 
     // MARK: - Subscription API
