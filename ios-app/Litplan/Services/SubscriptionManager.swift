@@ -65,14 +65,14 @@ class SubscriptionManager: ObservableObject {
     /// StoreKit 2 product identifiers
     /// These must match the product IDs configured in App Store Connect and StoreKit Configuration
     private let productIDs = [
-        "com.litplan.pro.monthly",
-        "com.litplan.pro.yearly"
+        "com.litplan.pro.monthly.v2",
+        "com.litplan.pro.yearly.v2"
     ]
 
     /// Product ID constants for easy reference
     enum ProductID {
-        static let monthly = "com.litplan.pro.monthly"
-        static let yearly = "com.litplan.pro.yearly"
+        static let monthly = "com.litplan.pro.monthly.v2"
+        static let yearly = "com.litplan.pro.yearly.v2"
     }
 
     private var updateListenerTask: Task<Void, Error>?

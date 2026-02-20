@@ -18,6 +18,10 @@ struct AccountSettingsView: View {
     @State private var isSaving: Bool = false
     @State private var showSaveSuccess: Bool = false
     @State private var errorMessage: String?
+    @State private var showDeleteConfirmation: Bool = false
+    @State private var showDeleteFinalConfirmation: Bool = false
+    @State private var isDeleting: Bool = false
+    @State private var deleteError: String?
 
     var body: some View {
         NavigationStack {
@@ -250,23 +254,71 @@ struct AccountSettingsView: View {
                         Spacer()
 
                         Button(action: {
-                            // Account deletion would be handled here
-                            // For now, show a message that this needs to be done via support
+                            showDeleteConfirmation = true
                         }) {
-                            Text("Contact Support")
-                                .font(.callout)
-                                .foregroundColor(.error)
+                            if isDeleting {
+                                ProgressView()
+                                    .tint(.error)
+                            } else {
+                                Text("Delete")
+                                    .font(.callout)
+                                    .foregroundColor(.error)
+                            }
                         }
+                        .disabled(isDeleting)
+                    }
+
+                    if let deleteError {
+                        Text(deleteError)
+                            .font(.caption)
+                            .foregroundColor(.error)
                     }
                 }
                 .padding(Spacing.md)
             }
             .padding(.horizontal, Spacing.md)
+        }
+        .alert("Delete Account?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue", role: .destructive) {
+                showDeleteFinalConfirmation = true
+            }
+        } message: {
+            Text("This will permanently delete your account, saved cities, viewing history, and all associated data. This action cannot be undone.")
+        }
+        .alert("Are you sure?", isPresented: $showDeleteFinalConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete My Account", role: .destructive) {
+                performAccountDeletion()
+            }
+        } message: {
+            Text("Your account and all data will be permanently deleted. You will be signed out immediately.")
+        }
+    }
 
-            Text("To delete your account, please contact support at support@litplanz.com")
-                .font(.caption)
-                .foregroundColor(.textTertiary)
-                .padding(.horizontal, Spacing.md)
+    // MARK: - Account Deletion
+
+    private func performAccountDeletion() {
+        isDeleting = true
+        deleteError = nil
+
+        Task {
+            do {
+                try await APIService.shared.deleteAccount()
+
+                await MainActor.run {
+                    isDeleting = false
+                    dismiss()
+                }
+
+                // Sign out after dismissing the settings sheet
+                await authManager.signOut()
+            } catch {
+                await MainActor.run {
+                    isDeleting = false
+                    deleteError = "Failed to delete account. Please try again."
+                }
+            }
         }
     }
 

@@ -88,7 +88,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.litplan.pro.monthly",
+          "productID" : "com.litplan.pro.monthly.v2",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Litplan Pro Monthly",
           "subscriptionGroupID" : "litplan_pro_group",
@@ -117,7 +117,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.litplan.pro.yearly",
+          "productID" : "com.litplan.pro.yearly.v2",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Litplan Pro Yearly",
           "subscriptionGroupID" : "litplan_pro_group",

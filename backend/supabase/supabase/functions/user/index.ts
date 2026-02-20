@@ -123,6 +123,11 @@ serve(async (req: Request) => {
       return await removeDeviceToken(serviceClient, userId, token);
     }
 
+    // Route: DELETE /user/account - Delete user account and all data
+    if (pathParts[1] === 'account' && method === 'DELETE') {
+      return await deleteAccount(serviceClient, userId);
+    }
+
     return errorResponse('Not found', 404, 'NOT_FOUND');
   } catch (error) {
     console.error('[user] Error:', error);
@@ -423,4 +428,47 @@ async function removeDeviceToken(supabase: any, userId: string, token: string) {
 
   console.log(`[user] Removed device token for user: ${userId}`);
   return jsonResponse({ success: true });
+}
+
+/**
+ * Delete user account and all associated data
+ * Deletes in order to respect foreign key constraints:
+ * 1. Device tokens
+ * 2. Viewed cities
+ * 3. Saved cities
+ * 4. Search history
+ * 5. Subscription
+ * 6. User record
+ */
+async function deleteAccount(supabase: any, userId: string) {
+  console.log(`[user] Deleting account for user: ${userId}`);
+
+  // Delete all related records (order matters for foreign keys)
+  const tables = ['DeviceToken', 'ViewedCity', 'SavedCity', 'SearchHistory', 'Subscription'];
+
+  for (const table of tables) {
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .eq('userId', userId);
+
+    if (error) {
+      console.error(`[user] Error deleting from ${table}:`, error);
+      // Continue deleting other tables even if one fails
+    }
+  }
+
+  // Delete the user record
+  const { error: userError } = await supabase
+    .from('User')
+    .delete()
+    .eq('id', userId);
+
+  if (userError) {
+    console.error('[user] Error deleting user record:', userError);
+    return errorResponse('Failed to delete account', 500, 'DELETE_ERROR');
+  }
+
+  console.log(`[user] Account deleted successfully for user: ${userId}`);
+  return jsonResponse({ success: true, data: { message: 'Account deleted successfully' } });
 }

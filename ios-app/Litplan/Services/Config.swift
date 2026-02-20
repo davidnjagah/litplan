@@ -107,6 +107,11 @@ enum Config {
             return "\(apiBaseURL)/user/viewed-cities/\(cityId)"
         }
 
+        /// Delete user account endpoint - Supabase Edge Function
+        static var deleteAccount: String {
+            return "\(apiBaseURL)/user/account"
+        }
+
         /// Group flows endpoint - Supabase Edge Function
         static var groupFlows: String {
             return "\(apiBaseURL)/group-flows"

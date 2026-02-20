@@ -179,7 +179,7 @@ struct HelpSupportView: View {
                 faqItem(
                     id: "account",
                     question: "How do I delete my account?",
-                    answer: "To delete your account, please contact our support team at support@litplanz.com. We'll process your request within 48 hours."
+                    answer: "You can delete your account from Account Settings. Go to your Profile, tap Account Settings, and scroll to the Danger Zone section. Tap Delete to permanently remove your account and all associated data."
                 )
             }
             .padding(.horizontal, Spacing.md)

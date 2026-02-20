@@ -542,6 +542,17 @@ class APIService: ObservableObject {
         }
     }
 
+    // MARK: - Account Deletion API
+
+    /// Delete the current user's account and all associated data
+    func deleteAccount() async throws {
+        let _: AccountDeleteResponse = try await request(
+            endpoint: Config.Endpoints.deleteAccount,
+            method: .DELETE,
+            requiresAuth: true
+        )
+    }
+
     // MARK: - Subscription API
 
     /// Get current subscription status from the backend
@@ -686,6 +697,15 @@ struct AppConfigResponse: Codable {
 struct HealthResponse: Codable {
     let status: String
     let timestamp: String?
+}
+
+struct AccountDeleteResponse: Codable {
+    let success: Bool
+    let data: AccountDeleteData?
+}
+
+struct AccountDeleteData: Codable {
+    let message: String?
 }
 
 // MARK: - Subscription Response Models

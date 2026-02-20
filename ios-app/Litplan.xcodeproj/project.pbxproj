@@ -72,6 +72,8 @@
 		C498C87825294BEA972543A8 /* AsyncImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A032EDD07B714703B0CCB656 /* AsyncImageView.swift */; };
 		CAD41E35D25DF39969629027 /* BoltThemeSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400B41C29D041B4598733AE6 /* BoltThemeSelector.swift */; };
 		CB8313F94F443E7030E30853 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44B482D5F2E37EF24D5C64A /* MotionManager.swift */; };
+		CD01001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD01002 /* AppDelegate.swift */; };
+		CD02001 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD02002 /* PushNotificationManager.swift */; };
 		CE244B833F4794EEAEC7FA1F /* BoltView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E852CC197ADBBA78C9D823F1 /* BoltView.swift */; };
 		CP01001 /* CopyableAddressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CP01002 /* CopyableAddressView.swift */; };
 		CPS002 /* CityPreloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CPS001 /* CityPreloadService.swift */; };
@@ -90,8 +92,6 @@
 		SP13001 /* MyPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP13002 /* MyPlansView.swift */; };
 		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
 		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
-		CD01001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD01002 /* AppDelegate.swift */; };
-		CD02001 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD02002 /* PushNotificationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -165,6 +165,8 @@
 		B7A662B1B8B6BDB69709844A /* BoltTokenManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BoltTokenManager.swift; sourceTree = "<group>"; };
 		B92231827033BF470DBC2BA8 /* AccountSettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
 		BCC5992D4C6E4CE2B28FBE34 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CD01002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		CD02002 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		CP01002 /* CopyableAddressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyableAddressView.swift; sourceTree = "<group>"; };
 		CPS001 /* CityPreloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPreloadService.swift; sourceTree = "<group>"; };
 		CSS002 /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheService.swift; sourceTree = "<group>"; };
@@ -181,8 +183,6 @@
 		SP13002 /* MyPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPlansView.swift; sourceTree = "<group>"; };
 		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
 		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
-		CD01002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		CD02002 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -675,7 +675,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Litplan/Litplan.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Litplan/Info.plist;
@@ -696,7 +696,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -707,7 +707,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Litplan/Litplan.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Litplan/Info.plist;
@@ -728,7 +728,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
