@@ -76,19 +76,28 @@ class SupabaseManager: ObservableObject {
     }
 
     /// Get the current access token for API calls
+    /// Automatically attempts a session refresh if the initial token fetch fails
     /// - Returns: The access token if available
     func getAccessToken() async -> String? {
         do {
             let session = try await client.auth.session
-            if Config.enableDebugLogging {
-                print("[SupabaseManager] Got access token, length: \(session.accessToken.count), user: \(session.user.id)")
-            }
+            print("[SupabaseManager] Got access token, length: \(session.accessToken.count), user: \(session.user.id)")
             return session.accessToken
         } catch {
-            if Config.enableDebugLogging {
-                print("[SupabaseManager] Failed to get access token: \(error)")
+            print("[SupabaseManager] Failed to get access token: \(error)")
+            print("[SupabaseManager] Attempting session refresh...")
+
+            // Try refreshing the session before giving up
+            do {
+                let refreshedSession = try await client.auth.refreshSession()
+                print("[SupabaseManager] Session refreshed, new token length: \(refreshedSession.accessToken.count)")
+                self.currentSession = Session(from: refreshedSession)
+                self.currentUser = SupabaseUser(from: refreshedSession.user)
+                return refreshedSession.accessToken
+            } catch {
+                print("[SupabaseManager] Session refresh also failed: \(error)")
+                return nil
             }
-            return nil
         }
     }
 

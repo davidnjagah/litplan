@@ -308,6 +308,17 @@ struct AccountSettingsView: View {
                 print("[AccountSettings] User ID: \(supabaseManager.currentUser?.id ?? "nil")")
                 print("[AccountSettings] User email: \(supabaseManager.currentUser?.email ?? "nil")")
 
+                // Refresh session to ensure we have a valid token
+                let token = await supabaseManager.getAccessToken()
+                print("[AccountSettings] Token available: \(token != nil), length: \(token?.count ?? 0)")
+
+                if token == nil {
+                    print("[AccountSettings] No token, attempting session refresh...")
+                    try await supabaseManager.refreshSession()
+                    let refreshedToken = await supabaseManager.getAccessToken()
+                    print("[AccountSettings] After refresh - token available: \(refreshedToken != nil)")
+                }
+
                 try await APIService.shared.deleteAccount()
 
                 print("[AccountSettings] Account deletion succeeded, signing out...")
