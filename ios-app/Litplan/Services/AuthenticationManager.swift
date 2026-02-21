@@ -179,6 +179,20 @@ class AuthenticationManager: NSObject, ObservableObject {
                 // Sync with backend
                 await syncUserWithBackend()
 
+                // Send Apple authorization code to backend for token revocation support (TN3194)
+                // Fire-and-forget: don't block sign-in if this fails
+                if let authCodeData = appleIDCredential.authorizationCode,
+                   let authCodeString = String(data: authCodeData, encoding: .utf8) {
+                    Task {
+                        await APIService.shared.sendAppleAuthCode(authCodeString)
+                    }
+                    if Config.enableDebugLogging {
+                        print("[AuthenticationManager] Sent Apple auth code to backend for token storage")
+                    }
+                } else if Config.enableDebugLogging {
+                    print("[AuthenticationManager] No Apple authorization code available to send")
+                }
+
                 if Config.enableDebugLogging {
                     print("[AuthenticationManager] Apple Sign In successful for user: \(session.user.id)")
                 }

@@ -481,6 +481,37 @@ class APIService: ObservableObject {
         return response.profile
     }
 
+    // MARK: - Apple Auth Code API
+
+    /// Send Apple authorization code to backend for refresh token storage (TN3194)
+    /// This is fire-and-forget — failures are logged but don't block sign-in
+    func sendAppleAuthCode(_ authorizationCode: String) async {
+        struct AppleAuthCodeRequest: Codable {
+            let authorizationCode: String
+        }
+
+        do {
+            let response: AppleAuthCodeResponse = try await request(
+                endpoint: Config.Endpoints.appleAuthCode,
+                method: .POST,
+                body: AppleAuthCodeRequest(authorizationCode: authorizationCode),
+                requiresAuth: true
+            )
+
+            if Config.enableDebugLogging {
+                if let warning = response.warning {
+                    print("[APIService] Apple auth code warning: \(warning)")
+                } else {
+                    print("[APIService] Apple auth code exchanged successfully")
+                }
+            }
+        } catch {
+            if Config.enableDebugLogging {
+                print("[APIService] Apple auth code exchange failed (non-blocking): \(error)")
+            }
+        }
+    }
+
     // MARK: - Viewed Cities API
 
     /// Fetch user's viewed cities with pagination
@@ -719,6 +750,11 @@ struct AccountDeleteResponse: Codable {
 
 struct AccountDeleteData: Codable {
     let message: String?
+}
+
+struct AppleAuthCodeResponse: Codable {
+    let success: Bool
+    let warning: String?
 }
 
 // MARK: - Subscription Response Models

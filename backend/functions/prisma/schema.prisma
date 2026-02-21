@@ -29,6 +29,7 @@ model User {
   email           String?   @unique
   displayName     String?
   imageUrl        String?
+  appleRefreshToken String? // Stored Apple refresh token for token revocation (TN3194)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

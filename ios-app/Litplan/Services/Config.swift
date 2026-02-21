@@ -112,6 +112,12 @@ enum Config {
             return "\(apiBaseURL)/user/account"
         }
 
+        /// Apple auth code exchange endpoint - Supabase Edge Function
+        /// Sends Apple authorization code to backend for refresh token storage (TN3194)
+        static var appleAuthCode: String {
+            return "\(apiBaseURL)/user/apple-auth-code"
+        }
+
         /// Group flows endpoint - Supabase Edge Function
         static var groupFlows: String {
             return "\(apiBaseURL)/group-flows"

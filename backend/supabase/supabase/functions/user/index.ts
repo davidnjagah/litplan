@@ -16,6 +16,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, createAuthenticatedClient } from '../_shared/supabase-client.ts';
 import { verifyAuth } from '../_shared/auth.ts';
+import { exchangeAppleAuthCode, revokeAppleToken } from '../_shared/apple-auth.ts';
 
 /**
  * Generate a CUID-like ID compatible with Prisma's @default(cuid())
@@ -115,6 +116,12 @@ serve(async (req: Request) => {
     if (pathParts[1] === 'sync' && method === 'POST') {
       const body = await req.json();
       return await syncUser(serviceClient, authUserId, body);
+    }
+
+    // Route: POST /user/apple-auth-code — exchange Apple auth code for refresh token
+    if (pathParts[1] === 'apple-auth-code' && method === 'POST') {
+      const body = await req.json();
+      return await storeAppleAuthCode(serviceClient, authUserId, body);
     }
 
     // Route: DELETE /user/account — uses authUserId directly (does its own lookup)
@@ -506,6 +513,42 @@ async function removeDeviceToken(supabase: any, userId: string, token: string) {
 }
 
 /**
+ * Exchange Apple authorization code for refresh token and store it
+ * Called from iOS after successful Sign in with Apple
+ */
+async function storeAppleAuthCode(supabase: any, authUserId: string, data: any) {
+  const { authorizationCode } = data;
+
+  if (!authorizationCode) {
+    return errorResponse('authorizationCode is required', 400, 'MISSING_PARAM');
+  }
+
+  console.log(`[user] Exchanging Apple auth code for auth user: ${authUserId}`);
+
+  try {
+    const refreshToken = await exchangeAppleAuthCode(authorizationCode);
+
+    // Store the refresh token on the User record
+    const { error } = await supabase
+      .from('User')
+      .update({ appleRefreshToken: refreshToken })
+      .eq('supabaseUserId', authUserId);
+
+    if (error) {
+      console.error('[user] Failed to store Apple refresh token:', error);
+      return jsonResponse({ success: true, warning: 'Token exchanged but failed to store' });
+    }
+
+    console.log(`[user] Apple refresh token stored for auth user: ${authUserId}`);
+    return jsonResponse({ success: true });
+  } catch (error) {
+    console.error('[user] Apple auth code exchange failed:', error);
+    // Non-blocking: return success with warning so sign-in isn't affected
+    return jsonResponse({ success: false, warning: `Apple token exchange failed: ${error.message}` });
+  }
+}
+
+/**
  * Delete user account and all associated data
  *
  * The User table uses a CUID as its `id` column, with the Supabase Auth UUID
@@ -513,20 +556,21 @@ async function removeDeviceToken(supabase: any, userId: string, token: string) {
  * So we must first look up the CUID, then delete by that.
  *
  * Deletes in order to respect foreign key constraints:
- * 1. Device tokens
- * 2. Viewed cities
- * 3. Saved cities
- * 4. Search history
- * 5. Subscription
- * 6. User record
+ * 1. Revoke Apple token (if present)
+ * 2. Device tokens
+ * 3. Viewed cities
+ * 4. Saved cities
+ * 5. Search history
+ * 6. Subscription
+ * 7. User record
  */
 async function deleteAccount(supabase: any, authUserId: string) {
   console.log(`[user] === ACCOUNT DELETION START for auth user: ${authUserId} ===`);
 
-  // Look up the User record by supabaseUserId to get the CUID
+  // Look up the User record by supabaseUserId to get the CUID and Apple refresh token
   const { data: user, error: lookupError } = await supabase
     .from('User')
-    .select('id')
+    .select('id, appleRefreshToken')
     .eq('supabaseUserId', authUserId)
     .single();
 
@@ -537,6 +581,19 @@ async function deleteAccount(supabase: any, authUserId: string) {
 
   const dbUserId = user.id; // This is the CUID
   console.log(`[user] Resolved auth user ${authUserId} -> DB user ${dbUserId}`);
+
+  // Revoke Apple token if present (non-blocking: deletion proceeds even if this fails)
+  if (user.appleRefreshToken) {
+    try {
+      console.log(`[user] Revoking Apple token for auth user: ${authUserId}...`);
+      await revokeAppleToken(user.appleRefreshToken);
+      console.log(`[user] Apple token revoked successfully for auth user: ${authUserId}`);
+    } catch (error) {
+      console.error(`[user] Apple token revocation failed (proceeding with deletion):`, error);
+    }
+  } else {
+    console.log(`[user] No Apple refresh token found, skipping revocation`);
+  }
 
   // Delete all related records using the CUID (order matters for foreign keys)
   const tables = ['DeviceToken', 'ViewedCity', 'SavedCity', 'SearchHistory', 'Subscription'];
