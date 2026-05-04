@@ -16,151 +16,123 @@
             min-height: 100vh;
             padding: 24px;
         }
-        .container {
-            text-align: center;
-            max-width: 400px;
-            width: 100%;
-        }
+        .container { text-align: center; max-width: 400px; width: 100%; }
         .icon {
-            width: 80px;
-            height: 80px;
+            width: 80px; height: 80px;
             background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
             border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 40px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px; font-size: 40px;
         }
-        h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: #ffffff;
-        }
-        p {
-            font-size: 16px;
-            color: #a0a0b0;
-            line-height: 1.6;
-            margin-bottom: 24px;
-        }
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+        p { font-size: 16px; color: #a0a0b0; line-height: 1.6; margin-bottom: 24px; }
         .btn {
-            display: inline-block;
-            padding: 16px 40px;
+            display: block; padding: 16px 40px;
             background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            cursor: pointer;
-            border: none;
-            width: 100%;
+            color: #ffffff; text-decoration: none;
+            font-size: 16px; font-weight: 600; border-radius: 12px;
+            margin-bottom: 12px; width: 100%;
+        }
+        .btn-secondary {
+            display: block; padding: 14px 40px;
+            background: transparent;
+            border: 1px solid #a855f7;
+            color: #a855f7; text-decoration: none;
+            font-size: 15px; font-weight: 600; border-radius: 12px;
+            margin-bottom: 12px; width: 100%;
         }
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #2a2a35;
-            border-top-color: #a855f7;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            width: 40px; height: 40px;
+            border: 3px solid #2a2a35; border-top-color: #a855f7;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
             margin: 0 auto 24px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .error { color: #ef4444; font-size: 14px; margin-top: 12px; display: none; }
-        .store-badge {
-            display: block;
-            margin: 16px auto 0;
-            height: 44px;
-        }
+        .store-badge { display: block; margin: 16px auto 0; height: 44px; }
+        .note { font-size: 13px; color: #606070; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <div class="container" id="loading-state">
-        <div class="spinner"></div>
-        <h1 id="heading">Opening LitPlanz...</h1>
-        <p id="subtext">You'll be redirected to the app automatically.</p>
-    </div>
+<div id="app"></div>
 
-    <div class="container" id="manual-state" style="display:none">
-        <div class="icon">🗺️</div>
-        <h1 id="manual-heading">Almost there!</h1>
-        <p id="manual-subtext">Tap the button below to open LitPlanz and complete the process.</p>
-        <a href="#" id="open-app-btn" class="btn">Open in LitPlanz</a>
-        <p style="font-size:13px; color:#707080; margin-bottom:8px;">Don't have the app yet?</p>
-        <a href="https://apps.apple.com/app/litplanz/id6741587958" target="_blank">
-            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
-                 alt="Download on the App Store" class="store-badge">
-        </a>
-        <p class="error" id="error-msg"></p>
-    </div>
+<script>
+    function getParams() {
+        var params = {};
+        new URLSearchParams(window.location.search).forEach(function(v, k) { params[k] = v; });
+        if (window.location.hash) {
+            new URLSearchParams(window.location.hash.replace('#', '')).forEach(function(v, k) { params[k] = v; });
+        }
+        return params;
+    }
 
-    <script>
-        // Parse all relevant params from URL query string and fragment
-        function getParams() {
-            const params = {};
-            // Query string
-            new URLSearchParams(window.location.search).forEach((v, k) => params[k] = v);
-            // Fragment (Supabase implicit flow puts tokens here)
-            if (window.location.hash) {
-                new URLSearchParams(window.location.hash.replace('#', '')).forEach((v, k) => params[k] = v);
-            }
-            return params;
+    function buildDeepLink(params) {
+        var type = params.type || 'recovery';
+        var link = 'com.litplanz.app://auth-callback?type=' + encodeURIComponent(type);
+        if (params.token_hash)    link += '&token_hash='    + encodeURIComponent(params.token_hash);
+        if (params.token)         link += '&token='         + encodeURIComponent(params.token);
+        if (params.access_token)  link += '&access_token='  + encodeURIComponent(params.access_token);
+        if (params.refresh_token) link += '&refresh_token=' + encodeURIComponent(params.refresh_token);
+        return link;
+    }
+
+    function buildSafariLink() {
+        // Rebuilds current page URL with safari-https:// scheme to escape Gmail WebView
+        var current = window.location.href.replace(/^https?:\/\//, '');
+        return 'safari-https://' + current;
+    }
+
+    function isIOS() {
+        return /iphone|ipad|ipod/i.test(navigator.userAgent);
+    }
+
+    function isDesktop() {
+        return !/iphone|ipad|ipod|android/i.test(navigator.userAgent);
+    }
+
+    var labels = {
+        recovery:  { h: 'Reset Your Password',      s: 'Open LitPlanz to set your new password.', btn: 'Open LitPlanz to Reset Password' },
+        signup:    { h: 'Confirm Your Email',         s: 'Open LitPlanz to activate your account.', btn: 'Open LitPlanz to Confirm Email' },
+        magiclink: { h: 'Sign In to LitPlanz',        s: 'Open LitPlanz to complete sign in.',       btn: 'Open LitPlanz to Sign In' },
+        invite:    { h: 'You\'ve Been Invited',       s: 'Open LitPlanz to accept your invitation.', btn: 'Open LitPlanz to Accept' },
+    };
+
+    function render() {
+        var params  = getParams();
+        var type    = params.type || 'recovery';
+        var copy    = labels[type] || labels.recovery;
+        var deepLink = buildDeepLink(params);
+        var el = document.getElementById('app');
+
+        if (isDesktop()) {
+            el.innerHTML =
+                '<div class="container">' +
+                  '<div class="icon">🗺️</div>' +
+                  '<h1>' + copy.h + '</h1>' +
+                  '<p>This link is designed to open the LitPlanz app on your iPhone. Please open this email on your iPhone and tap the button again.</p>' +
+                  '<a href="https://apps.apple.com/app/litplanz/id6741587958" target="_blank" class="btn">Download LitPlanz on iPhone</a>' +
+                '</div>';
+            return;
         }
 
-        function buildDeepLink(params) {
-            const type = params.type || params.token_type || 'recovery';
-            const tokenHash = params.token_hash || params.token;
-            const accessToken = params.access_token;
-            const refreshToken = params.refresh_token;
+        // iOS — render the open-in-app page
+        el.innerHTML =
+            '<div class="container">' +
+              '<div class="icon">🗺️</div>' +
+              '<h1>' + copy.h + '</h1>' +
+              '<p>' + copy.s + '</p>' +
+              // Primary: direct deep link as <a> tag (works in Safari, sometimes in WebView)
+              '<a href="' + deepLink + '" class="btn">' + copy.btn + '</a>' +
+              // Secondary: escape Gmail WebView → open in Safari → Safari can open app
+              '<a href="' + buildSafariLink() + '" class="btn-secondary">Open in Safari First</a>' +
+              '<p style="font-size:13px;color:#606070;margin-top:8px;">If the button above doesn\'t open the app, tap "Open in Safari First" then try again.</p>' +
+              '<p style="font-size:13px;color:#606070;margin-top:20px;">Don\'t have the app?</p>' +
+              '<a href="https://apps.apple.com/app/litplanz/id6741587958" target="_blank">' +
+                '<img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" class="store-badge">' +
+              '</a>' +
+            '</div>';
+    }
 
-            let deepLink = 'com.litplanz.app://auth-callback?type=' + encodeURIComponent(type);
-            if (tokenHash)    deepLink += '&token_hash=' + encodeURIComponent(tokenHash);
-            if (accessToken)  deepLink += '&access_token=' + encodeURIComponent(accessToken);
-            if (refreshToken) deepLink += '&refresh_token=' + encodeURIComponent(refreshToken);
-            return deepLink;
-        }
-
-        function setHeadingForType(type) {
-            const headings = {
-                recovery:    { h: 'Reset Your Password',       s: 'Opening LitPlanz to complete your password reset...' },
-                signup:      { h: 'Confirming Your Email',      s: 'Opening LitPlanz to activate your account...' },
-                magiclink:   { h: 'Signing You In',             s: 'Opening LitPlanz to complete sign in...' },
-                invite:      { h: 'Accepting Your Invitation',  s: 'Opening LitPlanz to join...' },
-            };
-            const copy = headings[type] || headings.recovery;
-            document.getElementById('heading').textContent = copy.h;
-            document.getElementById('subtext').textContent = copy.s;
-
-            const manualCopy = {
-                recovery:  { h: 'Complete Password Reset',    s: 'Tap below to open LitPlanz and set your new password.' },
-                signup:    { h: 'Confirm Your Email',          s: 'Tap below to open LitPlanz and activate your account.' },
-                magiclink: { h: 'Sign In to LitPlanz',         s: 'Tap below to open LitPlanz and complete sign in.' },
-                invite:    { h: 'Accept Your Invitation',      s: 'Tap below to open LitPlanz and join.' },
-            };
-            const mc = manualCopy[type] || manualCopy.recovery;
-            document.getElementById('manual-heading').textContent = mc.h;
-            document.getElementById('manual-subtext').textContent = mc.s;
-        }
-
-        (function init() {
-            const params = getParams();
-            const type = params.type || 'recovery';
-            setHeadingForType(type);
-
-            const deepLink = buildDeepLink(params);
-            document.getElementById('open-app-btn').href = deepLink;
-
-            // Try to open the app automatically
-            window.location.href = deepLink;
-
-            // After a short delay, if we're still here show the manual button
-            setTimeout(function () {
-                document.getElementById('loading-state').style.display = 'none';
-                document.getElementById('manual-state').style.display = 'block';
-            }, 2000);
-        })();
-    </script>
+    render();
+</script>
 </body>
 </html>
