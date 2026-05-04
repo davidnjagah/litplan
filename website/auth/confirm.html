@@ -125,6 +125,8 @@
               // Secondary: escape Gmail WebView → open in Safari → Safari can open app
               '<a href="' + buildSafariLink() + '" class="btn-secondary">Open in Safari First</a>' +
               '<p style="font-size:13px;color:#606070;margin-top:8px;">If the button above doesn\'t open the app, tap "Open in Safari First" then try again.</p>' +
+              // Tertiary: web-based reset for recovery flow
+              (type === 'recovery' ? '<a href="https://litplanz.com/auth/reset-password' + window.location.search + window.location.hash + '" class="btn-secondary" style="margin-top:8px">Reset Password in Browser</a>' : '') +
               '<p style="font-size:13px;color:#606070;margin-top:20px;">Don\'t have the app?</p>' +
               '<a href="https://apps.apple.com/app/litplanz/id6758998992" target="_blank">' +
                 '<img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" class="store-badge">' +

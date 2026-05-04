@@ -563,17 +563,26 @@ class AuthenticationManager: NSObject, ObservableObject {
         }
 
         do {
-            // First verify the recovery token
-            let response = try await supabaseManager.client.auth.verifyOTP(
-                tokenHash: tokenHash,
-                type: .recovery
-            )
-
-            // Update session temporarily
-            guard let supabaseSession = response.session else {
-                throw AuthError.unknown("No session returned from recovery verification")
+            if tokenHash.hasPrefix("eyJ") {
+                // Implicit flow: tokenHash encodes "accessToken|refreshToken"
+                let parts = tokenHash.split(separator: "|", maxSplits: 1).map(String.init)
+                let accessToken = parts[0]
+                let refreshToken = parts.count > 1 ? parts[1] : ""
+                _ = try await supabaseManager.client.auth.setSession(
+                    accessToken: accessToken,
+                    refreshToken: refreshToken
+                )
+            } else {
+                // PKCE / OTP flow: exchange token hash for a session
+                let response = try await supabaseManager.client.auth.verifyOTP(
+                    tokenHash: tokenHash,
+                    type: .recovery
+                )
+                guard let supabaseSession = response.session else {
+                    throw AuthError.unknown("No session returned from recovery verification")
+                }
+                supabaseManager.updateSession(Session(from: supabaseSession))
             }
-            supabaseManager.updateSession(Session(from: supabaseSession))
 
             // Now update the password
             try await supabaseManager.client.auth.update(user: UserAttributes(password: newPassword))

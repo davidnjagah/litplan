@@ -88,23 +88,23 @@ enum DeepLinkType: Equatable {
         case "auth-callback", "oauth-callback", "callback":
             // Check for type parameter to determine specific flow
             if let typeValue = type {
+                let accessToken = queryItems.first(where: { $0.name == "access_token" })?.value
                 switch typeValue {
                 case "signup", "email":
-                    if let token = tokenHash {
-                        return .emailVerification(tokenHash: token)
-                    }
+                    if let token = tokenHash { return .emailVerification(tokenHash: token) }
                 case "recovery":
-                    if let token = tokenHash {
-                        return .passwordReset(tokenHash: token)
+                    // Prefer token_hash (PKCE flow), fall back to access_token (implicit flow)
+                    if let token = tokenHash { return .passwordReset(tokenHash: token) }
+                    if let token = accessToken {
+                        // Encode refresh_token alongside using | separator so AuthManager can setSession
+                        let refresh = queryItems.first(where: { $0.name == "refresh_token" })?.value ?? ""
+                        return .passwordReset(tokenHash: "\(token)|\(refresh)")
                     }
                 case "magiclink":
-                    if let token = tokenHash {
-                        return .magicLink(tokenHash: token)
-                    }
+                    if let token = tokenHash { return .magicLink(tokenHash: token) }
+                    if let token = accessToken { return .magicLink(tokenHash: token) }
                 case "invite":
-                    if let token = tokenHash {
-                        return .invite(tokenHash: token)
-                    }
+                    if let token = tokenHash { return .invite(tokenHash: token) }
                 default:
                     break
                 }
