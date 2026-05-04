@@ -405,7 +405,8 @@ class AuthenticationManager: NSObject, ObservableObject {
             let response = try await supabaseManager.client.auth.signUp(
                 email: email,
                 password: password,
-                data: metadata
+                data: metadata,
+                redirectTo: URL(string: "https://litplanz.com/auth/confirm?type=signup")!
             )
 
             if let session = response.session {
@@ -454,7 +455,10 @@ class AuthenticationManager: NSObject, ObservableObject {
         }
 
         do {
-            try await supabaseManager.client.auth.resetPasswordForEmail(email)
+            try await supabaseManager.client.auth.resetPasswordForEmail(
+                email,
+                redirectTo: URL(string: "https://litplanz.com/auth/confirm?type=recovery")!
+            )
             if Config.enableDebugLogging {
                 print("[AuthenticationManager] Password reset email sent to: \(email)")
             }

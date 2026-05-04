@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LitPlanz - Opening App...</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0a0f;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .container {
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+        p {
+            font-size: 16px;
+            color: #a0a0b0;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 16px 40px;
+            background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            border: none;
+            width: 100%;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #2a2a35;
+            border-top-color: #a855f7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 24px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error { color: #ef4444; font-size: 14px; margin-top: 12px; display: none; }
+        .store-badge {
+            display: block;
+            margin: 16px auto 0;
+            height: 44px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="loading-state">
+        <div class="spinner"></div>
+        <h1 id="heading">Opening LitPlanz...</h1>
+        <p id="subtext">You'll be redirected to the app automatically.</p>
+    </div>
+
+    <div class="container" id="manual-state" style="display:none">
+        <div class="icon">🗺️</div>
+        <h1 id="manual-heading">Almost there!</h1>
+        <p id="manual-subtext">Tap the button below to open LitPlanz and complete the process.</p>
+        <a href="#" id="open-app-btn" class="btn">Open in LitPlanz</a>
+        <p style="font-size:13px; color:#707080; margin-bottom:8px;">Don't have the app yet?</p>
+        <a href="https://apps.apple.com/app/litplanz/id6741587958" target="_blank">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                 alt="Download on the App Store" class="store-badge">
+        </a>
+        <p class="error" id="error-msg"></p>
+    </div>
+
+    <script>
+        // Parse all relevant params from URL query string and fragment
+        function getParams() {
+            const params = {};
+            // Query string
+            new URLSearchParams(window.location.search).forEach((v, k) => params[k] = v);
+            // Fragment (Supabase implicit flow puts tokens here)
+            if (window.location.hash) {
+                new URLSearchParams(window.location.hash.replace('#', '')).forEach((v, k) => params[k] = v);
+            }
+            return params;
+        }
+
+        function buildDeepLink(params) {
+            const type = params.type || params.token_type || 'recovery';
+            const tokenHash = params.token_hash || params.token;
+            const accessToken = params.access_token;
+            const refreshToken = params.refresh_token;
+
+            let deepLink = 'com.litplanz.app://auth-callback?type=' + encodeURIComponent(type);
+            if (tokenHash)    deepLink += '&token_hash=' + encodeURIComponent(tokenHash);
+            if (accessToken)  deepLink += '&access_token=' + encodeURIComponent(accessToken);
+            if (refreshToken) deepLink += '&refresh_token=' + encodeURIComponent(refreshToken);
+            return deepLink;
+        }
+
+        function setHeadingForType(type) {
+            const headings = {
+                recovery:    { h: 'Reset Your Password',       s: 'Opening LitPlanz to complete your password reset...' },
+                signup:      { h: 'Confirming Your Email',      s: 'Opening LitPlanz to activate your account...' },
+                magiclink:   { h: 'Signing You In',             s: 'Opening LitPlanz to complete sign in...' },
+                invite:      { h: 'Accepting Your Invitation',  s: 'Opening LitPlanz to join...' },
+            };
+            const copy = headings[type] || headings.recovery;
+            document.getElementById('heading').textContent = copy.h;
+            document.getElementById('subtext').textContent = copy.s;
+
+            const manualCopy = {
+                recovery:  { h: 'Complete Password Reset',    s: 'Tap below to open LitPlanz and set your new password.' },
+                signup:    { h: 'Confirm Your Email',          s: 'Tap below to open LitPlanz and activate your account.' },
+                magiclink: { h: 'Sign In to LitPlanz',         s: 'Tap below to open LitPlanz and complete sign in.' },
+                invite:    { h: 'Accept Your Invitation',      s: 'Tap below to open LitPlanz and join.' },
+            };
+            const mc = manualCopy[type] || manualCopy.recovery;
+            document.getElementById('manual-heading').textContent = mc.h;
+            document.getElementById('manual-subtext').textContent = mc.s;
+        }
+
+        (function init() {
+            const params = getParams();
+            const type = params.type || 'recovery';
+            setHeadingForType(type);
+
+            const deepLink = buildDeepLink(params);
+            document.getElementById('open-app-btn').href = deepLink;
+
+            // Try to open the app automatically
+            window.location.href = deepLink;
+
+            // After a short delay, if we're still here show the manual button
+            setTimeout(function () {
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('manual-state').style.display = 'block';
+            }, 2000);
+        })();
+    </script>
+</body>
+</html>
