@@ -23,6 +23,8 @@ struct RouteMapView: View {
     let venues: [VenueLocation]
     var planTitle: String = "Route Plan"
 
+    @Environment(\.openURL) private var openURL
+
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var routePolylines: [MKRoute] = []
     @State private var isLoadingRoutes: Bool = true
@@ -87,10 +89,6 @@ struct RouteMapView: View {
                     MapScaleView()
                     MapUserLocationButton()
                 }
-                .onTapGesture {
-                    openDirectionsInAppleMaps()
-                }
-
                 // Directions button - top left corner
                 Button(action: {
                     openDirectionsInAppleMaps()
@@ -136,8 +134,8 @@ struct RouteMapView: View {
                     .stroke(Color.surfaceSecondary, lineWidth: 1)
             )
 
-            // Tap map prompt
-            Text("Tap map to see directions")
+            // Open in Maps prompt
+            Text("Tap \(Image(systemName: "map")) to open full directions")
                 .font(.system(size: 12))
                 .foregroundColor(.textTertiary)
                 .frame(maxWidth: .infinity)
@@ -190,16 +188,28 @@ struct RouteMapView: View {
         guard !venues.isEmpty else { return }
 
         let sortedVenues = venues.sorted { $0.order < $1.order }
-        let mapItems = sortedVenues.map { venue -> MKMapItem in
-            let placemark = MKPlacemark(coordinate: venue.coordinate)
+
+        if sortedVenues.count == 1 {
+            let placemark = MKPlacemark(coordinate: sortedVenues[0].coordinate)
             let mapItem = MKMapItem(placemark: placemark)
-            mapItem.name = venue.name
-            return mapItem
+            mapItem.name = sortedVenues[0].name
+            mapItem.openInMaps()
+            return
         }
 
-        MKMapItem.openMaps(with: mapItems, launchOptions: [
-            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
-        ])
+        // MKMapItem.openMaps only routes first→last, ignoring intermediate stops.
+        // Use the Apple Maps URL scheme with +to: chaining for proper multi-stop routing.
+        let source = sortedVenues[0]
+        let waypoints = Array(sortedVenues.dropFirst())
+
+        let saddr = "\(source.coordinate.latitude),\(source.coordinate.longitude)"
+        let daddrParts = waypoints.map { "\($0.coordinate.latitude),\($0.coordinate.longitude)" }
+        let daddr = daddrParts.joined(separator: "+to:")
+
+        let urlString = "maps://?saddr=\(saddr)&daddr=\(daddr)&dirflg=w"
+        if let url = URL(string: urlString) {
+            openURL(url)
+        }
     }
 
     // MARK: - Route Legend
