@@ -150,21 +150,24 @@ struct BoltView: View {
 
     // Computed: Whether bolt button can be pressed
     private var canGenerate: Bool {
-        selectedCity != nil && selectedTheme != nil && subscriptionManager.isProUser && tokenManager.canGenerate
+        guard selectedCity != nil && selectedTheme != nil else { return false }
+        return subscriptionManager.isProUser ? tokenManager.canGenerate : tokenManager.canFreeEmailUserGenerate
     }
 
     // Computed: Reason why generation is disabled
     private var generationDisabledReason: String? {
-        if !subscriptionManager.isProUser {
-            return "Upgrade to Pro to generate custom plans"
-        } else if selectedCity == nil && selectedTheme == nil {
+        if selectedCity == nil && selectedTheme == nil {
             return "Select a city and theme to generate"
         } else if selectedCity == nil {
             return "Select a city to generate"
         } else if selectedTheme == nil {
             return "Select a theme to generate"
-        } else if !tokenManager.canGenerate {
+        } else if subscriptionManager.isProUser && !tokenManager.canGenerate {
             return "No tokens remaining. Refresh: \(tokenManager.nextRefreshDate)"
+        } else if !subscriptionManager.isProUser && tokenManager.isEmailUser && !tokenManager.freeTokenAvailable {
+            return "Free generation resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")"
+        } else if !subscriptionManager.isProUser && !tokenManager.isEmailUser {
+            return "Upgrade to Pro to generate custom plans"
         }
         return nil
     }
@@ -619,27 +622,36 @@ struct BoltView: View {
 
         // Check other requirements (Pro status, tokens)
         guard canGenerate else {
-            if !subscriptionManager.isProUser {
-                showPaywall = true
-            } else if !tokenManager.canGenerate {
+            if subscriptionManager.isProUser && !tokenManager.canGenerate {
                 toast = ToastData(type: .info, message: "No tokens remaining. Refreshes \(tokenManager.nextRefreshDate)")
+            } else if !subscriptionManager.isProUser && tokenManager.isEmailUser && !tokenManager.freeTokenAvailable {
+                toast = ToastData(type: .info, message: "Free generation resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")")
+            } else if !subscriptionManager.isProUser {
+                showPaywall = true
             }
             return
         }
 
         HapticManager.shared.heavy()
-        generateGroupFlow()
+        generateGroupFlow(useFreeToken: !subscriptionManager.isProUser)
     }
 
     // MARK: - Generation
 
-    private func generateGroupFlow() {
+    private func generateGroupFlow(useFreeToken: Bool = false) {
         guard let city = selectedCity, let theme = selectedTheme else { return }
 
-        // Check if user has tokens BEFORE starting (don't consume yet)
-        guard tokenManager.canGenerate else {
-            toast = ToastData(type: .info, message: "No tokens available. Please try again later.")
-            return
+        // Verify token availability before starting
+        if useFreeToken {
+            guard tokenManager.canFreeEmailUserGenerate else {
+                toast = ToastData(type: .info, message: "No free generation available. Please try again later.")
+                return
+            }
+        } else {
+            guard tokenManager.canGenerate else {
+                toast = ToastData(type: .info, message: "No tokens available. Please try again later.")
+                return
+            }
         }
 
         isGenerating = true
@@ -647,12 +659,15 @@ struct BoltView: View {
 
         Task {
             do {
-                // Call the real bolt pipeline API
                 let groupFlow = try await callBoltPipeline(city: city, theme: theme)
 
                 await MainActor.run {
-                    // SUCCESS: Now consume the token (only after successful generation)
-                    _ = tokenManager.consumeToken(cityName: city.name, themeName: theme.name)
+                    // SUCCESS: consume token only after successful generation
+                    if useFreeToken {
+                        tokenManager.consumeFreeToken()
+                    } else {
+                        _ = tokenManager.consumeToken(cityName: city.name, themeName: theme.name)
+                    }
 
                     currentGroupFlow = groupFlow
                     isGenerating = false
@@ -665,7 +680,7 @@ struct BoltView: View {
                 }
             } catch {
                 await MainActor.run {
-                    // FAILURE: Token NOT consumed, user keeps their token
+                    // FAILURE: token not consumed, user keeps it
                     isGenerating = false
                     toast = ToastData(type: .retry, message: "Unable to generate plan. Please try again.", persistent: true)
                 }

@@ -587,6 +587,16 @@ class AuthenticationManager: NSObject, ObservableObject {
             // Now update the password
             try await supabaseManager.client.auth.update(user: UserAttributes(password: newPassword))
 
+            // Send success notification email (non-blocking)
+            let accessToken = await supabaseManager.getAccessToken()
+            if let session = try? await supabaseManager.client.auth.session,
+               let userEmail = session.user.email,
+               let accessToken {
+                Task {
+                    await sendPasswordResetSuccessEmail(to: userEmail, accessToken: accessToken)
+                }
+            }
+
             // Sign out to force re-login with new password
             await supabaseManager.clearSession()
             self.currentUser = nil
@@ -602,6 +612,30 @@ class AuthenticationManager: NSObject, ObservableObject {
         }
 
         isLoading = false
+    }
+
+    // MARK: - Password Reset Success Email
+
+    private func sendPasswordResetSuccessEmail(to email: String, accessToken: String) async {
+        let url = URL(string: "https://clktdigankjszupvrsqt.supabase.co/functions/v1/send-notification")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = [
+            "type": "email",
+            "to": email,
+            "subject": "Your LitPlanz password has been updated",
+            "templateData": [
+                "template": "password_reset_success"
+            ]
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return }
+        request.httpBody = data
+
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     // MARK: - Magic Link Verification (Deep Link)

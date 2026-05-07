@@ -15,11 +15,12 @@ import Foundation
 import Combine
 import UIKit
 
-/// Manages Bolt generation tokens for Pro users
+/// Manages Bolt generation tokens for Pro and free email users
 /// - Pro users get 5 tokens per week
 /// - Tokens refresh every 7 days from user's subscription start date (personalized)
 /// - Syncs with Supabase database for tracking
-/// - Free users have 0 tokens (cannot generate)
+/// - Free email users get 1 token per week (resets every 7 days)
+/// - Free non-email users have 0 tokens (cannot generate)
 @MainActor
 class BoltTokenManager: ObservableObject {
     static let shared = BoltTokenManager()
@@ -38,6 +39,7 @@ class BoltTokenManager: ObservableObject {
     private let totalGenerationsKey = "bolt_total_generations"
     private let pendingSyncKey = "bolt_pending_sync"
     private let subscriptionStartKey = "bolt_subscription_start_date"
+    private let freeTokenUsedDateKey = "bolt_free_token_used_date"
 
     // MARK: - Published Properties
 
@@ -56,6 +58,9 @@ class BoltTokenManager: ObservableObject {
     /// User's subscription start date (for personalized refresh cycle)
     @Published var subscriptionStartDate: Date?
 
+    /// Whether the free weekly token is available for email users
+    @Published var freeTokenAvailable: Bool = false
+
     // MARK: - Private Properties
 
     /// Pending operations to sync when online
@@ -67,6 +72,43 @@ class BoltTokenManager: ObservableObject {
     var canGenerate: Bool {
         guard SubscriptionManager.shared.isProUser else { return false }
         return tokenCount > 0
+    }
+
+    /// Whether the signed-in user authenticated via email/password
+    var isEmailUser: Bool {
+        let user = SupabaseManager.shared.currentUser
+        return user?.appMetadata?["provider"] == "email" ||
+               user?.userMetadata?.provider == "email"
+    }
+
+    /// Whether a free email user can generate (1 per week, non-Pro only)
+    var canFreeEmailUserGenerate: Bool {
+        guard !SubscriptionManager.shared.isProUser else { return false }
+        guard isEmailUser else { return false }
+        return freeTokenAvailable
+    }
+
+    /// Load and refresh the free token state from UserDefaults
+    func loadFreeTokenState() {
+        if let lastUsed = UserDefaults.standard.object(forKey: freeTokenUsedDateKey) as? Date {
+            let days = Calendar.current.dateComponents([.day], from: lastUsed, to: Date()).day ?? 0
+            freeTokenAvailable = days >= Self.refreshCycleDays
+        } else {
+            freeTokenAvailable = true
+        }
+    }
+
+    /// Consume the free weekly token
+    func consumeFreeToken() {
+        UserDefaults.standard.set(Date(), forKey: freeTokenUsedDateKey)
+        freeTokenAvailable = false
+    }
+
+    /// Days until the free token resets
+    var daysUntilFreeTokenRefresh: Int {
+        guard let lastUsed = UserDefaults.standard.object(forKey: freeTokenUsedDateKey) as? Date else { return 0 }
+        let days = Calendar.current.dateComponents([.day], from: lastUsed, to: Date()).day ?? 0
+        return max(0, Self.refreshCycleDays - days)
     }
 
     /// Days until next token refresh (based on user's subscription start date)
@@ -124,6 +166,7 @@ class BoltTokenManager: ObservableObject {
     private init() {
         loadPendingOperations()
         loadSubscriptionStartDate()
+        loadFreeTokenState()
         setupWeeklyRefreshCheck()
     }
 
@@ -469,6 +512,7 @@ class BoltTokenManager: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
+                self?.loadFreeTokenState()
                 await self?.loadTokensAsync()
             }
         }

@@ -39,7 +39,7 @@ const APNS_ENVIRONMENT = Deno.env.get('APNS_ENVIRONMENT') || 'development'; // '
 
 // Resend Configuration
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
-const FROM_EMAIL = 'hello@notify.litplanz.com';
+const FROM_EMAIL = 'noreply@litplanz.com';
 const FROM_NAME = 'LitPlanz';
 
 // Types
@@ -232,6 +232,67 @@ function generateGenericEmail(data: EmailNotificationRequest['templateData']): s
 </html>`;
 }
 
+// Generate password reset success email HTML
+function generatePasswordResetSuccessEmail(name?: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Updated - LitPlanz</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #0a0a0a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px;">
+          <tr>
+            <td align="center" style="padding-bottom: 30px;">
+              <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">LitPlanz</h1>
+              <p style="margin: 8px 0 0 0; font-size: 16px; color: #a855f7;">Discover your perfect night out</p>
+            </td>
+          </tr>
+        </table>
+
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #1a1a1a; border-radius: 16px; overflow: hidden;">
+          <tr>
+            <td style="padding: 48px 40px; text-align: center;">
+              <div style="width: 80px; height: 80px; margin: 0 auto 24px; background-color: rgba(34, 197, 94, 0.15); border-radius: 50%;">
+                <span style="font-size: 40px; line-height: 80px;">✅</span>
+              </div>
+
+              <h2 style="margin: 0 0 16px 0; font-size: 28px; font-weight: 600; color: #ffffff;">Password Updated</h2>
+
+              <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 1.6; color: #a0a0a0;">
+                Hey ${name || 'there'}, your LitPlanz password was successfully updated. You can now sign in with your new password.
+              </p>
+
+              <div style="margin-top: 8px; padding: 16px 24px; background-color: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 4px solid #ef4444;">
+                <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #f87171;">Wasn't you?</p>
+                <p style="margin: 0; font-size: 14px; color: #a0a0a0;">
+                  If you did not make this change, your account may be compromised. Please contact us immediately at support@litplanz.com.
+                </p>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 40px;">
+          <tr>
+            <td align="center">
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #606060;">© 2026 LitPlanz. All rights reserved.</p>
+              <p style="margin: 0; font-size: 12px; color: #404040;">This is an automated security email from LitPlanz.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 // Send email via Resend
 async function sendEmail(request: EmailNotificationRequest): Promise<{ success: boolean; error?: string }> {
   try {
@@ -240,8 +301,10 @@ async function sendEmail(request: EmailNotificationRequest): Promise<{ success: 
       return { success: false, error: 'Resend not configured' };
     }
 
-    // Generate HTML
-    const html = generateGenericEmail(request.templateData);
+    // Use dedicated template for password reset success, generic for everything else
+    const html = request.templateData.template === 'password_reset_success'
+      ? generatePasswordResetSuccessEmail(request.templateData.name)
+      : generateGenericEmail(request.templateData);
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',

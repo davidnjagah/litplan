@@ -101,13 +101,13 @@ struct PaywallView: View {
                 Spacer()
             }
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Heads Up", isPresented: $showError) {
             Button("OK", role: .cancel) { }
         } message: {
             if let errorMessage = subscriptionManager.errorMessage {
                 Text(errorMessage)
             } else {
-                Text("An error occurred. Please try again.")
+                Text("Something went wrong. Please try again.")
             }
         }
         .sheet(isPresented: $showGuestLoginPrompt) {
@@ -400,7 +400,7 @@ struct PaywallView: View {
     private var legalSection: some View {
         VStack(spacing: Spacing.xs) {
             if selectedPlan == .yearly {
-                Text("3-day free trial, then $39.99/year")
+                Text("7-day free trial, then $39.99/year")
                     .font(.caption)
                     .foregroundColor(.textTertiary)
                     .multilineTextAlignment(.center)
