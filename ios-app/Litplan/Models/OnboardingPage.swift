@@ -66,7 +66,7 @@ extension OnboardingPage {
         OnboardingPage(
             title: "Match Your Mood",
             subtitle: "Vibez Mode",
-            description: "Chill rooftop drinks? High-energy dancing? Romantic dinner? Tell us your vibe and get instant, personalized recommendations.",
+            description: "Chill rooftop drinks? High-energy dancing? Romantic dinner? Pick a vibe, pick a city, and let AI build your night. Email members get one complimentary Vibez every week — no subscription needed.",
             emoji: "⚡",
             accentColor: Color(red: 0.95, green: 0.5, blue: 0.2)
         ),

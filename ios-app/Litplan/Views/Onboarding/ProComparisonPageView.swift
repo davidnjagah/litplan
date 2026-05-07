@@ -123,7 +123,7 @@ struct ProComparisonPageView: View {
                 features: [
                     ComparisonFeature(text: "3 cities", included: true),
                     ComparisonFeature(text: "5 plans/week", included: true),
-                    ComparisonFeature(text: "Basic vibes", included: true),
+                    ComparisonFeature(text: "1 Vibez/week (email)", included: true),
                     ComparisonFeature(text: "100+ cities", included: false),
                     ComparisonFeature(text: "Unlimited plans", included: false)
                 ],
@@ -136,7 +136,7 @@ struct ProComparisonPageView: View {
                 features: [
                     ComparisonFeature(text: "100+ cities", included: true),
                     ComparisonFeature(text: "Unlimited plans", included: true),
-                    ComparisonFeature(text: "All vibes", included: true),
+                    ComparisonFeature(text: "Unlimited Vibez", included: true),
                     ComparisonFeature(text: "Priority support", included: true),
                     ComparisonFeature(text: "Early access", included: true)
                 ],
