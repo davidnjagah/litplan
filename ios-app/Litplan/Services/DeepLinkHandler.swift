@@ -57,17 +57,16 @@ class DeepLinkHandler: ObservableObject {
             return true
 
         case .city(let cityName):
-            // Navigate to the city using the same notification used by discovery flow
             if Config.enableDebugLogging {
                 print("[DeepLinkHandler] Navigating to city: \(cityName)")
             }
-            // Post notification to navigate to the city
-            // Use a small delay to ensure the app is fully loaded
+            // Use a small delay to ensure the app is fully loaded before navigating
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let city = SearchedCity(name: cityName, country: "")
                 NotificationCenter.default.post(
-                    name: .navigateToDiscoveredCity,
+                    name: .navigateToVibezWithCity,
                     object: nil,
-                    userInfo: ["cityName": cityName, "country": "", "isGenerating": false]
+                    userInfo: ["city": city]
                 )
             }
             return true
