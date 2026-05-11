@@ -121,11 +121,11 @@ struct ProComparisonPageView: View {
             comparisonCard(
                 title: "Free",
                 features: [
-                    ComparisonFeature(text: "3 cities", included: true),
-                    ComparisonFeature(text: "5 plans/week", included: true),
                     ComparisonFeature(text: "1 Vibez/week (email)", included: true),
-                    ComparisonFeature(text: "100+ cities", included: false),
-                    ComparisonFeature(text: "Unlimited plans", included: false)
+                    ComparisonFeature(text: "3 cities", included: true),
+                    ComparisonFeature(text: "Save up to 10 plans", included: true),
+                    ComparisonFeature(text: "Unlimited Vibez", included: false),
+                    ComparisonFeature(text: "All cities", included: false)
                 ],
                 isPro: false
             )
@@ -134,9 +134,9 @@ struct ProComparisonPageView: View {
             comparisonCard(
                 title: "Pro",
                 features: [
-                    ComparisonFeature(text: "100+ cities", included: true),
-                    ComparisonFeature(text: "Unlimited plans", included: true),
                     ComparisonFeature(text: "Unlimited Vibez", included: true),
+                    ComparisonFeature(text: "All 100+ cities", included: true),
+                    ComparisonFeature(text: "Unlimited saves", included: true),
                     ComparisonFeature(text: "Priority support", included: true),
                     ComparisonFeature(text: "Early access", included: true)
                 ],
@@ -194,9 +194,9 @@ struct ProComparisonPageView: View {
                 .foregroundColor(.textPrimary)
 
             VStack(spacing: Spacing.sm) {
-                benefitRow(icon: "globe.americas.fill", text: "Access all 100+ cities worldwide")
-                benefitRow(icon: "infinity", text: "Generate unlimited plans anytime")
-                benefitRow(icon: "sparkles", text: "Unlock all vibes and customization")
+                benefitRow(icon: "bolt.fill", text: "Unlimited Vibez — generate as many as you want")
+                benefitRow(icon: "globe.americas.fill", text: "Access all 100+ cities for Vibez")
+                benefitRow(icon: "sparkles", text: "Unlock all 26 vibe themes")
                 benefitRow(icon: "star.fill", text: "Get early access to new features")
             }
         }
@@ -240,9 +240,9 @@ struct ComparisonFeature: Identifiable {
     ZStack {
         Color.appBackground.ignoresSafeArea()
         ProComparisonPageView(
-            page: OnboardingPage.pages[4],
-            pageIndex: 4,
-            currentPage: .constant(4)
+            page: OnboardingPage.pages[3],
+            pageIndex: 3,
+            currentPage: .constant(3)
         )
     }
 }

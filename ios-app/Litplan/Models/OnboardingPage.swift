@@ -53,48 +53,39 @@ extension OnboardingPage {
             accentColor: .accentPrimary
         ),
 
-        // Page 2: Explore Cities
+        // Page 2: Vibez Mode
         OnboardingPage(
-            title: "100+ Cities Worldwide",
-            subtitle: "Explore Anywhere",
-            description: "From New York to Tokyo, Miami to Berlin — discover the hottest bars, clubs, and restaurants in cities across the globe.",
-            systemIcon: "globe.americas.fill",
-            accentColor: Color(red: 0.2, green: 0.6, blue: 1.0)
-        ),
-
-        // Page 3: Vibez
-        OnboardingPage(
-            title: "Match Your Mood",
-            subtitle: "Vibez Mode",
-            description: "Chill rooftop drinks? High-energy dancing? Romantic dinner? Pick a vibe, pick a city, and let AI build your night. Email members get one complimentary Vibez every week — no subscription needed.",
+            title: "Pick a Vibe, Build Your Night",
+            subtitle: "Your Night Starts Here",
+            description: "Choose a city, pick a mood — AI builds your perfect night out. From rooftop drinks to late-night dancing, your night is one tap away. Email members get one free Vibez every week.",
             emoji: "⚡",
             accentColor: Color(red: 0.95, green: 0.5, blue: 0.2)
         ),
 
-        // Page 4: Group Flows
+        // Page 3: Your Plans
         OnboardingPage(
-            title: "Plan the Perfect Night",
-            subtitle: "Group Flows",
-            description: "Multi-stop itineraries from dinner to drinks to dancing. See time estimates, walking routes, and costs — all planned for you.",
-            systemIcon: "point.topleft.down.to.point.bottomright.curvepath.fill",
+            title: "Your Plans, Saved",
+            subtitle: "Save Everything",
+            description: "Every Vibez you generate can be saved to your plans. Cities, itineraries, group flows — all in one place, ready when you are.",
+            systemIcon: "heart.fill",
             accentColor: Color(red: 0.3, green: 0.85, blue: 0.6)
         ),
 
-        // Page 5: Pro Benefits
+        // Page 4: Pro Benefits
         OnboardingPage(
             title: "Unlock Everything",
             subtitle: "LitPlanz Pro",
-            description: "Get unlimited plans, access all 100+ cities, unlock all vibes, and enjoy priority features with Pro.",
+            description: "Get unlimited Vibez, access all 100+ cities, unlock every vibe theme, and enjoy priority features with Pro.",
             systemIcon: "crown.fill",
             accentColor: Color(red: 1.0, green: 0.75, blue: 0.2),
             isProPage: true
         ),
 
-        // Page 6: Get Started
+        // Page 5: Get Started
         OnboardingPage(
             title: "You're All Set!",
             subtitle: "Let's Go",
-            description: "Start exploring and discover your perfect night out. Your next unforgettable experience awaits.",
+            description: "Your first Vibez is waiting. Pick a city, choose your mood, and let AI plan your night.",
             emoji: "🎉",
             accentColor: .accentPrimary,
             isFinalPage: true
