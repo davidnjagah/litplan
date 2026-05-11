@@ -9,9 +9,6 @@
 import SwiftUI
 
 struct HomeView: View {
-    // Callback to navigate to Search tab
-    var onNavigateToSearch: (() -> Void)?
-
     @State private var searchText = ""
     @State private var selectedCity: City?
     @State private var paywallTrigger: PaywallTrigger? = nil
@@ -263,10 +260,7 @@ struct HomeView: View {
         .accessibilityHint("Double tap to search for cities worldwide")
         .accessibilityAddTraits(.isButton)
         .onTapGesture {
-            // Haptic feedback for search tap
             HapticManager.shared.light()
-            // Navigate to Search tab
-            onNavigateToSearch?()
         }
     }
 

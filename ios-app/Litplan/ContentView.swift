@@ -56,62 +56,42 @@ struct ContentView: View {
 
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
-            // Home (Explore) Tab
-            HomeView(onNavigateToSearch: {
-                selectedTab = 1
-            })
-                .tabItem {
-                    Image(systemName: selectedTab == 0 ? "house.fill" : "house")
-                    Text("Explore")
-                }
-                .tag(0)
-
-            // Search Tab
-            SearchView()
-                .tabItem {
-                    Image(systemName: selectedTab == 1 ? "magnifyingglass.circle.fill" : "magnifyingglass")
-                    Text("Search")
-                }
-                .tag(1)
-
-            // Vibez Tab (Center position with 3D card)
+            // Vibez Tab (default landing screen)
             BoltView(pendingCity: $pendingVibezCity)
                 .tabItem {
-                    Image(systemName: selectedTab == 2 ? "bolt.fill" : "bolt")
+                    Image(systemName: selectedTab == 0 ? "bolt.fill" : "bolt")
                     Text("Vibez")
                 }
-                .tag(2)
+                .tag(0)
 
             // Saved / My Plans Tab
             MyPlansView()
                 .tabItem {
-                    Image(systemName: selectedTab == 3 ? "heart.fill" : "heart")
+                    Image(systemName: selectedTab == 1 ? "heart.fill" : "heart")
                     Text("Saved")
                 }
-                .tag(3)
+                .tag(1)
 
             // Profile Tab
             ProfileView()
                 .tabItem {
-                    Image(systemName: selectedTab == 4 ? "person.fill" : "person")
+                    Image(systemName: selectedTab == 2 ? "person.fill" : "person")
                     Text("Profile")
                 }
-                .tag(4)
+                .tag(2)
         }
-        .accentColor(.accentPrimary) // Electric Cyan for active tab
+        .accentColor(.accentPrimary)
         .overlay(alignment: .top) {
-            // Guest mode banner
             if authManager.isGuest {
                 guestModeBanner
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToVibezWithCity)) { notification in
-            // Extract city from notification and navigate to Vibez tab
             if let city = notification.userInfo?["city"] as? SearchedCity {
                 pendingVibezCity = city
-                withAnimation {
-                    selectedTab = 2 // Vibez tab
-                }
+            }
+            withAnimation {
+                selectedTab = 0
             }
         }
     }

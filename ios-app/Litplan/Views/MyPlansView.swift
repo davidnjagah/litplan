@@ -63,16 +63,16 @@ enum MyPlansTab: String, CaseIterable {
     var emptyMessage: String {
         switch self {
         case .savedCities:
-            return "No cities saved yet. Start exploring to find your next adventure!"
+            return "No cities saved yet. Generate a Vibez to start building your night out!"
         case .individualPlans:
-            return "No plans saved yet. Discover amazing plans in cities you love!"
+            return "No plans saved yet. Generate a Vibez and save your favourites!"
         case .groupPlans:
-            return "No group plans saved yet. Find the perfect group experience!"
+            return "No group plans saved yet. Generate a Vibez to plan a night with your crew!"
         }
     }
 
     var emptyButtonTitle: String {
-        return "Start Exploring"
+        return "Create a Vibez"
     }
 }
 
@@ -94,9 +94,6 @@ struct MyPlansView: View {
 
     // SavedItemsManager for real saved data
     @ObservedObject private var savedItemsManager = SavedItemsManager.shared
-
-    // Callback to switch to Home/Explore tab
-    var onSwitchToExplore: (() -> Void)?
 
     private var isProUser: Bool {
         subscriptionManager.isProUser
@@ -368,13 +365,13 @@ struct MyPlansView: View {
                     .padding(.horizontal, Spacing.lg)
             }
 
-            // Start Exploring CTA button
+            // Create a Vibez CTA button
             Button(action: {
                 HapticManager.shared.medium()
-                onSwitchToExplore?()
+                NotificationCenter.default.post(name: .navigateToVibezWithCity, object: nil)
             }) {
                 HStack(spacing: Spacing.xs) {
-                    Image(systemName: "safari")
+                    Image(systemName: "bolt.fill")
                         .font(.system(size: 14, weight: .semibold))
 
                     Text(tab.emptyButtonTitle)
