@@ -126,7 +126,7 @@ struct CityCardStack: View {
                 onTap()
             }
             .accessibilityLabel("\(city.name), \(city.country)")
-            .accessibilityHint("Double tap to explore 50 nightlife plans")
+            .accessibilityHint("Double tap to explore nightlife plans")
             .accessibilityAddTraits(.isButton)
         }
         // Fix hit testing: constrain the ZStack frame to front card size and disable hit testing on background cards

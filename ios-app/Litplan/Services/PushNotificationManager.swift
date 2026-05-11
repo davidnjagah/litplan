@@ -244,33 +244,8 @@ class PushNotificationManager: NSObject, ObservableObject {
     /// Handle notification payload (trigger deep link, show UI, etc.)
     private func handleNotificationPayload(_ payload: PushNotificationPayload) {
         switch payload.type {
-        case "city_discovery":
-            handleCityDiscoveryNotification(payload)
         default:
             print("[PushNotificationManager] Unknown notification type: \(payload.type)")
-        }
-    }
-
-    /// Handle city discovery notification
-    private func handleCityDiscoveryNotification(_ payload: PushNotificationPayload) {
-        guard let cityName = payload.cityName else { return }
-
-        if payload.action == "discovery_complete" {
-            print("[PushNotificationManager] City discovery complete: \(cityName)")
-            // Trigger navigation to city
-            NotificationCenter.default.post(
-                name: .cityDiscoveryComplete,
-                object: nil,
-                userInfo: ["cityName": cityName]
-            )
-        } else if payload.action == "discovery_failed" {
-            print("[PushNotificationManager] City discovery failed: \(cityName)")
-            // Show error message
-            NotificationCenter.default.post(
-                name: .cityDiscoveryFailed,
-                object: nil,
-                userInfo: ["cityName": cityName]
-            )
         }
     }
 
@@ -302,9 +277,6 @@ struct PushNotificationPayload {
 // MARK: - Notification Names
 
 extension Notification.Name {
-    static let cityDiscoveryComplete = Notification.Name("cityDiscoveryComplete")
-    static let cityDiscoveryFailed = Notification.Name("cityDiscoveryFailed")
-    static let navigateToDiscoveredCity = Notification.Name("navigateToDiscoveredCity")
     static let navigateToVibezWithCity = Notification.Name("navigateToVibezWithCity")
 }
 

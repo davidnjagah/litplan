@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-05-11
+
+### App Structure — Simplify to 3-Tab Layout
+
+Removed the Explore and Search screens to reduce costs and focus the app on Vibez as the core feature.
+
+**Tab bar** (`ContentView.swift`):
+- Removed Explore (HomeView) and Search (SearchView) tabs
+- New tab order: `0=Vibez`, `1=Saved`, `2=Profile`
+- City deep link handler (`DeepLinkHandler.swift`) updated to post `navigateToVibezWithCity` instead of the now-dead `navigateToDiscoveredCity`
+- Empty state CTA in `MyPlansView` now navigates to Vibez tab via notification
+
+**Onboarding** — restructured to 5-page Vibez-first flow:
+1. Welcome (unchanged)
+2. Vibez Mode — "Pick a Vibe, Build Your Night" (was page 3, moved to 2)
+3. Your Plans, Saved — new page introducing the Save/heart tab (replaced Group Flows page)
+4. Pro Benefits — updated description and comparison cards
+5. Get Started — Vibez-focused CTA copy
+
+**Paywall** (`PaywallView.swift`, `PaywallTrigger.swift`):
+- Replaced 7 Explore-era benefits with 5 Vibez-focused ones: Unlimited Vibez, All 100+ cities, All 26 vibe themes, Save unlimited plans, Group flow experiences
+- `groupFlow` trigger (fired by BoltView) reframed as "Unlock Unlimited Vibez" with city-specific copy
+- `cityDiscovery` trigger updated to Vibez limit messaging
+
+**Backend** (`weeklyPlanRefresh.ts`):
+- Disabled monthly plan generation cron — saves ~$130/month
+- Re-enable by changing `const` back to `export const` on line 156
+
+**Code cleanup** (Sprint 6):
+- Deleted `HomeView.swift` and `SearchView.swift` (1,666 lines removed)
+- Deleted `CityPreloadService.swift` — only consumed by SearchView
+- Removed all pbxproj references for deleted files
+- Removed `navigateToDiscoveredCity` dead notification name from `PushNotificationManager`
+- Updated stale accessibility hints referencing "50 nightlife plans"
+- `CitySearchManager` kept — still used by `BoltCitySelector` and `CitySearchSelector`
+
+---
+
 ## 2026-05-07
 
 ### Password Reset Flow

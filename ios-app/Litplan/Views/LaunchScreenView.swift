@@ -104,7 +104,7 @@ struct LaunchScreenView: View {
             }
         }
 
-        // Complete animation and transition to HomeView (1.5s total)
+        // Complete animation and transition to main app (1.5s total)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             isAnimationComplete = true
             onComplete()

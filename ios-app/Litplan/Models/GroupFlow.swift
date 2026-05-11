@@ -316,7 +316,7 @@ extension GroupFlow {
         planType: "couples"
     )
 
-    /// Sample group flows for HomeView display
+    /// Sample group flows
     static let sampleGroupFlows: [GroupFlow] = [
         sampleNYCFlow,
         sampleLAFlow

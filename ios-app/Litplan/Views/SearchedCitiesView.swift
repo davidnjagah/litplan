@@ -717,7 +717,7 @@ struct RecommendedCityCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel("\(city.name), \(city.country)")
-        .accessibilityHint("Double tap to explore 50 nightlife plans")
+        .accessibilityHint("Double tap to explore nightlife plans")
     }
 }
 

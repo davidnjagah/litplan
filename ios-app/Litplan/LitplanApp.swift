@@ -78,10 +78,6 @@ struct LitplanApp: App {
                     await pushNotificationManager.resendTokenAfterLogin()
                 }
 
-                // Preload cities in background AFTER critical UI is ready
-                // This ensures search has cities available without blocking initial load
-                CityPreloadService.shared.preloadCities()
-
                 // Dismiss splash screen after animations complete
                 try? await Task.sleep(nanoseconds: 2_500_000_000) // 2.5 seconds
                 withAnimation(.easeOut(duration: 0.5)) {
