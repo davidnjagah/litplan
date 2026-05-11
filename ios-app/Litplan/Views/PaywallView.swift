@@ -222,45 +222,33 @@ struct PaywallView: View {
     private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             BenefitRow(
+                icon: "bolt.fill",
+                title: "Unlimited Vibez",
+                description: "Generate as many custom plans as you want, any time"
+            )
+
+            BenefitRow(
                 icon: "globe.americas.fill",
-                title: "100+ cities worldwide",
-                description: "Explore nightlife in cities across the globe"
+                title: "All 100+ cities",
+                description: "Access every city worldwide for your Vibez generations"
             )
 
             BenefitRow(
-                icon: "list.bullet.rectangle.fill",
-                title: "Up to 50 plans per city",
-                description: "Access the full catalog of curated experiences"
-            )
-
-            BenefitRow(
-                icon: "arrow.triangle.2.circlepath",
-                title: "Plans updated every week",
-                description: "Fresh recommendations with new venues and events"
-            )
-
-            BenefitRow(
-                icon: "calendar.badge.clock",
-                title: "Weekend plans included",
-                description: "Never miss the hottest weekend events"
+                icon: "sparkles",
+                title: "All 26 vibe themes",
+                description: "Unlock every mood from Jazz Night to Wild Night Out"
             )
 
             BenefitRow(
                 icon: "heart.fill",
-                title: "Save favorite cities",
-                description: "Quick access to your most-visited destinations"
+                title: "Save unlimited plans",
+                description: "Keep all your generated itineraries in one place"
             )
 
             BenefitRow(
                 icon: "person.3.fill",
                 title: "Group flow experiences",
-                description: "Full-night itineraries with multiple venues"
-            )
-
-            BenefitRow(
-                icon: "bolt.fill",
-                title: "Vibez custom plans",
-                description: "Generate personalized plans for any vibe and city"
+                description: "Full multi-stop nights planned from dinner to dancing"
             )
         }
         .padding(.vertical, Spacing.md)
