@@ -148,8 +148,12 @@ interface AIGeneratedGroupFlow {
 /**
  * Main Scheduled Function
  * Runs on the 1st of every month at 00:00 UTC to refresh nightlife plans
+ *
+ * Disabled 2026-05-11: Explore screen removed to reduce costs (~$130/month).
+ * Re-enable when Explore screen is reintroduced or user count justifies generation.
+ * To re-enable: change `const` back to `export const` on the next line.
  */
-export const weeklyPlanRefresh = functions.pubsub
+const weeklyPlanRefresh = functions.pubsub
   .schedule('0 0 1 * *') // 1st of every month at midnight UTC
   .timeZone('UTC')
   .onRun(async (context): Promise<RefreshJobResult> => {
