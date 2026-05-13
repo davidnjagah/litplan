@@ -22,6 +22,9 @@ class SupabaseManager: ObservableObject {
     @Published var isInitialized: Bool = false
     @Published var currentSession: Session? = nil
     @Published var currentUser: SupabaseUser? = nil
+    /// True when the signed-in user's primary provider is email/password.
+    /// Derived from raw Supabase.User.identities — more reliable than appMetadata parsing.
+    @Published var isEmailUser: Bool = false
 
     // MARK: - Supabase Client
 
@@ -52,6 +55,24 @@ class SupabaseManager: ObservableObject {
         }
     }
 
+    // MARK: - User Helpers
+
+    /// Set currentUser and isEmailUser together from the raw Supabase user object.
+    /// Always call this instead of assigning currentUser directly so isEmailUser stays in sync.
+    func setCurrentUser(from rawUser: Supabase.User) {
+        self.currentUser = SupabaseUser(from: rawUser)
+        self.isEmailUser = checkIsEmailUser(rawUser)
+    }
+
+    /// Determine whether the user's primary identity is email/password.
+    /// Prefers identities array (authoritative) over appMetadata parsing.
+    private func checkIsEmailUser(_ user: Supabase.User) -> Bool {
+        if let identities = user.identities, !identities.isEmpty {
+            return identities.contains { $0.provider == "email" }
+        }
+        return user.appMetadata["provider"]?.stringValue == "email"
+    }
+
     // MARK: - Session Management
 
     /// Check for existing session on app launch
@@ -59,7 +80,7 @@ class SupabaseManager: ObservableObject {
         do {
             let session = try await client.auth.session
             self.currentSession = Session(from: session)
-            self.currentUser = SupabaseUser(from: session.user)
+            setCurrentUser(from: session.user)
 
             if Config.enableDebugLogging {
                 print("[SupabaseManager] Existing session found for user: \(session.user.id)")
@@ -68,6 +89,7 @@ class SupabaseManager: ObservableObject {
             // No existing session
             self.currentSession = nil
             self.currentUser = nil
+            self.isEmailUser = false
 
             if Config.enableDebugLogging {
                 print("[SupabaseManager] No existing session found")
@@ -92,7 +114,7 @@ class SupabaseManager: ObservableObject {
                 let refreshedSession = try await client.auth.refreshSession()
                 print("[SupabaseManager] Session refreshed, new token length: \(refreshedSession.accessToken.count)")
                 self.currentSession = Session(from: refreshedSession)
-                self.currentUser = SupabaseUser(from: refreshedSession.user)
+                setCurrentUser(from: refreshedSession.user)
                 return refreshedSession.accessToken
             } catch {
                 print("[SupabaseManager] Session refresh also failed: \(error)")
@@ -105,7 +127,7 @@ class SupabaseManager: ObservableObject {
     func refreshSession() async throws {
         let session = try await client.auth.refreshSession()
         self.currentSession = Session(from: session)
-        self.currentUser = SupabaseUser(from: session.user)
+        setCurrentUser(from: session.user)
 
         if Config.enableDebugLogging {
             print("[SupabaseManager] Session refreshed successfully")
@@ -116,6 +138,7 @@ class SupabaseManager: ObservableObject {
     func clearSession() async {
         currentSession = nil
         currentUser = nil
+        isEmailUser = false
 
         do {
             try await client.auth.signOut()
@@ -137,9 +160,11 @@ class SupabaseManager: ObservableObject {
         }
     }
 
-    /// Update current user
+    /// Update current user (legacy path — prefer setCurrentUser(from:) for raw Supabase.User)
     func updateUser(_ user: SupabaseUser) {
         self.currentUser = user
+        self.isEmailUser = user.appMetadata?["provider"] == "email" ||
+                           user.userMetadata?.provider == "email"
         if Config.enableDebugLogging {
             print("[SupabaseManager] User updated: \(user.id)")
         }
@@ -156,23 +181,24 @@ class SupabaseManager: ObservableObject {
                     case .initialSession:
                         if let session = session {
                             self.currentSession = Session(from: session)
-                            self.currentUser = SupabaseUser(from: session.user)
+                            self.setCurrentUser(from: session.user)
                         }
                     case .signedIn:
                         if let session = session {
                             self.currentSession = Session(from: session)
-                            self.currentUser = SupabaseUser(from: session.user)
+                            self.setCurrentUser(from: session.user)
                         }
                     case .signedOut:
                         self.currentSession = nil
                         self.currentUser = nil
+                        self.isEmailUser = false
                     case .tokenRefreshed:
                         if let session = session {
                             self.currentSession = Session(from: session)
                         }
                     case .userUpdated:
                         if let session = session {
-                            self.currentUser = SupabaseUser(from: session.user)
+                            self.setCurrentUser(from: session.user)
                         }
                     case .passwordRecovery:
                         break
@@ -181,6 +207,7 @@ class SupabaseManager: ObservableObject {
                     case .userDeleted:
                         self.currentSession = nil
                         self.currentUser = nil
+                        self.isEmailUser = false
                     }
                 }
             }
@@ -232,13 +259,10 @@ struct SupabaseUser: Codable, Identifiable {
         let fullName: String?
         let avatarUrl: String?
         let provider: String?
-        let manualProAccess: Bool?
-
         enum CodingKeys: String, CodingKey {
             case fullName = "full_name"
             case avatarUrl = "avatar_url"
             case provider
-            case manualProAccess = "manual_pro_access"
         }
     }
 
@@ -265,8 +289,7 @@ struct SupabaseUser: Codable, Identifiable {
         self.userMetadata = UserMetadata(
             fullName: supabaseUser.userMetadata["full_name"]?.stringValue,
             avatarUrl: supabaseUser.userMetadata["avatar_url"]?.stringValue,
-            provider: supabaseUser.appMetadata["provider"]?.stringValue,
-            manualProAccess: supabaseUser.userMetadata["manual_pro_access"]?.boolValue
+            provider: supabaseUser.appMetadata["provider"]?.stringValue
         )
     }
 

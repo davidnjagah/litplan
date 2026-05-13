@@ -171,7 +171,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
                 // Update session
                 supabaseManager.updateSession(Session(from: session))
-                supabaseManager.updateUser(SupabaseUser(from: session.user))
+                supabaseManager.setCurrentUser(from: session.user)
 
                 self.currentUser = SupabaseUser(from: session.user)
                 self.authState = .authenticated
@@ -275,7 +275,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
             // Update session
             supabaseManager.updateSession(Session(from: session))
-            supabaseManager.updateUser(SupabaseUser(from: session.user))
+            supabaseManager.setCurrentUser(from: session.user)
 
             self.currentUser = SupabaseUser(from: session.user)
             self.authState = .authenticated
@@ -314,7 +314,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
             // Update session
             supabaseManager.updateSession(Session(from: session))
-            supabaseManager.updateUser(SupabaseUser(from: session.user))
+            supabaseManager.setCurrentUser(from: session.user)
 
             self.currentUser = SupabaseUser(from: session.user)
             self.authState = .authenticated
@@ -357,7 +357,7 @@ class AuthenticationManager: NSObject, ObservableObject {
             )
 
             supabaseManager.updateSession(Session(from: session))
-            supabaseManager.updateUser(SupabaseUser(from: session.user))
+            supabaseManager.setCurrentUser(from: session.user)
 
             self.currentUser = SupabaseUser(from: session.user)
             self.authState = .authenticated
@@ -411,7 +411,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
             if let session = response.session {
                 supabaseManager.updateSession(Session(from: session))
-                supabaseManager.updateUser(SupabaseUser(from: session.user))
+                supabaseManager.setCurrentUser(from: session.user)
 
                 self.currentUser = SupabaseUser(from: session.user)
                 self.authState = .authenticated
@@ -522,7 +522,7 @@ class AuthenticationManager: NSObject, ObservableObject {
                 throw AuthError.unknown("No session returned from verification")
             }
             supabaseManager.updateSession(Session(from: supabaseSession))
-            supabaseManager.updateUser(SupabaseUser(from: response.user))
+            supabaseManager.setCurrentUser(from: response.user)
 
             self.currentUser = SupabaseUser(from: response.user)
             self.authState = .authenticated
@@ -657,7 +657,7 @@ class AuthenticationManager: NSObject, ObservableObject {
                 throw AuthError.unknown("No session returned from magic link verification")
             }
             supabaseManager.updateSession(Session(from: supabaseSession))
-            supabaseManager.updateUser(SupabaseUser(from: response.user))
+            supabaseManager.setCurrentUser(from: response.user)
 
             self.currentUser = SupabaseUser(from: response.user)
             self.authState = .authenticated
@@ -700,7 +700,7 @@ class AuthenticationManager: NSObject, ObservableObject {
                 throw AuthError.unknown("No session returned from invite verification")
             }
             supabaseManager.updateSession(Session(from: supabaseSession))
-            supabaseManager.updateUser(SupabaseUser(from: response.user))
+            supabaseManager.setCurrentUser(from: response.user)
 
             self.currentUser = SupabaseUser(from: response.user)
             self.authState = .authenticated

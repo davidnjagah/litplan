@@ -148,19 +148,12 @@ struct BoltView: View {
     /// Opacity for background glow animation (0.5 to 0.8)
     @State private var backgroundGlowOpacity: Double = 0.5
 
-    // Computed: Whether the current user authenticated via email/password
-    // Read directly from supabaseManager (an @EnvironmentObject) so SwiftUI re-renders
-    // when currentUser is set asynchronously after app launch.
-    private var isEmailUser: Bool {
-        guard let user = supabaseManager.currentUser else { return false }
-        return user.appMetadata?["provider"] == "email" ||
-               user.userMetadata?.provider == "email"
-    }
+    // Forwards to SupabaseManager.isEmailUser (@Published) — reactive via @EnvironmentObject.
+    // Driven by Supabase.User.identities, which is more reliable than appMetadata parsing.
+    private var isEmailUser: Bool { supabaseManager.isEmailUser }
 
-    // Computed: Whether any user is signed in (email, Apple, Google, etc.)
-    private var isSignedIn: Bool {
-        supabaseManager.currentUser != nil
-    }
+    // True when any user is signed in (email, Apple, Google, etc.)
+    private var isSignedIn: Bool { supabaseManager.currentUser != nil }
 
     // Computed: Whether bolt button can be pressed
     private var canGenerate: Bool {
