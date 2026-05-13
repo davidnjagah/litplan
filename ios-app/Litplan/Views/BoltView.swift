@@ -157,6 +157,11 @@ struct BoltView: View {
                user.userMetadata?.provider == "email"
     }
 
+    // Computed: Whether any user is signed in (email, Apple, Google, etc.)
+    private var isSignedIn: Bool {
+        supabaseManager.currentUser != nil
+    }
+
     // Computed: Whether bolt button can be pressed
     private var canGenerate: Bool {
         guard selectedCity != nil && selectedTheme != nil else { return false }
@@ -452,8 +457,29 @@ struct BoltView: View {
                             .stroke(Color.white.opacity(0.15), lineWidth: 1)
                     )
             )
+        } else if isSignedIn {
+            // Signed in via Apple/Google — no free token, nudge to upgrade
+            HStack(spacing: 5) {
+                Image(systemName: "bolt.circle")
+                    .font(.system(size: 13))
+                    .foregroundColor(.white.opacity(0.3))
+
+                Text("Upgrade to Pro for unlimited Vibez")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.35))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    )
+            )
         } else {
-            // Guest user (Apple/Google/not signed in): dim pill with email sign-in prompt
+            // Not signed in at all: prompt to create an email account for the free tier
             HStack(spacing: 5) {
                 Image(systemName: "bolt.circle")
                     .font(.system(size: 13))
