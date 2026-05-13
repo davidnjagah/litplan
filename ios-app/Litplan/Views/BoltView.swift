@@ -148,6 +148,15 @@ struct BoltView: View {
     /// Opacity for background glow animation (0.5 to 0.8)
     @State private var backgroundGlowOpacity: Double = 0.5
 
+    // Computed: Whether the current user authenticated via email/password
+    // Read directly from supabaseManager (an @EnvironmentObject) so SwiftUI re-renders
+    // when currentUser is set asynchronously after app launch.
+    private var isEmailUser: Bool {
+        guard let user = supabaseManager.currentUser else { return false }
+        return user.appMetadata?["provider"] == "email" ||
+               user.userMetadata?.provider == "email"
+    }
+
     // Computed: Whether bolt button can be pressed
     private var canGenerate: Bool {
         guard selectedCity != nil && selectedTheme != nil else { return false }
@@ -164,9 +173,9 @@ struct BoltView: View {
             return "Select a theme to generate"
         } else if subscriptionManager.isProUser && !tokenManager.canGenerate {
             return "No tokens remaining. Refresh: \(tokenManager.nextRefreshDate)"
-        } else if !subscriptionManager.isProUser && tokenManager.isEmailUser && !tokenManager.freeTokenAvailable {
+        } else if !subscriptionManager.isProUser && isEmailUser && !tokenManager.freeTokenAvailable {
             return "Free generation resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")"
-        } else if !subscriptionManager.isProUser && !tokenManager.isEmailUser {
+        } else if !subscriptionManager.isProUser && !isEmailUser {
             return "Upgrade to Pro to generate custom plans"
         }
         return nil
@@ -205,7 +214,7 @@ struct BoltView: View {
                 Spacer()
 
                 // Token indicator for Pro and free email users
-                if subscriptionManager.isProUser || tokenManager.isEmailUser {
+                if subscriptionManager.isProUser || isEmailUser {
                     VStack(spacing: 6) {
                         tokenIndicator
 
@@ -278,6 +287,11 @@ struct BoltView: View {
         .ignoresSafeArea()
         .onAppear {
             startMotionTracking()
+            tokenManager.loadTokens()
+        }
+        .onChange(of: supabaseManager.currentUser?.id) { _, _ in
+            // Re-load tokens when auth resolves after app launch
+            tokenManager.loadFreeTokenState()
             tokenManager.loadTokens()
         }
         .onDisappear {
@@ -646,7 +660,7 @@ struct BoltView: View {
         guard canGenerate else {
             if subscriptionManager.isProUser && !tokenManager.canGenerate {
                 toast = ToastData(type: .info, message: "No tokens remaining. Refreshes \(tokenManager.nextRefreshDate)")
-            } else if !subscriptionManager.isProUser && tokenManager.isEmailUser && !tokenManager.freeTokenAvailable {
+            } else if !subscriptionManager.isProUser && isEmailUser && !tokenManager.freeTokenAvailable {
                 toast = ToastData(type: .info, message: "Free generation resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")")
             } else if !subscriptionManager.isProUser {
                 showPaywall = true
