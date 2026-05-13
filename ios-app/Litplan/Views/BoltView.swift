@@ -213,40 +213,12 @@ struct BoltView: View {
 
                 Spacer()
 
-                // Token indicator for Pro and free email users
-                if subscriptionManager.isProUser || isEmailUser {
-                    VStack(spacing: 6) {
-                        tokenIndicator
-
-                        // Free email user — token exhausted: show reset countdown + upgrade nudge
-                        if !subscriptionManager.isProUser && !tokenManager.freeTokenAvailable {
-                            HStack(spacing: 4) {
-                                Text("Resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.white.opacity(0.45))
-
-                                Text("·")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.white.opacity(0.3))
-
-                                Button(action: {
-                                    HapticManager.shared.light()
-                                    showPaywall = true
-                                }) {
-                                    Text("Upgrade for unlimited")
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundColor(.boltGradientStart)
-                                }
-                            }
-                        } else {
-                            // Subtle disclaimer for all other states
-                            Text("Results are best with sizeable cities")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.35))
-                        }
-                    }
-                    .padding(.bottom, 8)
+                // Token indicator — always visible, content varies by user type
+                VStack(spacing: 6) {
+                    tokenIndicator
+                    tokenSubtitle
                 }
+                .padding(.bottom, 8)
 
                 // Bottom padding for tab bar
                 Spacer()
@@ -453,30 +425,99 @@ struct BoltView: View {
 
     // MARK: - Token Indicator
 
+    @ViewBuilder
     private var tokenIndicator: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "bolt.circle.fill")
-                .font(.system(size: 14))
-                .foregroundColor(.boltGradientStart)
+        if subscriptionManager.isProUser || isEmailUser {
+            // Pro or email user: bright capsule with numeric count
+            HStack(spacing: 6) {
+                Image(systemName: "bolt.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.boltGradientStart)
 
-            Text(subscriptionManager.isProUser ? tokenManager.formattedTokenCount : tokenManager.formattedFreeTokenCount)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
+                Text(subscriptionManager.isProUser ? tokenManager.formattedTokenCount : tokenManager.formattedFreeTokenCount)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
 
-            Text("this week")
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.6))
+                Text("this week")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.6))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+            )
+        } else {
+            // Guest user (Apple/Google/not signed in): dim pill with email sign-in prompt
+            HStack(spacing: 5) {
+                Image(systemName: "bolt.circle")
+                    .font(.system(size: 13))
+                    .foregroundColor(.white.opacity(0.3))
+
+                Text("Sign in with email for 1 free Vibez/week")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.35))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    )
+            )
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(Color.black.opacity(0.6))
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                )
-        )
+    }
+
+    @ViewBuilder
+    private var tokenSubtitle: some View {
+        if subscriptionManager.isProUser {
+            Text("Results are best with sizeable cities")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.35))
+        } else if isEmailUser && !tokenManager.freeTokenAvailable {
+            // Email user — token exhausted: reset countdown + upgrade nudge
+            HStack(spacing: 4) {
+                Text("Resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.45))
+
+                Text("·")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.3))
+
+                Button(action: {
+                    HapticManager.shared.light()
+                    showPaywall = true
+                }) {
+                    Text("Upgrade for unlimited")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.boltGradientStart)
+                }
+            }
+        } else if !subscriptionManager.isProUser && !isEmailUser {
+            // Guest user: upgrade CTA
+            Button(action: {
+                HapticManager.shared.light()
+                showPaywall = true
+            }) {
+                Text("Upgrade to Pro for unlimited")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.boltGradientStart)
+            }
+        } else {
+            // Email user with token available
+            Text("Results are best with sizeable cities")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.35))
+        }
     }
 
     // MARK: - Free User Overlay
