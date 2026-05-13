@@ -209,10 +209,32 @@ struct BoltView: View {
                     VStack(spacing: 6) {
                         tokenIndicator
 
-                        // Subtle disclaimer
-                        Text("Results are best with sizeable cities")
-                            .font(.system(size: 11))
-                            .foregroundColor(.white.opacity(0.35))
+                        // Free email user — token exhausted: show reset countdown + upgrade nudge
+                        if !subscriptionManager.isProUser && !tokenManager.freeTokenAvailable {
+                            HStack(spacing: 4) {
+                                Text("Resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.45))
+
+                                Text("·")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.3))
+
+                                Button(action: {
+                                    HapticManager.shared.light()
+                                    showPaywall = true
+                                }) {
+                                    Text("Upgrade for unlimited")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.boltGradientStart)
+                                }
+                            }
+                        } else {
+                            // Subtle disclaimer for all other states
+                            Text("Results are best with sizeable cities")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.35))
+                        }
                     }
                     .padding(.bottom, 8)
                 }
