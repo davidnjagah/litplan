@@ -75,10 +75,19 @@ class AuthenticationManager: NSObject, ObservableObject {
     @Published var errorMessage: String? = nil
     @Published var emailConfirmationNeeded: Bool = false
     @Published var pendingConfirmationEmail: String? = nil
+    /// True when the active session was established via email/password.
+    /// Persisted to UserDefaults so it survives app restarts.
+    @Published var isEmailLogin: Bool = UserDefaults.standard.bool(forKey: "auth_is_email_login")
 
     // MARK: - Private Properties
 
     private let supabaseManager = SupabaseManager.shared
+    private let emailLoginKey = "auth_is_email_login"
+
+    private func setEmailLogin(_ value: Bool) {
+        isEmailLogin = value
+        UserDefaults.standard.set(value, forKey: emailLoginKey)
+    }
 
     // MARK: - Initialization
 
@@ -175,6 +184,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
                 self.currentUser = SupabaseUser(from: session.user)
                 self.authState = .authenticated
+                setEmailLogin(false)
 
                 // Sync with backend
                 await syncUserWithBackend()
@@ -279,6 +289,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
             self.currentUser = SupabaseUser(from: session.user)
             self.authState = .authenticated
+            setEmailLogin(false)
 
             // Sync with backend
             await syncUserWithBackend()
@@ -318,6 +329,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
             self.currentUser = SupabaseUser(from: session.user)
             self.authState = .authenticated
+            setEmailLogin(false)
 
             // Sync with backend
             await syncUserWithBackend()
@@ -361,6 +373,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
             self.currentUser = SupabaseUser(from: session.user)
             self.authState = .authenticated
+            setEmailLogin(true)
 
             // Sync with backend
             await syncUserWithBackend()
@@ -415,6 +428,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
                 self.currentUser = SupabaseUser(from: session.user)
                 self.authState = .authenticated
+                setEmailLogin(true)
 
                 // Sync with backend
                 await syncUserWithBackend()
@@ -423,7 +437,8 @@ class AuthenticationManager: NSObject, ObservableObject {
                     print("[AuthenticationManager] Sign up successful for: \(email)")
                 }
             } else {
-                // Email confirmation required - notify UI to show confirmation screen
+                // Email confirmation required - mark as email login for when they confirm
+                setEmailLogin(true)
                 self.emailConfirmationNeeded = true
                 self.pendingConfirmationEmail = email
                 if Config.enableDebugLogging {
@@ -740,6 +755,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         currentUser = nil
         authState = .unauthenticated
+        setEmailLogin(false)
 
         UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
         UserDefaults.standard.removeObject(forKey: Config.UserDefaultsKeys.cachedUserId)

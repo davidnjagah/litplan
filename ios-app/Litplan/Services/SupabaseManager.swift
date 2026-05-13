@@ -62,6 +62,7 @@ class SupabaseManager: ObservableObject {
     func setCurrentUser(from rawUser: Supabase.User) {
         self.currentUser = SupabaseUser(from: rawUser)
         self.isEmailUser = checkIsEmailUser(rawUser)
+        print("[SupabaseManager] setCurrentUser — provider:\(rawUser.appMetadata["provider"]?.stringValue ?? "nil") identities:\(rawUser.identities?.map { $0.provider } ?? []) isEmailUser:\(self.isEmailUser)")
     }
 
     /// Determine whether the user's primary identity is email/password.

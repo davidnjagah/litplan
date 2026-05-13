@@ -58,6 +58,7 @@ import SwiftUI
 struct BoltView: View {
     @EnvironmentObject var subscriptionManager: SubscriptionManager
     @EnvironmentObject var supabaseManager: SupabaseManager
+    @EnvironmentObject var authManager: AuthenticationManager
 
     /// Binding for city passed from CityDetailsView via ContentView
     @Binding var pendingCity: SearchedCity?
@@ -148,9 +149,11 @@ struct BoltView: View {
     /// Opacity for background glow animation (0.5 to 0.8)
     @State private var backgroundGlowOpacity: Double = 0.5
 
-    // Forwards to SupabaseManager.isEmailUser (@Published) — reactive via @EnvironmentObject.
-    // Driven by Supabase.User.identities, which is more reliable than appMetadata parsing.
-    private var isEmailUser: Bool { supabaseManager.isEmailUser }
+    // Primary source: set explicitly at sign-in time, persisted across restarts.
+    // Fallback to supabaseManager.isEmailUser (Supabase identities check).
+    private var isEmailUser: Bool {
+        authManager.isEmailLogin || supabaseManager.isEmailUser
+    }
 
     // True when any user is signed in (email, Apple, Google, etc.)
     private var isSignedIn: Bool { supabaseManager.currentUser != nil }
