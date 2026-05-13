@@ -527,6 +527,11 @@ extension BoltTokenManager {
         "\(tokenCount)/\(Self.maxTokensPerWeek)"
     }
 
+    /// Formatted free token count for display (email free users)
+    var formattedFreeTokenCount: String {
+        freeTokenAvailable ? "1/1" : "0/1"
+    }
+
     /// Status message for UI
     var statusMessage: String {
         if !SubscriptionManager.shared.isProUser {

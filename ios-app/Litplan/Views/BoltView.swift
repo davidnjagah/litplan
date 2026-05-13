@@ -204,8 +204,8 @@ struct BoltView: View {
 
                 Spacer()
 
-                // Token indicator for Pro users
-                if subscriptionManager.isProUser {
+                // Token indicator for Pro and free email users
+                if subscriptionManager.isProUser || tokenManager.isEmailUser {
                     VStack(spacing: 6) {
                         tokenIndicator
 
@@ -423,7 +423,7 @@ struct BoltView: View {
                 .font(.system(size: 14))
                 .foregroundColor(.boltGradientStart)
 
-            Text(tokenManager.formattedTokenCount)
+            Text(subscriptionManager.isProUser ? tokenManager.formattedTokenCount : tokenManager.formattedFreeTokenCount)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
 
