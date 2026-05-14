@@ -40,14 +40,14 @@ final class MotionManager: ObservableObject {
 
     /// Reference pitch angle in radians (0° = phone flat on a surface)
     /// This is the "neutral" position where the card appears flat
-    private let referencePitch: Double = 0.0 // phone lying flat
+    private let referencePitch: Double = 0.349 // 20 degrees
 
     /// Deadzone threshold - movements smaller than this are ignored (in radians)
     /// Prevents jittery response to small hand tremors
     private let deadzone: Double = 0.08 // ~4.5 degrees
 
     /// Smoothing factor for low-pass filter (0-1, higher = smoother but slower)
-    private let smoothingFactor: Double = 0.15
+    private let smoothingFactor: Double = 0.5
 
     /// Previous smoothed values for interpolation
     private var smoothedPitch: Double = 0
@@ -167,12 +167,12 @@ extension View {
             .rotation3DEffect(
                 .degrees(motionManager.xRotation * intensity),
                 axis: (x: 0, y: 1, z: 0),
-                perspective: 0.5
+                perspective: 1.0
             )
             .rotation3DEffect(
                 .degrees(motionManager.yRotation * intensity),
                 axis: (x: 1, y: 0, z: 0),
-                perspective: 0.5
+                perspective: 1.0
             )
     }
 
