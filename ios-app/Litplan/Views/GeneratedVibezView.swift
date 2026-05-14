@@ -30,6 +30,10 @@ struct GeneratedVibezView: View {
                 }
             }
             .navigationBarHidden(true)
+            .onAppear {
+                guard !historyManager.isLoading else { return }
+                Task { await historyManager.fetchFromServer() }
+            }
             .sheet(item: $selectedGroupFlow) { groupFlow in
                 DetailedGroupFlowView(groupFlow: groupFlow, onDismiss: {
                     selectedGroupFlow = nil

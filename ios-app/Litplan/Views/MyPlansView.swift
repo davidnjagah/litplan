@@ -193,12 +193,7 @@ struct MyPlansView: View {
                 .environmentObject(subscriptionManager)
             }
             .onAppear {
-                print("[MyPlansView] 🚀 onAppear")
-                print("[MyPlansView] 📊 Auth state - isAuthenticated: \(authManager.isAuthenticated), isGuest: \(authManager.isGuest)")
                 loadData()
-                print("[MyPlansView] 📊 Saved items - cities: \(savedItemsManager.savedCities.count), plans: \(savedItemsManager.savedPlans.count), groupFlows: \(savedItemsManager.savedGroupFlows.count)")
-                // Note: Pro status is managed centrally by SubscriptionManager
-                // Views should read cached isProUser state, not call refresh on every onAppear
             }
         }
     }
@@ -487,18 +482,9 @@ struct MyPlansView: View {
 
     // MARK: - Data Loading
     private func loadData() {
-        print("[MyPlansView] 🔄 loadData() called")
-
-        // Check if user is authenticated
-        guard authManager.isAuthenticated || authManager.isGuest else {
-            print("[MyPlansView] ⚠️ User not authenticated - skipping load")
-            return
-        }
-
-        // Load saved items from local storage via SavedItemsManager
-        // Data is already loaded on init, but refresh to ensure we have latest
-        savedItemsManager.loadFromLocalStorage()
-        print("[MyPlansView] ✅ Loaded from local storage - cities: \(savedItemsManager.savedCities.count), plans: \(savedItemsManager.savedPlans.count), groupFlows: \(savedItemsManager.savedGroupFlows.count)")
+        guard authManager.isAuthenticated && !authManager.isGuest else { return }
+        guard !savedItemsManager.isLoading else { return }
+        Task { await savedItemsManager.refresh() }
     }
 
     private func refreshData() async {
