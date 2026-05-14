@@ -1,14 +1,14 @@
-# What's New — LitPlanz v1.6
+# What's New — LitPlanz v1.7
 
 ---
 
-**Your Vibez history, always ready**
-
-Generated Vibez now loads instantly when you open it from your profile — no more stalling. Your full history syncs from the server the moment the screen appears.
-
 **Token counter you can trust**
 
-Reinstalling the app no longer resets your weekly Vibez count. Tokens are now fully server-authoritative — your remaining generations follow you across reinstalls and devices.
+Reinstalling the app no longer resets your weekly Vibez count. Tokens now sync directly from the server on sign-in and stay accurate across reinstalls and devices.
+
+**Your Vibez history, always ready**
+
+Generated Vibez loads instantly when you open it from your profile — no more stalling on first open.
 
 **Smoother navigation**
 
