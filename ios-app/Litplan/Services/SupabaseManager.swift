@@ -233,7 +233,7 @@ struct Session: Codable {
         self.accessToken = supabaseSession.accessToken
         self.refreshToken = supabaseSession.refreshToken
         self.expiresAt = Date(timeIntervalSince1970: supabaseSession.expiresAt)
-        self.userId = supabaseSession.user.id.uuidString
+        self.userId = supabaseSession.user.id.uuidString.lowercased()
     }
 
     init(accessToken: String, refreshToken: String, expiresAt: Date?, userId: String) {
@@ -268,7 +268,7 @@ struct SupabaseUser: Codable, Identifiable {
     }
 
     init(from supabaseUser: Supabase.User) {
-        self.id = supabaseUser.id.uuidString
+        self.id = supabaseUser.id.uuidString.lowercased()
         self.email = supabaseUser.email
         self.phone = supabaseUser.phone
         self.createdAt = supabaseUser.createdAt
