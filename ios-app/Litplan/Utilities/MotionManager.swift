@@ -38,9 +38,9 @@ final class MotionManager: ObservableObject {
 
     // MARK: - Smooth Motion Configuration
 
-    /// Reference pitch angle in radians (50° = comfortable viewing angle)
+    /// Reference pitch angle in radians (0° = phone flat on a surface)
     /// This is the "neutral" position where the card appears flat
-    private let referencePitch: Double = 0.873 // 50 degrees in radians
+    private let referencePitch: Double = 0.0 // phone lying flat
 
     /// Deadzone threshold - movements smaller than this are ignored (in radians)
     /// Prevents jittery response to small hand tremors
