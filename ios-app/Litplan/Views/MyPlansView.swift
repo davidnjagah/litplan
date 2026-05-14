@@ -23,51 +23,51 @@ import SwiftUI
 
 // MARK: - Tab Enum
 enum MyPlansTab: String, CaseIterable {
+    case groupPlans = "Vibez"
     case savedCities = "Cities"
     case individualPlans = "Plans"
-    case groupPlans = "Groups"
 
     var icon: String {
         switch self {
+        case .groupPlans:
+            return "bolt"
         case .savedCities:
             return "building.2"
         case .individualPlans:
             return "calendar"
-        case .groupPlans:
-            return "person.3"
         }
     }
 
     var emptyIcon: String {
         switch self {
+        case .groupPlans:
+            return "bolt.slash"
         case .savedCities:
             return "heart"
         case .individualPlans:
             return "calendar.badge.plus"
-        case .groupPlans:
-            return "person.3.sequence"
         }
     }
 
     var emptyTitle: String {
         switch self {
+        case .groupPlans:
+            return "No saved Vibez yet"
         case .savedCities:
             return "No saved cities yet"
         case .individualPlans:
             return "No saved plans yet"
-        case .groupPlans:
-            return "No saved group plans yet"
         }
     }
 
     var emptyMessage: String {
         switch self {
+        case .groupPlans:
+            return "No Vibez saved yet. Generate one and tap the heart to save it!"
         case .savedCities:
             return "No cities saved yet. Generate a Vibez to start building your night out!"
         case .individualPlans:
             return "No plans saved yet. Generate a Vibez and save your favourites!"
-        case .groupPlans:
-            return "No group plans saved yet. Generate a Vibez to plan a night with your crew!"
         }
     }
 
@@ -79,7 +79,7 @@ enum MyPlansTab: String, CaseIterable {
 // MARK: - Main View
 struct MyPlansView: View {
     // MARK: - State Properties
-    @State private var selectedTab: MyPlansTab = .savedCities
+    @State private var selectedTab: MyPlansTab = .groupPlans
     @State private var isRefreshing: Bool = false
 
     // Navigation state - using item: binding to prevent race condition
@@ -120,6 +120,26 @@ struct MyPlansView: View {
         savedItemsManager.totalSavedCount
     }
 
+    // Visible items for free users (first 3); all items for Pro
+    private var visibleCities: [City] {
+        isProUser ? savedCities : Array(savedCities.prefix(SavedItemsManager.freeSaveCap))
+    }
+    private var overflowCities: [City] {
+        isProUser ? [] : Array(savedCities.dropFirst(SavedItemsManager.freeSaveCap).prefix(2))
+    }
+    private var visiblePlans: [Plan] {
+        isProUser ? savedPlans : Array(savedPlans.prefix(SavedItemsManager.freeSaveCap))
+    }
+    private var overflowPlans: [Plan] {
+        isProUser ? [] : Array(savedPlans.dropFirst(SavedItemsManager.freeSaveCap).prefix(2))
+    }
+    private var visibleGroupFlows: [GroupFlow] {
+        isProUser ? savedGroupFlows : Array(savedGroupFlows.prefix(SavedItemsManager.freeSaveCap))
+    }
+    private var overflowGroupFlows: [GroupFlow] {
+        isProUser ? [] : Array(savedGroupFlows.dropFirst(SavedItemsManager.freeSaveCap).prefix(2))
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -140,6 +160,11 @@ struct MyPlansView: View {
                     } else {
                         contentView
                             .transition(.opacity)
+                    }
+
+                    // Save limit footer — free authenticated users only
+                    if !isProUser && !authManager.isGuest {
+                        savesLimitFooter
                     }
                 }
             }
@@ -289,15 +314,63 @@ struct MyPlansView: View {
         }
     }
 
+    // MARK: - Saves Limit Footer (free users only)
+    private var savesLimitFooter: some View {
+        VStack(spacing: 6) {
+            // Counter pill — mirrors tokenIndicator style in BoltView
+            HStack(spacing: 6) {
+                Image(systemName: "heart.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.accentPrimary)
+
+                Text("3 saves max")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Text("per category")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.6))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+            )
+
+            // Upgrade nudge — mirrors tokenSubtitle upgrade button in BoltView
+            Button(action: {
+                HapticManager.shared.light()
+                paywallTrigger = .profile
+            }) {
+                Text("Upgrade to Pro for unlimited saves")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.accentSecondary)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.bottom, Spacing.lg)
+    }
+
     // MARK: - Saved Cities Content
     @ViewBuilder
     private var savedCitiesContent: some View {
         if savedCities.isEmpty {
             emptyStateView(for: .savedCities)
         } else {
-            ForEach(savedCities) { city in
-                SavedCityCard(city: city) {
-                    handleCityTap(city)
+            ForEach(visibleCities) { city in
+                SavedCityCard(city: city) { handleCityTap(city) }
+            }
+            if !isProUser {
+                ForEach(overflowCities) { city in
+                    SavedCityCard(city: city) { }
+                        .blur(radius: 5)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
             }
         }
@@ -309,15 +382,25 @@ struct MyPlansView: View {
         if savedPlans.isEmpty {
             emptyStateView(for: .individualPlans)
         } else {
-            // Note for free users: Previously saved plans remain visible
-            // but free users cannot add new plans to saved
-            ForEach(Array(savedPlans.enumerated()), id: \.element.id) { index, plan in
+            ForEach(visiblePlans) { plan in
                 SavedPlanCard(
                     plan: plan,
                     cityName: getCityName(for: plan),
-                    isProUser: isProUser
+                    isProUser: true
                 ) {
                     handlePlanTap(plan)
+                }
+            }
+            if !isProUser {
+                ForEach(overflowPlans) { plan in
+                    SavedPlanCard(
+                        plan: plan,
+                        cityName: getCityName(for: plan),
+                        isProUser: true
+                    ) { }
+                        .blur(radius: 5)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
             }
         }
@@ -329,15 +412,23 @@ struct MyPlansView: View {
         if savedGroupFlows.isEmpty {
             emptyStateView(for: .groupPlans)
         } else {
-            // Note for free users: Previously saved group plans remain visible
-            // but free users cannot add new group plans to saved
-            ForEach(savedGroupFlows) { groupFlow in
+            ForEach(visibleGroupFlows) { groupFlow in
                 SavedGroupFlowCard(
                     groupFlow: groupFlow,
-                    cityName: getCityName(for: groupFlow),
-                    isProUser: isProUser
+                    cityName: getCityName(for: groupFlow)
                 ) {
                     handleGroupFlowTap(groupFlow)
+                }
+            }
+            if !isProUser {
+                ForEach(overflowGroupFlows) { groupFlow in
+                    SavedGroupFlowCard(
+                        groupFlow: groupFlow,
+                        cityName: getCityName(for: groupFlow)
+                    ) { }
+                        .blur(radius: 5)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
             }
         }
@@ -445,13 +536,7 @@ struct MyPlansView: View {
 
     private func handleGroupFlowTap(_ groupFlow: GroupFlow) {
         HapticManager.shared.medium()
-
-        if isProUser {
-            selectedGroupFlow = groupFlow
-        } else {
-            HapticManager.shared.warning()
-            paywallTrigger = .groupFlow(cityName: getCityName(for: groupFlow))
-        }
+        selectedGroupFlow = groupFlow
     }
 }
 
@@ -668,42 +753,18 @@ struct SavedPlanCard: View {
 struct SavedGroupFlowCard: View {
     let groupFlow: GroupFlow
     let cityName: String
-    let isProUser: Bool
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: Spacing.sm) {
-                // Header row
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: Spacing.xxs) {
-                        // Title with Pro badge for free users
-                        HStack(spacing: Spacing.xs) {
-                            Text(groupFlow.title)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.textPrimary)
-                                .lineLimit(2)
+                        Text(groupFlow.title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                            .lineLimit(2)
 
-                            // Pro badge for free users
-                            if !isProUser {
-                                HStack(spacing: 2) {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 8, weight: .bold))
-
-                                    Text("PRO")
-                                        .font(.system(size: 8, weight: .bold))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 3)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.accentPrimary)
-                                )
-                            }
-                        }
-
-                        // City
                         Text(cityName)
                             .font(.callout)
                             .foregroundColor(.textSecondary)
@@ -711,50 +772,34 @@ struct SavedGroupFlowCard: View {
 
                     Spacer()
 
-                    // Heart and lock icons
-                    VStack(spacing: Spacing.xs) {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.accentPrimary)
-
-                        if !isProUser {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(.textTertiary)
-                        }
-                    }
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.accentPrimary)
                 }
 
-                // Details row
                 HStack(spacing: Spacing.md) {
-                    // Duration
                     HStack(spacing: 4) {
                         Image(systemName: "clock")
                             .font(.system(size: 11))
                             .foregroundColor(.textTertiary)
-
                         Text(groupFlow.formattedDuration)
                             .font(.caption)
                             .foregroundColor(.textSecondary)
                     }
 
-                    // Venue count
                     HStack(spacing: 4) {
                         Image(systemName: "mappin.and.ellipse")
                             .font(.system(size: 11))
                             .foregroundColor(.textTertiary)
-
                         Text("\(groupFlow.activities.count) venues")
                             .font(.caption)
                             .foregroundColor(.textSecondary)
                     }
 
-                    // Cost
                     HStack(spacing: 4) {
                         Image(systemName: "dollarsign.circle")
                             .font(.system(size: 11))
                             .foregroundColor(.textTertiary)
-
                         Text(groupFlow.formattedCost)
                             .font(.caption)
                             .foregroundColor(.textSecondary)
@@ -762,43 +807,31 @@ struct SavedGroupFlowCard: View {
 
                     Spacer()
 
-                    // Difficulty badge
                     Text(groupFlow.difficulty.capitalized)
                         .font(.caption2)
                         .fontWeight(.medium)
                         .foregroundColor(difficultyColor)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(difficultyColor.opacity(0.15))
-                        )
+                        .background(Capsule().fill(difficultyColor.opacity(0.15)))
                 }
             }
             .padding(Spacing.md)
             .background(Color.surfacePrimary)
             .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isProUser ? Color.surfaceSecondary : Color.accentPrimary.opacity(0.3), lineWidth: isProUser ? 1 : 1.5)
-            )
-            .opacity(isProUser ? 1.0 : 0.85)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.surfaceSecondary, lineWidth: 1))
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityLabel("\(groupFlow.title) in \(cityName)")
-        .accessibilityHint(isProUser ? "Double tap to view full itinerary" : "Pro subscription required to save new group plans")
+        .accessibilityHint("Double tap to view full itinerary")
     }
 
     private var difficultyColor: Color {
         switch groupFlow.difficulty {
-        case "easy":
-            return .success
-        case "moderate":
-            return .warning
-        case "intense":
-            return .error
-        default:
-            return .textSecondary
+        case "easy": return .success
+        case "moderate": return .warning
+        case "intense": return .error
+        default: return .textSecondary
         }
     }
 }
@@ -848,18 +881,16 @@ struct SavedGroupFlowCard: View {
         VStack(spacing: Spacing.md) {
             SavedGroupFlowCard(
                 groupFlow: GroupFlow.sampleNYCFlow,
-                cityName: "New York",
-                isProUser: true
+                cityName: "New York"
             ) {
                 print("Tapped group flow")
             }
 
             SavedGroupFlowCard(
                 groupFlow: GroupFlow.sampleLAFlow,
-                cityName: "Los Angeles",
-                isProUser: false
+                cityName: "Los Angeles"
             ) {
-                print("Tapped locked group flow")
+                print("Tapped group flow")
             }
         }
         .padding(Spacing.md)

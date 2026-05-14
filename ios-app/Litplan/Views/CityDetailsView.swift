@@ -1105,12 +1105,12 @@ struct CityDetailsView: View {
     }
 
     private func handleSaveTap() {
-        // FREE users CAN save cities (no restriction per Sprint 17C)
-        // Toggle saved state using SavedItemsManager
-        savedItemsManager.toggleCitySave(city)
+        let saved = savedItemsManager.toggleCitySave(city)
+        if !saved {
+            paywallTrigger = .saveCity(cityName: city.name)
+            return
+        }
         isFavorited = savedItemsManager.isCitySaved(city)
-
-        // Haptic feedback - success for save, light for unsave
         if isFavorited {
             HapticManager.shared.success()
         } else {

@@ -25,11 +25,11 @@ enum PaywallTrigger: Equatable {
         case .saveCity:
             return "Save Your Favorite Cities"
         case .groupFlow:
-            return "Unlock Unlimited Vibez"
+            return "Unlock 7 Vibez/Week"
         case .profile:
             return "Upgrade to LitPlanz Pro"
         case .cityDiscovery:
-            return "Unlock Unlimited Vibez"
+            return "Unlock 7 Vibez/Week"
         }
     }
 
@@ -42,11 +42,11 @@ enum PaywallTrigger: Equatable {
         case .saveCity(let city):
             return "Save \(city) to your favorites for quick access. This feature is available with LitPlanz Pro."
         case .groupFlow(let city):
-            return "Upgrade to Pro to generate unlimited Vibez in \(city) and every other city — any vibe, any time."
+            return "Upgrade to Pro for 7 Vibez/week in \(city) and every other city — any vibe, any time."
         case .profile:
-            return "Get unlimited Vibez, access all 100+ cities, unlock every vibe theme, and save unlimited plans."
+            return "Get 7 Vibez/week, access all 100+ cities, unlock every vibe theme, and save unlimited plans."
         case .cityDiscovery:
-            return "You've used your free Vibez for this week. Upgrade to Pro for unlimited generations, any city, any time."
+            return "You've used your free Vibez for this week. Upgrade to Pro for 7 generations/week, any city, any time."
         }
     }
 

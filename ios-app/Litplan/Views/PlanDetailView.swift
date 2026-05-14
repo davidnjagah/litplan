@@ -16,6 +16,7 @@ struct PlanDetailView: View {
     @State private var isContentReady: Bool = true  // Show content immediately - data is already available
     @State private var isSaved: Bool = false
     @State private var mapCameraPosition: MapCameraPosition
+    @State private var showPaywall: Bool = false
 
     // Swipe to dismiss state
     @State private var dragOffset: CGFloat = 0
@@ -105,6 +106,9 @@ struct PlanDetailView: View {
         }
         .offset(y: dragOffset)
         .background(Color.appBackground.ignoresSafeArea())
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(trigger: .planLimit(cityName: plan.cityName))
+        }
         .onAppear {
             print("[PlanDetailView] 🚀 onAppear - plan: \(plan.title)")
             print("[PlanDetailView] 📊 Plan data - id: \(plan.id), venue: \(plan.venueName), images: \(plan.images.count)")
@@ -255,8 +259,12 @@ struct PlanDetailView: View {
             // Save button (heart icon)
             Button(action: {
                 HapticManager.shared.light()
-                savedItemsManager.togglePlanSave(plan)
-                isSaved = savedItemsManager.isPlanSaved(plan)
+                let saved = savedItemsManager.togglePlanSave(plan)
+                if saved {
+                    isSaved = savedItemsManager.isPlanSaved(plan)
+                } else {
+                    showPaywall = true
+                }
             }) {
                 ZStack {
                     Circle()

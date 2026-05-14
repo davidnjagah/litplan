@@ -28,7 +28,7 @@ class BoltTokenManager: ObservableObject {
     // MARK: - Constants
 
     /// Maximum tokens per week for Pro users
-    static let maxTokensPerWeek = 5
+    static let maxTokensPerWeek = 7
 
     /// Token refresh cycle in days
     static let refreshCycleDays = 7
@@ -74,22 +74,22 @@ class BoltTokenManager: ObservableObject {
         return tokenCount > 0
     }
 
-    /// Whether the signed-in user authenticated via email/password
-    var isEmailUser: Bool {
-        let user = SupabaseManager.shared.currentUser
-        return user?.appMetadata?["provider"] == "email" ||
-               user?.userMetadata?.provider == "email"
-    }
-
-    /// Whether a free email user can generate (1 per week, non-Pro only)
-    var canFreeEmailUserGenerate: Bool {
+    /// Whether any signed-in, non-Pro user can generate their free weekly Vibez.
+    var canFreeUserGenerate: Bool {
         guard !SubscriptionManager.shared.isProUser else { return false }
-        guard isEmailUser else { return false }
+        guard SupabaseManager.shared.currentUser != nil else { return false }
         return freeTokenAvailable
     }
 
-    /// Load and refresh the free token state from UserDefaults
+    /// Load free token state: apply local cache instantly, then reconcile with server.
     func loadFreeTokenState() {
+        loadFreeTokenStateLocal()
+        Task {
+            await loadFreeTokenStateFromServer()
+        }
+    }
+
+    private func loadFreeTokenStateLocal() {
         if let lastUsed = UserDefaults.standard.object(forKey: freeTokenUsedDateKey) as? Date {
             let days = Calendar.current.dateComponents([.day], from: lastUsed, to: Date()).day ?? 0
             freeTokenAvailable = days >= Self.refreshCycleDays
@@ -98,10 +98,59 @@ class BoltTokenManager: ObservableObject {
         }
     }
 
-    /// Consume the free weekly token
+    private func loadFreeTokenStateFromServer() async {
+        guard let userId = SupabaseManager.shared.currentUser?.id else { return }
+
+        do {
+            let client = SupabaseManager.shared.client!
+            let response: [FreeTokenStatusResponse] = try await client
+                .rpc("get_free_token_status", params: ["p_user_id": userId])
+                .execute()
+                .value
+
+            guard let result = response.first else { return }
+
+            freeTokenAvailable = result.available
+
+            // Keep local cache in sync with server's authoritative timestamp
+            if let isoString = result.last_generation_at {
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                if let date = formatter.date(from: isoString) {
+                    UserDefaults.standard.set(date, forKey: freeTokenUsedDateKey)
+                }
+            } else {
+                UserDefaults.standard.removeObject(forKey: freeTokenUsedDateKey)
+            }
+
+            print("[BoltTokenManager] Server free token: available=\(result.available), days_until_reset=\(result.days_until_reset ?? 0)")
+        } catch {
+            print("[BoltTokenManager] Server free token fetch failed, using local: \(error)")
+        }
+    }
+
+    /// Consume the free weekly token (optimistic local update + server write).
     func consumeFreeToken() {
         UserDefaults.standard.set(Date(), forKey: freeTokenUsedDateKey)
         freeTokenAvailable = false
+
+        Task {
+            await consumeFreeTokenOnServer()
+        }
+    }
+
+    private func consumeFreeTokenOnServer() async {
+        guard let userId = SupabaseManager.shared.currentUser?.id else { return }
+
+        do {
+            let client = SupabaseManager.shared.client!
+            try await client
+                .rpc("consume_free_bolt_token", params: ["p_user_id": userId])
+                .execute()
+            print("[BoltTokenManager] Free token consumed on server")
+        } catch {
+            print("[BoltTokenManager] Failed to sync free token consumption: \(error)")
+        }
     }
 
     /// Days until the free token resets
@@ -557,6 +606,13 @@ extension BoltTokenManager {
 private enum PendingTokenOperation: Codable {
     case consume(cityName: String?, themeName: String?)
     case refund
+}
+
+/// Response from get_free_token_status function
+private struct FreeTokenStatusResponse: Codable {
+    let available: Bool
+    let last_generation_at: String?
+    let days_until_reset: Int?
 }
 
 /// Response from get_or_create_bolt_tokens function

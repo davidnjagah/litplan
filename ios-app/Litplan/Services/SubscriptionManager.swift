@@ -334,24 +334,18 @@ class SubscriptionManager: ObservableObject {
                     throw SubscriptionError.failedVerification
                 }
 
-                // Validate with backend
+                // Update local state and cache first so user gets immediate access
+                await refreshSubscriptionState()
+
+                // Validate with backend (non-blocking - don't fail the purchase if backend is unavailable)
                 do {
                     try await validateWithBackend(transaction: transaction)
-                } catch SubscriptionError.backendError(let message) {
-                    isLoading = false
-                    errorMessage = message
-                    // Finish the transaction even if backend validation fails
-                    await transaction.finish()
-                    throw SubscriptionError.backendError(message)
                 } catch {
-                    isLoading = false
-                    errorMessage = "Unable to activate subscription. Please try restoring purchases."
-                    await transaction.finish()
-                    throw error
+                    // Log but don't block the purchase - user already paid
+                    print("[SubscriptionManager] Backend validation failed (non-blocking): \(error)")
+                    // The local StoreKit state is the source of truth
+                    // Backend will be synced on next app launch or restore
                 }
-
-                // Update local state and cache
-                await refreshSubscriptionState()
 
                 // Finish the transaction
                 await transaction.finish()
@@ -411,7 +405,7 @@ class SubscriptionManager: ObservableObject {
                 try await AppStore.sync()
             } catch {
                 isLoading = false
-                errorMessage = "Failed to connect to App Store. Please try again."
+                errorMessage = "We couldn't reach the App Store right now. Please check your connection and try again."
                 throw SubscriptionError.appStoreConnectionFailed
             }
 
@@ -432,12 +426,12 @@ class SubscriptionManager: ObservableObject {
             isLoading = false
 
             if !isProUser {
-                errorMessage = "No previous purchases found. If you believe this is an error, please contact support."
+                errorMessage = "No active subscription found for this Apple ID. If you subscribed with a different account, try signing in with that one."
                 throw SubscriptionError.noPurchasesToRestore
             }
         } catch {
             isLoading = false
-            errorMessage = "Failed to restore purchases. Please try again or contact support."
+            errorMessage = "We couldn't reach the App Store right now. Please check your connection and try again."
             print("[SubscriptionManager] Restore error: \(error.localizedDescription)")
             throw error
         }
@@ -867,13 +861,6 @@ class SubscriptionManager: ObservableObject {
             print("[SubscriptionManager] Manual Pro access granted for: \(user.email ?? "unknown")")
             return
         }
-
-        // Fallback: Check user_metadata for manual_pro_access
-        if let manualPro = user.userMetadata?.manualProAccess,
-           manualPro == true {
-            grantManualProAccess()
-            print("[SubscriptionManager] Manual Pro access (via user_metadata) granted for: \(user.email ?? "unknown")")
-        }
     }
 
     /// Grant manual Pro access (for demo/special accounts)
@@ -1029,9 +1016,9 @@ enum SubscriptionError: LocalizedError {
         case .unknownPurchaseResult:
             return "An unexpected error occurred. Please try again."
         case .noPurchasesToRestore:
-            return "No previous purchases found."
+            return "No active subscription found for this Apple ID. If you subscribed with a different account, try signing in with that one."
         case .appStoreConnectionFailed:
-            return "Failed to connect to App Store. Please try again."
+            return "We couldn't reach the App Store right now. Please check your connection and try again."
         case .receiptMissing:
             return "Receipt not found. Please try making the purchase again."
         case .receiptInvalid:

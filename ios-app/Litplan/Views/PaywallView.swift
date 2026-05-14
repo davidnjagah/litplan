@@ -223,8 +223,8 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             BenefitRow(
                 icon: "bolt.fill",
-                title: "Unlimited Vibez",
-                description: "Generate as many custom plans as you want, any time"
+                title: "7 Vibez/Week",
+                description: "Generate 7 custom plans per week — any city, any vibe"
             )
 
             BenefitRow(

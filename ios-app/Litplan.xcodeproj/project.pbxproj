@@ -82,6 +82,7 @@
 		F556E3FEBDF38C02C780C820 /* PlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49329656D85F82B7ABE55280 /* PlanDetailView.swift */; };
 		F7EB5BA37FED0DC4739E5379 /* GroupFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C94516B2740331C2C25E62F /* GroupFlow.swift */; };
 		F856FD405E7DF693348E896A /* LoadingStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */; };
+		GV002 /* GeneratedVibezView.swift in Sources */ = {isa = PBXBuildFile; fileRef = GV001 /* GeneratedVibezView.swift */; };
 		OB01001 /* OnboardingPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB01002 /* OnboardingPage.swift */; };
 		OB02001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB02002 /* OnboardingView.swift */; };
 		OB03001 /* OnboardingPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OB03002 /* OnboardingPageView.swift */; };
@@ -89,6 +90,7 @@
 		SP13001 /* MyPlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP13002 /* MyPlansView.swift */; };
 		SP14001 /* BlurredPremiumOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP14002 /* BlurredPremiumOverlay.swift */; };
 		SP24001 /* WeekSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP24002 /* WeekSelectorView.swift */; };
+		VH002 /* VibezHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = VH001 /* VibezHistoryManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -170,6 +172,7 @@
 		E9923D03622E0DEBD09DC046 /* LoadingStateView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoadingStateView.swift; sourceTree = "<group>"; };
 		F4BEF75915AC6FE6F67F2DE0 /* AboutView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		FDA6A160B87640F8AF932512 /* AsyncImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncImageView.swift; sourceTree = "<group>"; };
+		GV001 /* GeneratedVibezView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedVibezView.swift; sourceTree = "<group>"; };
 		OB01002 /* OnboardingPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPage.swift; sourceTree = "<group>"; };
 		OB02002 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		OB03002 /* OnboardingPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPageView.swift; sourceTree = "<group>"; };
@@ -177,6 +180,7 @@
 		SP13002 /* MyPlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPlansView.swift; sourceTree = "<group>"; };
 		SP14002 /* BlurredPremiumOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurredPremiumOverlay.swift; sourceTree = "<group>"; };
 		SP24002 /* WeekSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekSelectorView.swift; sourceTree = "<group>"; };
+		VH001 /* VibezHistoryManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VibezHistoryManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -245,6 +249,7 @@
 				21FFB3BD2F32913700B056E5 /* Auth */,
 				OB05000 /* Onboarding */,
 				105 /* SearchedCitiesView.swift */,
+				GV001 /* GeneratedVibezView.swift */,
 				SP13002 /* MyPlansView.swift */,
 				106 /* ProfileView.swift */,
 				119 /* CityDetailsView.swift */,
@@ -323,6 +328,7 @@
 				131 /* AuthenticationManager.swift */,
 				132 /* APIService.swift */,
 				A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */,
+				VH001 /* VibezHistoryManager.swift */,
 				CSS002 /* CacheService.swift */,
 				B5AD98C0DE0BC26B446A974A /* CitySearchManager.swift */,
 				B7A662B1B8B6BDB69709844A /* BoltTokenManager.swift */,
@@ -452,6 +458,7 @@
 				001 /* LitplanApp.swift in Sources */,
 				002 /* ContentView.swift in Sources */,
 				005 /* SearchedCitiesView.swift in Sources */,
+				GV002 /* GeneratedVibezView.swift in Sources */,
 				006 /* ProfileView.swift in Sources */,
 				007 /* Color+Extensions.swift in Sources */,
 				008 /* Spacing.swift in Sources */,
@@ -505,6 +512,7 @@
 				AFEE0E9793F2246584F8D92C /* RouteMapView.swift in Sources */,
 				SP24001 /* WeekSelectorView.swift in Sources */,
 				7A9295786E53FDF606D37F31 /* SavedItemsManager.swift in Sources */,
+				VH002 /* VibezHistoryManager.swift in Sources */,
 				CP01001 /* CopyableAddressView.swift in Sources */,
 				CSS001 /* CacheService.swift in Sources */,
 				CB8313F94F443E7030E30853 /* MotionManager.swift in Sources */,
@@ -663,7 +671,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Litplan/Litplan.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Litplan/Info.plist;
@@ -679,7 +687,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.03;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -695,7 +703,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Litplan/Litplan.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Litplan/Info.plist;
@@ -711,7 +719,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.03;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

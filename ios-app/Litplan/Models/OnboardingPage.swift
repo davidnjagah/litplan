@@ -75,7 +75,7 @@ extension OnboardingPage {
         OnboardingPage(
             title: "Unlock Everything",
             subtitle: "LitPlanz Pro",
-            description: "Get unlimited Vibez, access all 100+ cities, unlock every vibe theme, and enjoy priority features with Pro.",
+            description: "Get 7 Vibez/week, access all 100+ cities, unlock every vibe theme, and enjoy priority features with Pro.",
             systemIcon: "crown.fill",
             accentColor: Color(red: 1.0, green: 0.75, blue: 0.2),
             isProPage: true

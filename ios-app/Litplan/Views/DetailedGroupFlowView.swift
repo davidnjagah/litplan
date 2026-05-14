@@ -24,36 +24,15 @@ struct DetailedGroupFlowView: View {
 
     @State private var scrollOffset: CGFloat = 0
     @State private var isContentReady: Bool = true  // Show content immediately - data is already available
-    @State private var showPaywall: Bool = false
     @State private var isSaved: Bool = false
     @State private var showingShareSheet: Bool = false
+    @State private var showPaywall: Bool = false
 
     // Swipe to dismiss state
     @State private var dragOffset: CGFloat = 0
 
-    // Subscription manager for premium gating
-    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
-
     // Saved items manager for save functionality
     @ObservedObject private var savedItemsManager = SavedItemsManager.shared
-
-    private var isProUser: Bool {
-        subscriptionManager.isProUser
-    }
-
-    // MARK: - Premium Gating Helpers
-
-    /// Abbreviate venue name for free users (e.g., "Brooklyn Brewery" -> "B*** B***")
-    private func abbreviateVenueName(_ name: String) -> String {
-        guard !isProUser else { return name }
-        let words = name.split(separator: " ")
-        return words.map { word in
-            if word.count > 2 {
-                return String(word.prefix(1)) + String(repeating: "*", count: min(word.count - 1, 3))
-            }
-            return String(word)
-        }.joined(separator: " ")
-    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -75,32 +54,16 @@ struct DetailedGroupFlowView: View {
                             // Summary section - always visible (venue count, duration)
                             summarySection
 
-                            // Description - gated for free users
-                            if isProUser {
-                                descriptionSection
-                            }
+                            descriptionSection
 
-                            // Full itinerary with timeline - gated
-                            if isProUser {
-                                itinerarySection
-                            } else {
-                                restrictedVenueSection
-                            }
+                            itinerarySection
 
-                            // AI Tags - always visible
+                            // AI Tags
                             tagsSection
 
-                            // Estimated cost breakdown - only for pro users
-                            if isProUser {
-                                costSection
-                            }
+                            costSection
 
-                            // Route map section - only for pro users
-                            if isProUser {
-                                routeMapSection
-                            } else {
-                                restrictedRouteMapSection
-                            }
+                            routeMapSection
 
                             // Bottom padding
                             Color.clear.frame(height: Spacing.xl)
@@ -127,18 +90,16 @@ struct DetailedGroupFlowView: View {
         }
         .offset(y: dragOffset)
         .background(Color.appBackground.ignoresSafeArea())
-        .sheet(isPresented: $showPaywall) {
-            PaywallView(trigger: .groupFlow(cityName: "")) {
-                showPaywall = false
-            }
-        }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(items: [shareText])
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(trigger: .groupFlow(cityName: groupFlow.cityId))
         }
         .onAppear {
             print("[DetailedGroupFlowView] 🚀 onAppear - groupFlow: \(groupFlow.title)")
             print("[DetailedGroupFlowView] 📊 GroupFlow data - id: \(groupFlow.id), activities: \(groupFlow.activities.count)")
-            print("[DetailedGroupFlowView] 📊 isContentReady: \(isContentReady), isProUser: \(isProUser)")
+            print("[DetailedGroupFlowView] 📊 isContentReady: \(isContentReady)")
 
             // Check if already saved
             isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
@@ -216,88 +177,10 @@ struct DetailedGroupFlowView: View {
             }
 
             Spacer()
-
-            // Pro badge if not pro user
-            if !isProUser {
-                Text("PRO")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.accentPrimary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.accentPrimary.opacity(0.15))
-                    .cornerRadius(6)
-            }
         }
         .padding(Spacing.md)
         .background(Color.surfaceSecondary)
         .cornerRadius(12)
-    }
-
-    // MARK: - Restricted Venue Section (Free Users)
-    private var restrictedVenueSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.md) {
-            Text("Itinerary")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.textPrimary)
-
-            ZStack {
-                // Blurred placeholder content
-                VStack(spacing: Spacing.sm) {
-                    ForEach(Array(groupFlow.sortedActivities.prefix(3).enumerated()), id: \.element.id) { index, activity in
-                        HStack(alignment: .center, spacing: Spacing.md) {
-                            // Step number
-                            ZStack {
-                                Circle()
-                                    .fill(Color.accentPrimary.opacity(0.3))
-                                    .frame(width: 36, height: 36)
-
-                                Text("\(activity.order)")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(.white.opacity(0.6))
-                            }
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                // Abbreviated venue name
-                                Text(abbreviateVenueName(activity.venueName))
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.textPrimary.opacity(0.6))
-
-                                // Obscured description
-                                Text(String(repeating: "\u{2022}", count: 12))
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.textTertiary)
-                            }
-
-                            Spacer()
-
-                            // Duration badge
-                            Text("\(activity.duration)min")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.textSecondary.opacity(0.6))
-                                .padding(.horizontal, Spacing.xs)
-                                .padding(.vertical, 4)
-                                .background(Color.surfaceSecondary.opacity(0.5))
-                                .cornerRadius(6)
-                        }
-                        .padding(Spacing.md)
-                        .background(Color.surfacePrimary.opacity(0.5))
-                        .cornerRadius(12)
-                    }
-                }
-                .blur(radius: 6)
-
-                // Premium overlay
-                BlurredPremiumOverlay {
-                    HapticManager.shared.medium()
-                    if let onUpgrade = onUpgrade {
-                        onUpgrade()
-                    } else {
-                        showPaywall = true
-                    }
-                }
-                .cornerRadius(12)
-            }
-        }
     }
 
     // MARK: - Header Section
@@ -324,14 +207,11 @@ struct DetailedGroupFlowView: View {
                     icon: "clock.fill"
                 )
 
-                // Cost - only for pro users (no pricing shown to free users)
-                if isProUser {
-                    badgePill(
-                        text: groupFlow.formattedCost,
-                        color: .accentSecondary,
-                        icon: "dollarsign.circle.fill"
-                    )
-                }
+                badgePill(
+                    text: groupFlow.formattedCost,
+                    color: .accentSecondary,
+                    icon: "dollarsign.circle.fill"
+                )
             }
 
             // Best For tags with share button - always visible
@@ -632,62 +512,6 @@ struct DetailedGroupFlowView: View {
         RouteMapView(venues: venueLocations, planTitle: groupFlow.title)
     }
 
-    // MARK: - Restricted Route Map Section (Free Users)
-    private var restrictedRouteMapSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            Text("Route Map")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.textPrimary)
-
-            ZStack {
-                // Blurred placeholder map
-                ZStack {
-                    Rectangle()
-                        .fill(Color.surfaceSecondary)
-                        .frame(height: 200)
-
-                    // Fake map elements
-                    VStack(spacing: Spacing.md) {
-                        HStack(spacing: Spacing.lg) {
-                            ForEach(1...3, id: \.self) { index in
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.accentPrimary.opacity(0.4))
-                                        .frame(width: 30, height: 30)
-
-                                    Text("\(index)")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
-                            }
-                        }
-
-                        // Fake route line
-                        Rectangle()
-                            .fill(Color.accentPrimary.opacity(0.3))
-                            .frame(height: 4)
-                            .cornerRadius(2)
-                            .frame(maxWidth: 200)
-                    }
-                }
-                .blur(radius: 6)
-                .cornerRadius(12)
-
-                // Premium overlay
-                BlurredPremiumOverlay {
-                    HapticManager.shared.medium()
-                    if let onUpgrade = onUpgrade {
-                        onUpgrade()
-                    } else {
-                        showPaywall = true
-                    }
-                }
-                .cornerRadius(12)
-            }
-            .frame(height: 200)
-        }
-    }
-
     /// Convert group flow activities to venue locations for the map
     private var venueLocations: [VenueLocation] {
         groupFlow.sortedActivities.map { activity in
@@ -712,8 +536,12 @@ struct DetailedGroupFlowView: View {
             // Save button (heart icon, next to close)
             Button(action: {
                 HapticManager.shared.light()
-                savedItemsManager.toggleGroupFlowSave(groupFlow)
-                isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
+                let saved = savedItemsManager.toggleGroupFlowSave(groupFlow)
+                if saved {
+                    isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
+                } else {
+                    showPaywall = true
+                }
             }) {
                 ZStack {
                     Circle()

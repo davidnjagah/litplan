@@ -9,7 +9,7 @@
 //  - 3D portal card that responds to device orientation
 //  - Dynamic Island-style theme selector
 //  - City search selector for worldwide cities
-//  - Token system for Pro users (5/week)
+//  - Token system for Pro users (7/week)
 //  - Save button on card
 //  - Premium group plan generation
 //
@@ -161,7 +161,7 @@ struct BoltView: View {
     // Computed: Whether bolt button can be pressed
     private var canGenerate: Bool {
         guard selectedCity != nil && selectedTheme != nil else { return false }
-        return subscriptionManager.isProUser ? tokenManager.canGenerate : tokenManager.canFreeEmailUserGenerate
+        return subscriptionManager.isProUser ? tokenManager.canGenerate : tokenManager.canFreeUserGenerate
     }
 
     // Computed: Reason why generation is disabled
@@ -174,10 +174,10 @@ struct BoltView: View {
             return "Select a theme to generate"
         } else if subscriptionManager.isProUser && !tokenManager.canGenerate {
             return "No tokens remaining. Refresh: \(tokenManager.nextRefreshDate)"
-        } else if !subscriptionManager.isProUser && isEmailUser && !tokenManager.freeTokenAvailable {
+        } else if !subscriptionManager.isProUser && isSignedIn && !tokenManager.freeTokenAvailable {
             return "Free generation resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")"
-        } else if !subscriptionManager.isProUser && !isEmailUser {
-            return "Upgrade to Pro to generate custom plans"
+        } else if !subscriptionManager.isProUser && !isSignedIn {
+            return "Sign in to get 1 free Vibez/week"
         }
         return nil
     }
@@ -312,7 +312,10 @@ struct BoltView: View {
         Button(action: {
             guard let flow = currentGroupFlow else { return }
             HapticManager.shared.light()
-            savedItemsManager.toggleGroupFlowSave(flow)
+            let saved = savedItemsManager.toggleGroupFlowSave(flow)
+            if !saved {
+                showPaywall = true
+            }
         }) {
             Image(systemName: isSaved ? "heart.fill" : "heart")
                 .font(.system(size: 20, weight: .semibold))
@@ -428,8 +431,8 @@ struct BoltView: View {
 
     @ViewBuilder
     private var tokenIndicator: some View {
-        if subscriptionManager.isProUser || isEmailUser {
-            // Pro or email user: bright capsule with numeric count
+        if subscriptionManager.isProUser || isSignedIn {
+            // Pro or any signed-in user: bright capsule with numeric count
             HStack(spacing: 6) {
                 Image(systemName: "bolt.circle.fill")
                     .font(.system(size: 14))
@@ -453,35 +456,14 @@ struct BoltView: View {
                             .stroke(Color.white.opacity(0.15), lineWidth: 1)
                     )
             )
-        } else if isSignedIn {
-            // Signed in via Apple/Google — no free token, nudge to upgrade
-            HStack(spacing: 5) {
-                Image(systemName: "bolt.circle")
-                    .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.3))
-
-                Text("Upgrade to Pro for unlimited Vibez")
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.4))
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.35))
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
-                    )
-            )
         } else {
-            // Not signed in at all: prompt to create an email account for the free tier
+            // Not signed in: nudge to sign up for the free weekly Vibez
             HStack(spacing: 5) {
                 Image(systemName: "bolt.circle")
                     .font(.system(size: 13))
                     .foregroundColor(.white.opacity(0.3))
 
-                Text("Sign in with email for 1 free Vibez/week")
+                Text("Sign in for 1 free Vibez/week")
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.4))
             }
@@ -504,8 +486,8 @@ struct BoltView: View {
             Text("Results are best with sizeable cities")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.35))
-        } else if isEmailUser && !tokenManager.freeTokenAvailable {
-            // Email user — token exhausted: reset countdown + upgrade nudge
+        } else if isSignedIn && !tokenManager.freeTokenAvailable {
+            // Signed-in user, token exhausted: reset countdown + upgrade nudge
             HStack(spacing: 4) {
                 Text("Resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")")
                     .font(.system(size: 11))
@@ -519,23 +501,23 @@ struct BoltView: View {
                     HapticManager.shared.light()
                     showPaywall = true
                 }) {
-                    Text("Upgrade for unlimited")
+                    Text("Upgrade for 7/week")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.boltGradientStart)
                 }
             }
-        } else if !subscriptionManager.isProUser && !isEmailUser {
-            // Guest user: upgrade CTA
+        } else if !subscriptionManager.isProUser && !isSignedIn {
+            // Not signed in: upgrade CTA
             Button(action: {
                 HapticManager.shared.light()
                 showPaywall = true
             }) {
-                Text("Upgrade to Pro for unlimited")
+                Text("Upgrade to Pro for 7/week")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.boltGradientStart)
             }
         } else {
-            // Email user with token available
+            // Signed-in user with free token available
             Text("Results are best with sizeable cities")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.35))
@@ -695,12 +677,7 @@ struct BoltView: View {
 
     private func handleCardTap() {
         HapticManager.shared.medium()
-
-        if subscriptionManager.isProUser {
-            showDetailedFlow = true
-        } else {
-            showPaywall = true
-        }
+        showDetailedFlow = true
     }
 
     private func handleBoltTap() {
@@ -723,7 +700,7 @@ struct BoltView: View {
         guard canGenerate else {
             if subscriptionManager.isProUser && !tokenManager.canGenerate {
                 toast = ToastData(type: .info, message: "No tokens remaining. Refreshes \(tokenManager.nextRefreshDate)")
-            } else if !subscriptionManager.isProUser && isEmailUser && !tokenManager.freeTokenAvailable {
+            } else if !subscriptionManager.isProUser && isSignedIn && !tokenManager.freeTokenAvailable {
                 toast = ToastData(type: .info, message: "Free generation resets in \(tokenManager.daysUntilFreeTokenRefresh) day\(tokenManager.daysUntilFreeTokenRefresh == 1 ? "" : "s")")
             } else if !subscriptionManager.isProUser {
                 showPaywall = true
@@ -742,7 +719,7 @@ struct BoltView: View {
 
         // Verify token availability before starting
         if useFreeToken {
-            guard tokenManager.canFreeEmailUserGenerate else {
+            guard tokenManager.canFreeUserGenerate else {
                 toast = ToastData(type: .info, message: "No free generation available. Please try again later.")
                 return
             }
@@ -769,6 +746,7 @@ struct BoltView: View {
                     }
 
                     currentGroupFlow = groupFlow
+                    VibezHistoryManager.shared.addGeneration(groupFlow)
                     isGenerating = false
 
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

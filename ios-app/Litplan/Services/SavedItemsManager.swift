@@ -2,22 +2,24 @@
 //  SavedItemsManager.swift
 //  Litplan
 //
-//  Created for Sprint 18C - Fix Saved Screen
-//  Manages local storage of saved cities, plans, and group flows
-//  Uses UserDefaults for persistence with option to sync with backend
+//  Manages saved cities, plans, and group flows.
+//  Source of truth: Supabase (server). UserDefaults = local cache for instant reads.
+//  Strategy: optimistic local update → background server write.
+//             On login: server fetch replaces local cache.
 //
 
 import Foundation
 import Combine
 
-/// Manager for handling saved items (cities, plans, group flows)
-/// Uses UserDefaults for local storage with optional API sync
 @MainActor
 class SavedItemsManager: ObservableObject {
 
     // MARK: - Singleton
 
     static let shared = SavedItemsManager()
+
+    // Free tier cap per category
+    static let freeSaveCap = 3
 
     // MARK: - Published Properties
 
@@ -26,346 +28,445 @@ class SavedItemsManager: ObservableObject {
     @Published private(set) var savedGroupFlows: [GroupFlow] = []
     @Published private(set) var isLoading: Bool = false
 
-    // MARK: - Private Properties
+    // MARK: - Private
 
     private let userDefaults = UserDefaults.standard
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    // UserDefaults keys
     private enum Keys {
-        static let savedCityIds = "litplan.saved.cityIds"
-        static let savedCities = "litplan.saved.cities"
-        static let savedPlanIds = "litplan.saved.planIds"
-        static let savedPlans = "litplan.saved.plans"
+        static let savedCities    = "litplan.saved.cities"
+        static let savedCityIds   = "litplan.saved.cityIds"
+        static let savedPlans     = "litplan.saved.plans"
+        static let savedPlanIds   = "litplan.saved.planIds"
+        static let savedGroupFlows  = "litplan.saved.groupFlows"
         static let savedGroupFlowIds = "litplan.saved.groupFlowIds"
-        static let savedGroupFlows = "litplan.saved.groupFlows"
     }
 
-    // MARK: - Initialization
+    // MARK: - Supabase row types
+
+    private struct SavedCityRow: Codable {
+        let id: String
+        let userId: String
+        let cityId: String
+        let cityData: City?
+        let savedAt: String?
+        enum CodingKeys: String, CodingKey {
+            case id, userId, cityId, cityData, savedAt
+        }
+    }
+
+    private struct SavedCityInsert: Encodable {
+        let id: String
+        let userId: String
+        let cityId: String
+        let cityData: City
+        let savedAt: String?
+        enum CodingKeys: String, CodingKey {
+            case id, userId, cityId, cityData, savedAt
+        }
+    }
+
+    private struct SavedPlanRow: Codable {
+        let id: String
+        let userId: String
+        let planId: String
+        let planData: Plan?
+        let savedAt: String?
+        enum CodingKeys: String, CodingKey {
+            case id, userId, planId, planData, savedAt
+        }
+    }
+
+    private struct SavedPlanInsert: Encodable {
+        let id: String
+        let userId: String
+        let planId: String
+        let planData: Plan
+        let savedAt: String?
+        enum CodingKeys: String, CodingKey {
+            case id, userId, planId, planData, savedAt
+        }
+    }
+
+    private struct SavedGroupFlowRow: Codable {
+        let id: String
+        let userId: String
+        let flowId: String
+        let flowData: GroupFlow?
+        let savedAt: String?
+        enum CodingKeys: String, CodingKey {
+            case id, userId, flowId, flowData, savedAt
+        }
+    }
+
+    private struct SavedGroupFlowInsert: Encodable {
+        let id: String
+        let userId: String
+        let flowId: String
+        let flowData: GroupFlow
+        let savedAt: String?
+        enum CodingKeys: String, CodingKey {
+            case id, userId, flowId, flowData, savedAt
+        }
+    }
+
+    // MARK: - Init
 
     private init() {
         loadFromLocalStorage()
+        observeAuthChanges()
     }
 
-    // MARK: - Public Methods - Cities
-
-    /// Check if a city is saved
-    func isCitySaved(_ city: City) -> Bool {
-        savedCities.contains { $0.id == city.id }
-    }
-
-    /// Check if a city is saved by ID
-    func isCitySaved(cityId: String) -> Bool {
-        savedCities.contains { $0.id == cityId }
-    }
-
-    /// Save a city
-    func saveCity(_ city: City) {
-        guard !isCitySaved(city) else { return }
-
-        savedCities.append(city)
-        persistCities()
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Saved city: \(city.name)")
+    // Trigger a server fetch whenever the user signs in; clear on sign-out.
+    private func observeAuthChanges() {
+        Task {
+            guard let client = SupabaseManager.shared.client else { return }
+            for await (event, _) in client.auth.authStateChanges {
+                switch event {
+                case .signedIn:
+                    await fetchFromServer()
+                case .signedOut:
+                    clearAllSavedItems()
+                default:
+                    break
+                }
+            }
         }
     }
 
-    /// Unsave a city
+    // MARK: - Server Sync
+
+    /// Pull all saved items from Supabase and replace the local cache.
+    func fetchFromServer() async {
+        guard let userId = SupabaseManager.shared.currentUser?.id,
+              let client = SupabaseManager.shared.client else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            // Cities
+            let cityRows: [SavedCityRow] = try await client
+                .from("SavedCity")
+                .select()
+                .eq("userId", value: userId)
+                .execute()
+                .value
+            let cities = cityRows.compactMap { $0.cityData }
+
+            // Plans
+            let planRows: [SavedPlanRow] = try await client
+                .from("SavedPlan")
+                .select()
+                .eq("userId", value: userId)
+                .execute()
+                .value
+            let plans = planRows.compactMap { $0.planData }
+
+            // Group flows
+            let flowRows: [SavedGroupFlowRow] = try await client
+                .from("SavedGroupFlow")
+                .select()
+                .eq("userId", value: userId)
+                .execute()
+                .value
+            let flows = flowRows.compactMap { $0.flowData }
+
+            // Server wins — replace local cache
+            savedCities    = cities
+            savedPlans     = plans
+            savedGroupFlows = flows
+            persistCities()
+            persistPlans()
+            persistGroupFlows()
+
+            print("[SavedItemsManager] Fetched from server — cities:\(cities.count) plans:\(plans.count) flows:\(flows.count)")
+        } catch {
+            print("[SavedItemsManager] Server fetch failed, using local cache: \(error)")
+        }
+    }
+
+    // MARK: - Cities
+
+    func isCitySaved(_ city: City) -> Bool { savedCities.contains { $0.id == city.id } }
+    func isCitySaved(cityId: String) -> Bool { savedCities.contains { $0.id == cityId } }
+
+    func saveCity(_ city: City) {
+        guard !isCitySaved(city) else { return }
+        savedCities.append(city)
+        persistCities()
+        Task { await serverSaveCity(city) }
+        print("[SavedItemsManager] Saved city: \(city.name)")
+    }
+
     func unsaveCity(_ city: City) {
         savedCities.removeAll { $0.id == city.id }
         persistCities()
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Unsaved city: \(city.name)")
-        }
+        Task { await serverUnsaveCity(city.id) }
+        print("[SavedItemsManager] Unsaved city: \(city.name)")
     }
 
-    /// Unsave a city by ID
     func unsaveCity(cityId: String) {
         savedCities.removeAll { $0.id == cityId }
         persistCities()
+        Task { await serverUnsaveCity(cityId) }
     }
 
-    /// Toggle save state for a city
-    func toggleCitySave(_ city: City) {
-        if isCitySaved(city) {
-            unsaveCity(city)
-        } else {
-            saveCity(city)
+    @discardableResult
+    func toggleCitySave(_ city: City) -> Bool {
+        if isCitySaved(city) { unsaveCity(city); return true }
+        let isPro = SubscriptionManager.shared.isProUser
+        guard isPro || savedCities.count < SavedItemsManager.freeSaveCap else { return false }
+        saveCity(city)
+        return true
+    }
+
+    private func serverSaveCity(_ city: City) async {
+        guard let userId = SupabaseManager.shared.currentUser?.id,
+              let client = SupabaseManager.shared.client else { return }
+        let row = SavedCityInsert(
+            id: UUID().uuidString,
+            userId: userId,
+            cityId: city.id,
+            cityData: city,
+            savedAt: nil
+        )
+        do {
+            try await client.from("SavedCity").upsert(row, onConflict: "userId,cityId").execute()
+        } catch {
+            print("[SavedItemsManager] Failed to save city on server: \(error)")
         }
     }
 
-    // MARK: - Public Methods - Plans
-
-    /// Check if a plan is saved
-    func isPlanSaved(_ plan: Plan) -> Bool {
-        savedPlans.contains { $0.id == plan.id }
+    private func serverUnsaveCity(_ cityId: String) async {
+        guard let userId = SupabaseManager.shared.currentUser?.id,
+              let client = SupabaseManager.shared.client else { return }
+        do {
+            try await client.from("SavedCity")
+                .delete()
+                .eq("userId", value: userId)
+                .eq("cityId", value: cityId)
+                .execute()
+        } catch {
+            print("[SavedItemsManager] Failed to unsave city on server: \(error)")
+        }
     }
 
-    /// Check if a plan is saved by ID
-    func isPlanSaved(planId: String) -> Bool {
-        savedPlans.contains { $0.id == planId }
-    }
+    // MARK: - Plans
 
-    /// Save a plan
+    func isPlanSaved(_ plan: Plan) -> Bool { savedPlans.contains { $0.id == plan.id } }
+    func isPlanSaved(planId: String) -> Bool { savedPlans.contains { $0.id == planId } }
+
     func savePlan(_ plan: Plan) {
         guard !isPlanSaved(plan) else { return }
-
         savedPlans.append(plan)
         persistPlans()
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Saved plan: \(plan.title)")
-        }
+        Task { await serverSavePlan(plan) }
+        print("[SavedItemsManager] Saved plan: \(plan.title)")
     }
 
-    /// Unsave a plan
     func unsavePlan(_ plan: Plan) {
         savedPlans.removeAll { $0.id == plan.id }
         persistPlans()
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Unsaved plan: \(plan.title)")
-        }
+        Task { await serverUnsavePlan(plan.id) }
+        print("[SavedItemsManager] Unsaved plan: \(plan.title)")
     }
 
-    /// Unsave a plan by ID
     func unsavePlan(planId: String) {
         savedPlans.removeAll { $0.id == planId }
         persistPlans()
+        Task { await serverUnsavePlan(planId) }
     }
 
-    /// Toggle save state for a plan
-    func togglePlanSave(_ plan: Plan) {
-        if isPlanSaved(plan) {
-            unsavePlan(plan)
-        } else {
-            savePlan(plan)
+    @discardableResult
+    func togglePlanSave(_ plan: Plan) -> Bool {
+        if isPlanSaved(plan) { unsavePlan(plan); return true }
+        let isPro = SubscriptionManager.shared.isProUser
+        guard isPro || savedPlans.count < SavedItemsManager.freeSaveCap else { return false }
+        savePlan(plan)
+        return true
+    }
+
+    private func serverSavePlan(_ plan: Plan) async {
+        guard let userId = SupabaseManager.shared.currentUser?.id,
+              let client = SupabaseManager.shared.client else { return }
+        let row = SavedPlanInsert(
+            id: UUID().uuidString,
+            userId: userId,
+            planId: plan.id,
+            planData: plan,
+            savedAt: nil
+        )
+        do {
+            try await client.from("SavedPlan").upsert(row, onConflict: "userId,planId").execute()
+        } catch {
+            print("[SavedItemsManager] Failed to save plan on server: \(error)")
         }
     }
 
-    // MARK: - Public Methods - Group Flows
-
-    /// Check if a group flow is saved
-    func isGroupFlowSaved(_ groupFlow: GroupFlow) -> Bool {
-        savedGroupFlows.contains { $0.id == groupFlow.id }
+    private func serverUnsavePlan(_ planId: String) async {
+        guard let userId = SupabaseManager.shared.currentUser?.id,
+              let client = SupabaseManager.shared.client else { return }
+        do {
+            try await client.from("SavedPlan")
+                .delete()
+                .eq("userId", value: userId)
+                .eq("planId", value: planId)
+                .execute()
+        } catch {
+            print("[SavedItemsManager] Failed to unsave plan on server: \(error)")
+        }
     }
 
-    /// Check if a group flow is saved by ID
-    func isGroupFlowSaved(groupFlowId: String) -> Bool {
-        savedGroupFlows.contains { $0.id == groupFlowId }
-    }
+    // MARK: - Group Flows
 
-    /// Save a group flow
+    func isGroupFlowSaved(_ groupFlow: GroupFlow) -> Bool { savedGroupFlows.contains { $0.id == groupFlow.id } }
+    func isGroupFlowSaved(groupFlowId: String) -> Bool { savedGroupFlows.contains { $0.id == groupFlowId } }
+
     func saveGroupFlow(_ groupFlow: GroupFlow) {
         guard !isGroupFlowSaved(groupFlow) else { return }
-
         savedGroupFlows.append(groupFlow)
         persistGroupFlows()
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Saved group flow: \(groupFlow.title)")
-        }
+        Task { await serverSaveGroupFlow(groupFlow) }
+        print("[SavedItemsManager] Saved group flow: \(groupFlow.title)")
     }
 
-    /// Unsave a group flow
     func unsaveGroupFlow(_ groupFlow: GroupFlow) {
         savedGroupFlows.removeAll { $0.id == groupFlow.id }
         persistGroupFlows()
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Unsaved group flow: \(groupFlow.title)")
-        }
+        Task { await serverUnsaveGroupFlow(groupFlow.id) }
+        print("[SavedItemsManager] Unsaved group flow: \(groupFlow.title)")
     }
 
-    /// Unsave a group flow by ID
     func unsaveGroupFlow(groupFlowId: String) {
         savedGroupFlows.removeAll { $0.id == groupFlowId }
         persistGroupFlows()
+        Task { await serverUnsaveGroupFlow(groupFlowId) }
     }
 
-    /// Toggle save state for a group flow
-    func toggleGroupFlowSave(_ groupFlow: GroupFlow) {
-        if isGroupFlowSaved(groupFlow) {
-            unsaveGroupFlow(groupFlow)
-        } else {
-            saveGroupFlow(groupFlow)
+    @discardableResult
+    func toggleGroupFlowSave(_ groupFlow: GroupFlow) -> Bool {
+        if isGroupFlowSaved(groupFlow) { unsaveGroupFlow(groupFlow); return true }
+        let isPro = SubscriptionManager.shared.isProUser
+        guard isPro || savedGroupFlows.count < SavedItemsManager.freeSaveCap else { return false }
+        saveGroupFlow(groupFlow)
+        return true
+    }
+
+    private func serverSaveGroupFlow(_ groupFlow: GroupFlow) async {
+        guard let userId = SupabaseManager.shared.currentUser?.id,
+              let client = SupabaseManager.shared.client else { return }
+        let row = SavedGroupFlowInsert(
+            id: UUID().uuidString,
+            userId: userId,
+            flowId: groupFlow.id,
+            flowData: groupFlow,
+            savedAt: nil
+        )
+        do {
+            try await client.from("SavedGroupFlow").upsert(row, onConflict: "userId,flowId").execute()
+        } catch {
+            print("[SavedItemsManager] Failed to save group flow on server: \(error)")
         }
     }
 
-    // MARK: - Data Loading
+    private func serverUnsaveGroupFlow(_ flowId: String) async {
+        guard let userId = SupabaseManager.shared.currentUser?.id,
+              let client = SupabaseManager.shared.client else { return }
+        do {
+            try await client.from("SavedGroupFlow")
+                .delete()
+                .eq("userId", value: userId)
+                .eq("flowId", value: flowId)
+                .execute()
+        } catch {
+            print("[SavedItemsManager] Failed to unsave group flow on server: \(error)")
+        }
+    }
 
-    /// Load saved items from local storage
+    // MARK: - Local Storage
+
     func loadFromLocalStorage() {
         isLoading = true
-
-        // Load saved cities
-        if let data = userDefaults.data(forKey: Keys.savedCities) {
-            do {
-                savedCities = try decoder.decode([City].self, from: data)
-            } catch {
-                if Config.enableDebugLogging {
-                    print("[SavedItemsManager] Failed to decode saved cities: \(error)")
-                }
-                savedCities = []
-            }
+        if let data = userDefaults.data(forKey: Keys.savedCities),
+           let cities = try? decoder.decode([City].self, from: data) {
+            savedCities = cities
         }
-
-        // Load saved plans
-        if let data = userDefaults.data(forKey: Keys.savedPlans) {
-            do {
-                savedPlans = try decoder.decode([Plan].self, from: data)
-            } catch {
-                if Config.enableDebugLogging {
-                    print("[SavedItemsManager] Failed to decode saved plans: \(error)")
-                }
-                savedPlans = []
-            }
+        if let data = userDefaults.data(forKey: Keys.savedPlans),
+           let plans = try? decoder.decode([Plan].self, from: data) {
+            savedPlans = plans
         }
-
-        // Load saved group flows
-        if let data = userDefaults.data(forKey: Keys.savedGroupFlows) {
-            do {
-                savedGroupFlows = try decoder.decode([GroupFlow].self, from: data)
-            } catch {
-                if Config.enableDebugLogging {
-                    print("[SavedItemsManager] Failed to decode saved group flows: \(error)")
-                }
-                savedGroupFlows = []
-            }
+        if let data = userDefaults.data(forKey: Keys.savedGroupFlows),
+           let flows = try? decoder.decode([GroupFlow].self, from: data) {
+            savedGroupFlows = flows
         }
-
         isLoading = false
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Loaded \(savedCities.count) cities, \(savedPlans.count) plans, \(savedGroupFlows.count) group flows")
-        }
+        print("[SavedItemsManager] Local cache — cities:\(savedCities.count) plans:\(savedPlans.count) flows:\(savedGroupFlows.count)")
     }
 
-    /// Refresh saved items (reload from storage and optionally sync with backend)
     func refresh() async {
-        await MainActor.run {
-            loadFromLocalStorage()
-        }
-
-        // Future: Add API sync here if backend supports saved items
-        // try? await syncWithBackend()
+        await fetchFromServer()
     }
 
-    // MARK: - Clear Data
+    // MARK: - Clear (logout)
 
-    /// Clear all saved items (used on logout)
     func clearAllSavedItems() {
-        savedCities = []
-        savedPlans = []
+        savedCities    = []
+        savedPlans     = []
         savedGroupFlows = []
-
         userDefaults.removeObject(forKey: Keys.savedCities)
         userDefaults.removeObject(forKey: Keys.savedPlans)
         userDefaults.removeObject(forKey: Keys.savedGroupFlows)
         userDefaults.removeObject(forKey: Keys.savedCityIds)
         userDefaults.removeObject(forKey: Keys.savedPlanIds)
         userDefaults.removeObject(forKey: Keys.savedGroupFlowIds)
-
-        if Config.enableDebugLogging {
-            print("[SavedItemsManager] Cleared all saved items")
-        }
+        print("[SavedItemsManager] Cleared all saved items")
     }
 
-    // MARK: - Private Methods - Persistence
+    // MARK: - Persistence helpers
 
     private func persistCities() {
-        do {
-            let data = try encoder.encode(savedCities)
+        if let data = try? encoder.encode(savedCities) {
             userDefaults.set(data, forKey: Keys.savedCities)
-
-            // Also store just the IDs for quick lookup
-            let ids = savedCities.map { $0.id }
-            userDefaults.set(ids, forKey: Keys.savedCityIds)
-        } catch {
-            if Config.enableDebugLogging {
-                print("[SavedItemsManager] Failed to persist cities: \(error)")
-            }
+            userDefaults.set(savedCities.map { $0.id }, forKey: Keys.savedCityIds)
         }
     }
 
     private func persistPlans() {
-        do {
-            let data = try encoder.encode(savedPlans)
+        if let data = try? encoder.encode(savedPlans) {
             userDefaults.set(data, forKey: Keys.savedPlans)
-
-            // Also store just the IDs for quick lookup
-            let ids = savedPlans.map { $0.id }
-            userDefaults.set(ids, forKey: Keys.savedPlanIds)
-        } catch {
-            if Config.enableDebugLogging {
-                print("[SavedItemsManager] Failed to persist plans: \(error)")
-            }
+            userDefaults.set(savedPlans.map { $0.id }, forKey: Keys.savedPlanIds)
         }
     }
 
     private func persistGroupFlows() {
-        do {
-            let data = try encoder.encode(savedGroupFlows)
+        if let data = try? encoder.encode(savedGroupFlows) {
             userDefaults.set(data, forKey: Keys.savedGroupFlows)
-
-            // Also store just the IDs for quick lookup
-            let ids = savedGroupFlows.map { $0.id }
-            userDefaults.set(ids, forKey: Keys.savedGroupFlowIds)
-        } catch {
-            if Config.enableDebugLogging {
-                print("[SavedItemsManager] Failed to persist group flows: \(error)")
-            }
+            userDefaults.set(savedGroupFlows.map { $0.id }, forKey: Keys.savedGroupFlowIds)
         }
     }
 
-    // MARK: - Utility Methods
+    // MARK: - Utilities
 
-    /// Get city name for a plan (searches saved cities first, then mock data as fallback)
     func getCityName(for plan: Plan) -> String {
-        // First check if plan has cityName directly
-        if !plan.cityName.isEmpty {
-            return plan.cityName
-        }
-
-        // Check saved cities
+        if !plan.cityName.isEmpty { return plan.cityName }
         if let city = savedCities.first(where: { plan.id.hasPrefix($0.id.prefix(3).lowercased()) }) {
             return city.name
         }
-
-        // Fallback based on plan ID prefix
-        if plan.id.hasPrefix("nyc") {
-            return "New York"
-        } else if plan.id.hasPrefix("la") {
-            return "Los Angeles"
-        } else if plan.id.hasPrefix("lon") {
-            return "London"
-        }
+        if plan.id.hasPrefix("nyc") { return "New York" }
+        if plan.id.hasPrefix("la")  { return "Los Angeles" }
+        if plan.id.hasPrefix("lon") { return "London" }
         return "City"
     }
 
-    /// Get city name for a group flow
     func getCityName(for groupFlow: GroupFlow) -> String {
-        // Check saved cities first
-        if let city = savedCities.first(where: { $0.id == groupFlow.cityId }) {
-            return city.name
-        }
-
-        // Fallback based on city ID prefix
-        if groupFlow.cityId.hasPrefix("nyc") {
-            return "New York"
-        } else if groupFlow.cityId.hasPrefix("la") {
-            return "Los Angeles"
-        } else if groupFlow.cityId.hasPrefix("lon") {
-            return "London"
-        }
+        if let city = savedCities.first(where: { $0.id == groupFlow.cityId }) { return city.name }
+        if groupFlow.cityId.hasPrefix("nyc") { return "New York" }
+        if groupFlow.cityId.hasPrefix("la")  { return "Los Angeles" }
+        if groupFlow.cityId.hasPrefix("lon") { return "London" }
         return "City"
     }
 
-    /// Total count of all saved items
-    var totalSavedCount: Int {
-        savedCities.count + savedPlans.count + savedGroupFlows.count
-    }
+    var totalSavedCount: Int { savedCities.count + savedPlans.count + savedGroupFlows.count }
 }

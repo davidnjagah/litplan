@@ -24,7 +24,7 @@ struct ProfileView: View {
     @State private var showHelpSupport = false
     @State private var showAbout = false
     @State private var showSubscriptionManagement = false
-    @State private var showSearchedCitiesHistory = false
+    @State private var showGeneratedVibezHistory = false
 
     // Computed properties for user data
     private var userName: String {
@@ -96,8 +96,8 @@ struct ProfileView: View {
             .sheet(isPresented: $showSubscriptionManagement) {
                 PaywallView(trigger: .profile)
             }
-            .sheet(isPresented: $showSearchedCitiesHistory) {
-                SearchedCitiesView()
+            .sheet(isPresented: $showGeneratedVibezHistory) {
+                GeneratedVibezView()
             }
             .alert("Sign Out", isPresented: $showSignOutConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -263,11 +263,15 @@ struct ProfileView: View {
                 }
 
                 settingsRow(
-                    icon: "clock.arrow.circlepath",
-                    title: "Searched Cities History",
-                    iconColor: .textSecondary
+                    icon: "bolt.fill",
+                    title: "Generated Vibez",
+                    iconColor: .accentPrimary
                 ) {
-                    showSearchedCitiesHistory = true
+                    if subscriptionManager.isProUser {
+                        showGeneratedVibezHistory = true
+                    } else {
+                        showSubscriptionManagement = true
+                    }
                 }
 
                 settingsRow(

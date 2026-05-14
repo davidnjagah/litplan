@@ -124,7 +124,7 @@ struct ProComparisonPageView: View {
                     ComparisonFeature(text: "1 Vibez/week (email)", included: true),
                     ComparisonFeature(text: "3 cities", included: true),
                     ComparisonFeature(text: "Save up to 10 plans", included: true),
-                    ComparisonFeature(text: "Unlimited Vibez", included: false),
+                    ComparisonFeature(text: "7 Vibez/week", included: false),
                     ComparisonFeature(text: "All cities", included: false)
                 ],
                 isPro: false
@@ -134,7 +134,7 @@ struct ProComparisonPageView: View {
             comparisonCard(
                 title: "Pro",
                 features: [
-                    ComparisonFeature(text: "Unlimited Vibez", included: true),
+                    ComparisonFeature(text: "7 Vibez/week", included: true),
                     ComparisonFeature(text: "All 100+ cities", included: true),
                     ComparisonFeature(text: "Unlimited saves", included: true),
                     ComparisonFeature(text: "Priority support", included: true),
@@ -194,7 +194,7 @@ struct ProComparisonPageView: View {
                 .foregroundColor(.textPrimary)
 
             VStack(spacing: Spacing.sm) {
-                benefitRow(icon: "bolt.fill", text: "Unlimited Vibez — generate as many as you want")
+                benefitRow(icon: "bolt.fill", text: "7 Vibez per week — any city, any vibe")
                 benefitRow(icon: "globe.americas.fill", text: "Access all 100+ cities for Vibez")
                 benefitRow(icon: "sparkles", text: "Unlock all 26 vibe themes")
                 benefitRow(icon: "star.fill", text: "Get early access to new features")
