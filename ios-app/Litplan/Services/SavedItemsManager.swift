@@ -61,9 +61,8 @@ class SavedItemsManager: ObservableObject {
         let userId: String
         let cityId: String
         let cityData: City
-        let savedAt: String?
         enum CodingKeys: String, CodingKey {
-            case id, userId, cityId, cityData, savedAt
+            case id, userId, cityId, cityData
         }
     }
 
@@ -83,9 +82,8 @@ class SavedItemsManager: ObservableObject {
         let userId: String
         let planId: String
         let planData: Plan
-        let savedAt: String?
         enum CodingKeys: String, CodingKey {
-            case id, userId, planId, planData, savedAt
+            case id, userId, planId, planData
         }
     }
 
@@ -105,9 +103,8 @@ class SavedItemsManager: ObservableObject {
         let userId: String
         let flowId: String
         let flowData: GroupFlow
-        let savedAt: String?
         enum CodingKeys: String, CodingKey {
-            case id, userId, flowId, flowData, savedAt
+            case id, userId, flowId, flowData
         }
     }
 
@@ -229,8 +226,7 @@ class SavedItemsManager: ObservableObject {
             id: UUID().uuidString,
             userId: userId,
             cityId: city.id,
-            cityData: city,
-            savedAt: nil
+            cityData: city
         )
         do {
             try await client.from("SavedCity").upsert(row, onConflict: "userId,cityId").execute()
@@ -295,8 +291,7 @@ class SavedItemsManager: ObservableObject {
             id: UUID().uuidString,
             userId: userId,
             planId: plan.id,
-            planData: plan,
-            savedAt: nil
+            planData: plan
         )
         do {
             try await client.from("SavedPlan").upsert(row, onConflict: "userId,planId").execute()
@@ -361,8 +356,7 @@ class SavedItemsManager: ObservableObject {
             id: UUID().uuidString,
             userId: userId,
             flowId: groupFlow.id,
-            flowData: groupFlow,
-            savedAt: nil
+            flowData: groupFlow
         )
         do {
             try await client.from("SavedGroupFlow").upsert(row, onConflict: "userId,flowId").execute()
