@@ -1,8 +1,8 @@
-# LitPlanz App Store Submission Checklist — v1.4
+# LitPlanz App Store Submission Checklist — v1.6
 
 ## Version Info
-- Marketing version: 1.4
-- Build number: 2
+- Marketing version: 1.6
+- Build number: 3
 - Bundle ID: com.litplanz.app
 
 ---
@@ -27,22 +27,27 @@
    Apple takes 15–30 minutes. You'll receive an email when the build is ready.
 
 6. **Create new version in App Store Connect**
-   Apps → LitPlanz → press + next to the version list → enter 1.4
+   Apps → LitPlanz → press + next to the version list → enter 1.6
 
 7. **Paste "What's New" text**
    Use the text in `whats-new.md`
 
 8. **Select the processed build**
-   Scroll down to the Build section → + → select build 2
+   Scroll down to the Build section → + → select build 3
 
 9. **Update app description**
-   Use the text in `description.md`
+   Use the text in `description.md` (no changes needed for this release)
 
-10. **Check all metadata**
-    - Screenshots still accurate
+10. **Upload screenshots**
+    - Required size: 1284 × 2778 px (6.5") or 1290 × 2796 px (6.7")
+    - Current screenshots in `new screenshots/` are 1320 × 2868 — resize to 1284 × 2778 before uploading if App Store Connect rejects them
+    - Format: PNG
+
+11. **Check all metadata**
+    - Screenshots accurate
     - Age rating unchanged
     - Pricing unchanged
     - Keywords up to date
 
-11. **Submit for Review**
+12. **Submit for Review**
     Click "Submit for App Review" → confirm

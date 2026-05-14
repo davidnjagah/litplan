@@ -1,23 +1,19 @@
-# What's New — LitPlanz v1.4
+# What's New — LitPlanz v1.6
 
 ---
 
-**More Vibez, more freedom**
+**Your Vibez history, always ready**
 
-Free users can now generate 1 Vibez per week — no Pro subscription required to try the core experience. Pro has been upgraded to 7 Vibez per week, giving you a full week of nights covered.
+Generated Vibez now loads instantly when you open it from your profile — no more stalling. Your full history syncs from the server the moment the screen appears.
 
-**Smarter saving**
+**Token counter you can trust**
 
-Free accounts can now save up to 3 Vibez, cities, and plans each. Pro members get unlimited saves plus a full history of every Vibez they've ever generated — accessible any time from your profile.
+Reinstalling the app no longer resets your weekly Vibez count. Tokens are now fully server-authoritative — your remaining generations follow you across reinstalls and devices.
 
-**Route maps that actually work**
+**Smoother navigation**
 
-Tap the map button to open full turn-by-turn directions in Apple Maps. Routes now calculate reliably across more cities worldwide.
-
-**A leaner, more direct app**
-
-We stripped back everything that wasn't pulling its weight. The app is faster, more focused, and gets you to your Vibez in fewer taps.
+Every row in your profile is now fully tappable, not just the text. Quicker to get where you're going.
 
 **Bug fixes and stability improvements**
 
-Performance updates across the board, smoother paywall flows, and tightened-up authentication handling.
+Fixed an issue where free users weren't being shown the upgrade screen when tapping Generated Vibez. General performance and reliability improvements throughout.
