@@ -11,6 +11,7 @@ import SwiftUI
 struct GeneratedVibezView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var historyManager = VibezHistoryManager.shared
+    @ObservedObject private var savedItemsManager = SavedItemsManager.shared
 
     @State private var selectedGroupFlow: GroupFlow?
     @State private var showClearConfirmation = false
@@ -20,7 +21,9 @@ struct GeneratedVibezView: View {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
 
-                if historyManager.history.isEmpty {
+                if historyManager.isLoading {
+                    LoadingStateView(message: "Loading your Vibez history...")
+                } else if historyManager.history.isEmpty {
                     emptyState
                 } else {
                     historyList
@@ -83,7 +86,10 @@ struct GeneratedVibezView: View {
 
                 LazyVStack(spacing: Spacing.md) {
                     ForEach(historyManager.history) { item in
-                        VibezHistoryCard(item: item) {
+                        VibezHistoryCard(
+                            item: item,
+                            cityName: savedItemsManager.getCityName(for: item.groupFlow)
+                        ) {
                             HapticManager.shared.medium()
                             selectedGroupFlow = item.groupFlow
                         }
@@ -173,6 +179,7 @@ struct GeneratedVibezView: View {
 
 struct VibezHistoryCard: View {
     let item: VibezHistoryItem
+    let cityName: String
     let onTap: () -> Void
 
     private var relativeDate: String {
@@ -195,7 +202,7 @@ struct VibezHistoryCard: View {
                             Image(systemName: "mappin.circle.fill")
                                 .font(.system(size: 11))
                                 .foregroundColor(.accentPrimary)
-                            Text(item.groupFlow.cityId.replacingOccurrences(of: "-", with: " ").capitalized)
+                            Text(cityName)
                                 .font(.callout)
                                 .foregroundColor(.textSecondary)
                                 .lineLimit(1)
