@@ -23,8 +23,6 @@ struct RouteMapView: View {
     let venues: [VenueLocation]
     var planTitle: String = "Route Plan"
 
-    @Environment(\.openURL) private var openURL
-
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var routePolylines: [MKRoute] = []
     @State private var isLoadingRoutes: Bool = true
@@ -64,7 +62,7 @@ struct RouteMapView: View {
             }
 
             // Map
-            ZStack(alignment: .topLeading) {
+            ZStack(alignment: .topTrailing) {
                 Map(position: $cameraPosition) {
                     // Draw route polylines
                     ForEach(routePolylines, id: \.self) { route in
@@ -89,43 +87,21 @@ struct RouteMapView: View {
                     MapScaleView()
                     MapUserLocationButton()
                 }
-                // Directions button - top left corner
-                Button(action: {
+                .onTapGesture {
                     openDirectionsInAppleMaps()
-                }) {
-                    Image(systemName: "map")
+                }
+
+                // Directions button — top right corner
+                Button(action: openDirectionsInAppleMaps) {
+                    Image(systemName: "map.fill")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.textPrimary)
                         .frame(width: 36, height: 36)
-                        .background(
-                            Circle()
-                                .fill(Color.surfacePrimary.opacity(0.9))
-                        )
+                        .background(Circle().fill(Color.surfacePrimary.opacity(0.95)))
                         .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
                 }
                 .padding(12)
-                .accessibilityLabel("Get directions")
-                .accessibilityHint("Opens Apple Maps with route directions")
-
-                // Error overlay
-                if let error = routeLoadError {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.warning)
-                            Text(error)
-                                .font(.system(size: 12))
-                                .foregroundColor(.textSecondary)
-                        }
-                        .padding(.horizontal, Spacing.sm)
-                        .padding(.vertical, 6)
-                        .background(Color.surfacePrimary.opacity(0.95))
-                        .cornerRadius(8)
-                        .padding(.bottom, Spacing.sm)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                }
+                .accessibilityLabel("Get directions in Apple Maps")
             }
             .frame(height: 300)
             .cornerRadius(12)
@@ -134,12 +110,19 @@ struct RouteMapView: View {
                     .stroke(Color.surfaceSecondary, lineWidth: 1)
             )
 
-            // Open in Maps prompt
-            Text("Tap \(Image(systemName: "map")) to open full directions")
-                .font(.system(size: 12))
-                .foregroundColor(.textTertiary)
+            // Tappable open-in-Maps hint
+            Button(action: openDirectionsInAppleMaps) {
+                HStack(spacing: 4) {
+                    Image(systemName: "map.fill")
+                        .font(.system(size: 11))
+                    Text("Open full directions in Maps")
+                        .font(.system(size: 12))
+                }
+                .foregroundColor(.accentPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.top, Spacing.xs)
+            }
+            .buttonStyle(PlainButtonStyle())
 
             // Route legend
             if venues.count > 1 {
@@ -189,27 +172,16 @@ struct RouteMapView: View {
 
         let sortedVenues = venues.sorted { $0.order < $1.order }
 
-        if sortedVenues.count == 1 {
-            let placemark = MKPlacemark(coordinate: sortedVenues[0].coordinate)
-            let mapItem = MKMapItem(placemark: placemark)
-            mapItem.name = sortedVenues[0].name
-            mapItem.openInMaps()
-            return
+        let mapItems = sortedVenues.map { venue -> MKMapItem in
+            let item = MKMapItem(placemark: MKPlacemark(coordinate: venue.coordinate))
+            item.name = venue.name
+            return item
         }
 
-        // MKMapItem.openMaps only routes first→last, ignoring intermediate stops.
-        // Use the Apple Maps URL scheme with +to: chaining for proper multi-stop routing.
-        let source = sortedVenues[0]
-        let waypoints = Array(sortedVenues.dropFirst())
-
-        let saddr = "\(source.coordinate.latitude),\(source.coordinate.longitude)"
-        let daddrParts = waypoints.map { "\($0.coordinate.latitude),\($0.coordinate.longitude)" }
-        let daddr = daddrParts.joined(separator: "+to:")
-
-        let urlString = "maps://?saddr=\(saddr)&daddr=\(daddr)&dirflg=w"
-        if let url = URL(string: urlString) {
-            openURL(url)
-        }
+        MKMapItem.openMaps(
+            with: mapItems,
+            launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking]
+        )
     }
 
     // MARK: - Route Legend
@@ -281,9 +253,8 @@ struct RouteMapView: View {
                         self.routePolylines = loadedRoutes
                         self.isLoadingRoutes = false
 
-                        if failedRoutes > 0 {
-                            self.routeLoadError = "Some routes couldn't be loaded"
-                        }
+                        // Silently omit routes that couldn't be computed —
+                        // venue pins are still shown so the map stays useful.
 
                         // Fit map to show all venues and routes
                         self.fitMapToVenues()
@@ -298,20 +269,42 @@ struct RouteMapView: View {
         to destination: CLLocationCoordinate2D,
         completion: @escaping (MKRoute?) -> Void
     ) {
+        // Skip invalid coordinates
+        guard CLLocationCoordinate2DIsValid(source), CLLocationCoordinate2DIsValid(destination),
+              source.latitude != 0 || source.longitude != 0,
+              destination.latitude != 0 || destination.longitude != 0 else {
+            completion(nil)
+            return
+        }
+
+        attemptRoute(from: source, to: destination, transportType: .automobile) { route in
+            if let route = route {
+                completion(route)
+            } else {
+                // Automobile routing unavailable — try walking (better global coverage)
+                self.attemptRoute(from: source, to: destination, transportType: .walking) { route in
+                    completion(route) // nil is fine; pins are still shown on map
+                }
+            }
+        }
+    }
+
+    private func attemptRoute(
+        from source: CLLocationCoordinate2D,
+        to destination: CLLocationCoordinate2D,
+        transportType: MKDirectionsTransportType,
+        completion: @escaping (MKRoute?) -> Void
+    ) {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: source))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
-        request.transportType = .automobile
+        request.transportType = transportType
         request.requestsAlternateRoutes = false
 
-        let directions = MKDirections(request: request)
-        directions.calculate { response, error in
+        MKDirections(request: request).calculate { response, error in
             if let error = error {
-                print("Route calculation error: \(error.localizedDescription)")
-                completion(nil)
-                return
+                print("[RouteMapView] \(transportType == .automobile ? "Automobile" : "Walking") route error: \(error.localizedDescription)")
             }
-
             completion(response?.routes.first)
         }
     }
