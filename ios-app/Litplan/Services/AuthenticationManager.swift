@@ -762,6 +762,7 @@ class AuthenticationManager: NSObject, ObservableObject {
 
         // Clear Pro features cache to revert to free account settings
         SubscriptionManager.shared.clearProCache()
+        BoltTokenManager.shared.clearData()
 
         if Config.enableDebugLogging {
             print("[AuthenticationManager] User signed out")

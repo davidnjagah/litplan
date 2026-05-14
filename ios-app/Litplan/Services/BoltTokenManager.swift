@@ -219,6 +219,24 @@ class BoltTokenManager: ObservableObject {
         loadSubscriptionStartDate()
         loadFreeTokenState()
         setupWeeklyRefreshCheck()
+        observeAuthChanges()
+    }
+
+    private func observeAuthChanges() {
+        Task {
+            guard let client = SupabaseManager.shared.client else { return }
+            for await (event, _) in client.auth.authStateChanges {
+                switch event {
+                case .signedIn:
+                    loadFreeTokenState()
+                    await loadTokensAsync()
+                case .signedOut:
+                    clearData()
+                default:
+                    break
+                }
+            }
+        }
     }
 
     /// Load subscription start date from local storage

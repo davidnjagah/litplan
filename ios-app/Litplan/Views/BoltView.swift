@@ -161,6 +161,7 @@ struct BoltView: View {
     // Computed: Whether bolt button can be pressed
     private var canGenerate: Bool {
         guard selectedCity != nil && selectedTheme != nil else { return false }
+        guard tokenManager.isLoaded else { return false }
         return subscriptionManager.isProUser ? tokenManager.canGenerate : tokenManager.canFreeUserGenerate
     }
 
