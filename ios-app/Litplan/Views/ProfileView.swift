@@ -25,6 +25,7 @@ struct ProfileView: View {
     @State private var showAbout = false
     @State private var showSubscriptionManagement = false
     @State private var showGeneratedVibezHistory = false
+    @State private var showVibezPaywall = false
 
     // Computed properties for user data
     private var userName: String {
@@ -94,6 +95,9 @@ struct ProfileView: View {
                 AboutView()
             }
             .sheet(isPresented: $showSubscriptionManagement) {
+                PaywallView(trigger: .profile)
+            }
+            .sheet(isPresented: $showVibezPaywall) {
                 PaywallView(trigger: .profile)
             }
             .sheet(isPresented: $showGeneratedVibezHistory) {
@@ -270,7 +274,7 @@ struct ProfileView: View {
                     if subscriptionManager.isProUser {
                         showGeneratedVibezHistory = true
                     } else {
-                        showSubscriptionManagement = true
+                        showVibezPaywall = true
                     }
                 }
 
@@ -339,6 +343,7 @@ struct ProfileView: View {
                         .foregroundColor(.textTertiary)
                 }
                 .padding(Spacing.md)
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
         }

@@ -94,7 +94,9 @@ class BoltTokenManager: ObservableObject {
             let days = Calendar.current.dateComponents([.day], from: lastUsed, to: Date()).day ?? 0
             freeTokenAvailable = days >= Self.refreshCycleDays
         } else {
-            freeTokenAvailable = true
+            // No local record — default to false and let the server decide.
+            // Prevents a reinstall from resetting the token.
+            freeTokenAvailable = false
         }
     }
 
@@ -355,7 +357,7 @@ class BoltTokenManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: totalGenerationsKey)
         UserDefaults.standard.removeObject(forKey: pendingSyncKey)
         UserDefaults.standard.removeObject(forKey: subscriptionStartKey)
-        tokenCount = Self.maxTokensPerWeek
+        tokenCount = 0
         totalGenerations = 0
         subscriptionStartDate = nil
         pendingOperations = []
@@ -450,15 +452,18 @@ class BoltTokenManager: ObservableObject {
 
         // Check if we need to refresh tokens
         if shouldRefreshTokens(lastRefresh: lastRefresh) {
-            tokenCount = Self.maxTokensPerWeek
-            UserDefaults.standard.set(Date(), forKey: lastRefreshKey)
-            saveTokensToLocal()
-        } else {
-            tokenCount = UserDefaults.standard.integer(forKey: tokenCountKey)
             if lastRefresh == nil {
+                // No local record at all (fresh install / cleared storage).
+                // Don't grant tokens locally — server is authoritative.
+                tokenCount = 0
+            } else {
+                // A genuine week boundary crossed — safe to grant locally.
                 tokenCount = Self.maxTokensPerWeek
+                UserDefaults.standard.set(Date(), forKey: lastRefreshKey)
                 saveTokensToLocal()
             }
+        } else {
+            tokenCount = UserDefaults.standard.integer(forKey: tokenCountKey)
         }
 
         totalGenerations = UserDefaults.standard.integer(forKey: totalGenerationsKey)

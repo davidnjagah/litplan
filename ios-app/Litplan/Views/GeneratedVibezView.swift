@@ -21,7 +21,7 @@ struct GeneratedVibezView: View {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
 
-                if historyManager.isLoading {
+                if historyManager.isLoading || !historyManager.hasPerformedInitialFetch {
                     LoadingStateView(message: "Loading your Vibez history...")
                 } else if historyManager.history.isEmpty {
                     emptyState
@@ -30,9 +30,8 @@ struct GeneratedVibezView: View {
                 }
             }
             .navigationBarHidden(true)
-            .onAppear {
-                guard !historyManager.isLoading else { return }
-                Task { await historyManager.fetchFromServer() }
+            .task {
+                await historyManager.fetchFromServer()
             }
             .sheet(item: $selectedGroupFlow) { groupFlow in
                 DetailedGroupFlowView(groupFlow: groupFlow, onDismiss: {

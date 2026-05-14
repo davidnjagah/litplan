@@ -23,6 +23,7 @@ class VibezHistoryManager: ObservableObject {
 
     @Published private(set) var history: [VibezHistoryItem] = []
     @Published private(set) var isLoading: Bool = false
+    @Published private(set) var hasPerformedInitialFetch: Bool = false
 
     private let maxLocalItems = 50
     private let storageKey = "litplan.vibez.history"
@@ -126,6 +127,8 @@ class VibezHistoryManager: ObservableObject {
         } catch {
             print("[VibezHistoryManager] Server fetch failed, using local cache: \(error)")
         }
+
+        hasPerformedInitialFetch = true
     }
 
     private func serverRecord(_ groupFlow: GroupFlow) async {
@@ -158,6 +161,7 @@ class VibezHistoryManager: ObservableObject {
 
     private func clearLocalHistory() {
         history = []
+        hasPerformedInitialFetch = false
         UserDefaults.standard.removeObject(forKey: storageKey)
         print("[VibezHistoryManager] Cleared local history on sign-out")
     }
