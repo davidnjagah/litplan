@@ -442,7 +442,7 @@ struct BoltView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
 
-                Text("this week")
+                Text("remaining")
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.6))
             }
