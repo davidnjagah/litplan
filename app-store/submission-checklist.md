@@ -1,7 +1,7 @@
-# LitPlanz App Store Submission Checklist — v1.9
+# LitPlanz App Store Submission Checklist — v2.0
 
 ## Version Info
-- Marketing version: 1.9
+- Marketing version: 2.0
 - Build number: 5
 - Bundle ID: com.litplanz.app
 
@@ -27,7 +27,7 @@
    Apple takes 15–30 minutes. You'll receive an email when the build is ready.
 
 6. **Create new version in App Store Connect**
-   Apps → LitPlanz → press + next to the version list → enter 1.9
+   Apps → LitPlanz → press + next to the version list → enter 2.0
 
 7. **Paste "What's New" text**
    Use the text in `whats-new.md`

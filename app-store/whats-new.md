@@ -1,4 +1,4 @@
-# What's New — LitPlanz v1.9
+# What's New — LitPlanz v2.0
 
 ---
 
