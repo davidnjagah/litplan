@@ -23,6 +23,9 @@ struct Parallax3DCard: View {
     @State private var isPressed = false
     @State private var portalPulse: CGFloat = 0.8
 
+    /// Maximum drag distance (points) that still counts as a tap
+    private let tapThreshold: CGFloat = 8
+
     var body: some View {
         ZStack {
             // Layer 1: Background - deep space portal effect
@@ -45,15 +48,23 @@ struct Parallax3DCard: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPressed)
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    if !isPressed {
-                        isPressed = true
-                    }
+                .onChanged { value in
+                    if !isPressed { isPressed = true }
+                    motionManager.setTouchOffset(translation: value.translation)
                 }
-                .onEnded { _ in
+                .onEnded { value in
                     isPressed = false
-                    HapticManager.shared.medium()
-                    onTap()
+                    motionManager.resetTouchOffset()
+
+                    // Fire tap only when the finger barely moved
+                    let distance = sqrt(
+                        pow(value.translation.width, 2) +
+                        pow(value.translation.height, 2)
+                    )
+                    if distance < tapThreshold {
+                        HapticManager.shared.medium()
+                        onTap()
+                    }
                 }
         )
         .onAppear {

@@ -36,6 +36,34 @@ final class MotionManager: ObservableObject {
     /// Whether to invert the rotation (phone tilts one way, card tilts opposite)
     var invertRotation: Bool = true
 
+    /// Sensitivity of touch drag in degrees per point
+    var dragSensitivity: Double = 0.15
+
+    // MARK: - Touch Offset
+
+    /// Additional rotation from finger drag (degrees), blended on top of gyroscope
+    @Published var touchRollOffset: Double = 0
+    @Published var touchPitchOffset: Double = 0
+
+    /// Whether a drag gesture is currently active
+    @Published var isDragging: Bool = false
+
+    /// Apply touch drag translation to card rotation
+    func setTouchOffset(translation: CGSize) {
+        isDragging = true
+        touchRollOffset = max(-maxRotation, min(maxRotation, Double(translation.width) * dragSensitivity))
+        touchPitchOffset = max(-maxRotation, min(maxRotation, Double(translation.height) * dragSensitivity))
+    }
+
+    /// Spring the touch offset back to zero on drag end
+    func resetTouchOffset() {
+        isDragging = false
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+            touchRollOffset = 0
+            touchPitchOffset = 0
+        }
+    }
+
     // MARK: - Smooth Motion Configuration
 
     /// Reference pitch angle in radians (0° = phone flat on a surface)
@@ -96,7 +124,9 @@ final class MotionManager: ObservableObject {
             let newPitch = self.clampedValue(self.smoothedPitch * self.sensitivity)
             let newRoll = self.clampedValue(self.smoothedRoll * self.sensitivity * rollInvertMultiplier)
 
-            // Use slow, smooth animation for card movement
+            // Pause gyroscope updates while finger is dragging to prevent fighting
+            guard !self.isDragging else { return }
+
             withAnimation(.easeOut(duration: 0.3)) {
                 self.pitch = newPitch
                 self.roll = newRoll
@@ -118,14 +148,14 @@ final class MotionManager: ObservableObject {
         }
     }
 
-    /// Get X rotation angle for 3D effect (based on roll)
+    /// Get X rotation angle for 3D effect (gyroscope roll + touch drag)
     var xRotation: Double {
-        return clampedRotation(roll)
+        return max(-maxRotation, min(maxRotation, clampedRotation(roll) + touchRollOffset))
     }
 
-    /// Get Y rotation angle for 3D effect (based on pitch)
+    /// Get Y rotation angle for 3D effect (gyroscope pitch + touch drag)
     var yRotation: Double {
-        return clampedRotation(pitch)
+        return max(-maxRotation, min(maxRotation, clampedRotation(pitch) + touchPitchOffset))
     }
 
     // MARK: - Private Helpers
