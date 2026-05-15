@@ -10,6 +10,10 @@ Free users can now save cities, plans, and Vibez without hitting a wall. Your fi
 
 Saved items beyond the 3-slot limit are stored and waiting — not lost. Unsave something to open a slot, and your next save fills it automatically.
 
+**Full tokens on upgrade**
+
+Subscribing to Pro now immediately restores all 7 weekly tokens — regardless of whether you already used your free token. Your weekly cycle starts fresh from the moment you subscribe.
+
 **Smoother Vibez card**
 
 The featured Vibez card now responds to touch — drag it to tilt and explore the 3D effect with your finger, on top of the gyroscope parallax.
