@@ -1105,11 +1105,7 @@ struct CityDetailsView: View {
     }
 
     private func handleSaveTap() {
-        let saved = savedItemsManager.toggleCitySave(city)
-        if !saved {
-            paywallTrigger = .saveCity(cityName: city.name)
-            return
-        }
+        savedItemsManager.toggleCitySave(city)
         isFavorited = savedItemsManager.isCitySaved(city)
         if isFavorited {
             HapticManager.shared.success()

@@ -313,10 +313,7 @@ struct BoltView: View {
         Button(action: {
             guard let flow = currentGroupFlow else { return }
             HapticManager.shared.light()
-            let saved = savedItemsManager.toggleGroupFlowSave(flow)
-            if !saved {
-                showPaywall = true
-            }
+            savedItemsManager.toggleGroupFlowSave(flow)
         }) {
             Image(systemName: isSaved ? "heart.fill" : "heart")
                 .font(.system(size: 20, weight: .semibold))

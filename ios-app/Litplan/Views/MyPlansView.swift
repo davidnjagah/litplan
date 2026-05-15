@@ -120,24 +120,27 @@ struct MyPlansView: View {
         savedItemsManager.totalSavedCount
     }
 
-    // Visible items for free users (first 3); all items for Pro
+    // Visible items: Pro sees all; free users see only items in their visible slot set
     private var visibleCities: [City] {
-        isProUser ? savedCities : Array(savedCities.prefix(SavedItemsManager.freeSaveCap))
+        isProUser ? savedCities : savedCities.filter { savedItemsManager.visibleCityIds.contains($0.id) }
     }
     private var overflowCities: [City] {
-        isProUser ? [] : Array(savedCities.dropFirst(SavedItemsManager.freeSaveCap).prefix(2))
+        isProUser ? [] : savedCities.filter { !savedItemsManager.visibleCityIds.contains($0.id) }
     }
     private var visiblePlans: [Plan] {
-        isProUser ? savedPlans : Array(savedPlans.prefix(SavedItemsManager.freeSaveCap))
+        isProUser ? savedPlans : savedPlans.filter { savedItemsManager.visiblePlanIds.contains($0.id) }
     }
     private var overflowPlans: [Plan] {
-        isProUser ? [] : Array(savedPlans.dropFirst(SavedItemsManager.freeSaveCap).prefix(2))
+        isProUser ? [] : savedPlans.filter { !savedItemsManager.visiblePlanIds.contains($0.id) }
     }
     private var visibleGroupFlows: [GroupFlow] {
-        isProUser ? savedGroupFlows : Array(savedGroupFlows.prefix(SavedItemsManager.freeSaveCap))
+        isProUser ? savedGroupFlows : savedGroupFlows.filter { savedItemsManager.visibleGroupFlowIds.contains($0.id) }
     }
     private var overflowGroupFlows: [GroupFlow] {
-        isProUser ? [] : Array(savedGroupFlows.dropFirst(SavedItemsManager.freeSaveCap).prefix(2))
+        isProUser ? [] : savedGroupFlows.filter { !savedItemsManager.visibleGroupFlowIds.contains($0.id) }
+    }
+    private var hasOverflowItems: Bool {
+        !overflowCities.isEmpty || !overflowPlans.isEmpty || !overflowGroupFlows.isEmpty
     }
 
     var body: some View {
@@ -160,11 +163,11 @@ struct MyPlansView: View {
                     } else {
                         contentView
                             .transition(.opacity)
-                    }
-
-                    // Save limit footer — free authenticated users only
-                    if !isProUser && !authManager.isGuest {
-                        savesLimitFooter
+                            .safeAreaInset(edge: .bottom) {
+                                if !isProUser && !authManager.isGuest && hasOverflowItems {
+                                    savesLimitFooter
+                                }
+                            }
                     }
                 }
             }
@@ -309,10 +312,9 @@ struct MyPlansView: View {
         }
     }
 
-    // MARK: - Saves Limit Footer (free users only)
+    // MARK: - Saves Limit Footer (free users only, after 4th save)
     private var savesLimitFooter: some View {
         VStack(spacing: 6) {
-            // Counter pill — mirrors tokenIndicator style in BoltView
             HStack(spacing: 6) {
                 Image(systemName: "heart.circle.fill")
                     .font(.system(size: 14))
@@ -320,24 +322,13 @@ struct MyPlansView: View {
 
                 Text("3 saves max")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.textPrimary)
 
                 Text("per category")
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(.textSecondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.6))
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                    )
-            )
 
-            // Upgrade nudge — mirrors tokenSubtitle upgrade button in BoltView
             Button(action: {
                 HapticManager.shared.light()
                 paywallTrigger = .profile
@@ -348,7 +339,16 @@ struct MyPlansView: View {
             }
             .buttonStyle(PlainButtonStyle())
         }
+        .frame(maxWidth: .infinity)
+        .padding(.top, Spacing.xl)
         .padding(.bottom, Spacing.lg)
+        .background(
+            LinearGradient(
+                colors: [Color.appBackground.opacity(0), Color.appBackground],
+                startPoint: .top,
+                endPoint: .center
+            )
+        )
     }
 
     // MARK: - Saved Cities Content
@@ -360,10 +360,10 @@ struct MyPlansView: View {
             ForEach(visibleCities) { city in
                 SavedCityCard(city: city) { handleCityTap(city) }
             }
-            if !isProUser {
+            if !isProUser && !overflowCities.isEmpty {
                 ForEach(overflowCities) { city in
                     SavedCityCard(city: city) { }
-                        .blur(radius: 5)
+                        .blur(radius: 6)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
@@ -386,14 +386,14 @@ struct MyPlansView: View {
                     handlePlanTap(plan)
                 }
             }
-            if !isProUser {
+            if !isProUser && !overflowPlans.isEmpty {
                 ForEach(overflowPlans) { plan in
                     SavedPlanCard(
                         plan: plan,
                         cityName: getCityName(for: plan),
                         isProUser: true
                     ) { }
-                        .blur(radius: 5)
+                        .blur(radius: 6)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
@@ -415,13 +415,13 @@ struct MyPlansView: View {
                     handleGroupFlowTap(groupFlow)
                 }
             }
-            if !isProUser {
+            if !isProUser && !overflowGroupFlows.isEmpty {
                 ForEach(overflowGroupFlows) { groupFlow in
                     SavedGroupFlowCard(
                         groupFlow: groupFlow,
                         cityName: getCityName(for: groupFlow)
                     ) { }
-                        .blur(radius: 5)
+                        .blur(radius: 6)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }

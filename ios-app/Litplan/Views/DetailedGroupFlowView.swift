@@ -536,12 +536,8 @@ struct DetailedGroupFlowView: View {
             // Save button (heart icon, next to close)
             Button(action: {
                 HapticManager.shared.light()
-                let saved = savedItemsManager.toggleGroupFlowSave(groupFlow)
-                if saved {
-                    isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
-                } else {
-                    showPaywall = true
-                }
+                savedItemsManager.toggleGroupFlowSave(groupFlow)
+                isSaved = savedItemsManager.isGroupFlowSaved(groupFlow)
             }) {
                 ZStack {
                     Circle()

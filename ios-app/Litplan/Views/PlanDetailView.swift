@@ -259,12 +259,8 @@ struct PlanDetailView: View {
             // Save button (heart icon)
             Button(action: {
                 HapticManager.shared.light()
-                let saved = savedItemsManager.togglePlanSave(plan)
-                if saved {
-                    isSaved = savedItemsManager.isPlanSaved(plan)
-                } else {
-                    showPaywall = true
-                }
+                savedItemsManager.togglePlanSave(plan)
+                isSaved = savedItemsManager.isPlanSaved(plan)
             }) {
                 ZStack {
                     Circle()

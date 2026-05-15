@@ -28,6 +28,12 @@ class SavedItemsManager: ObservableObject {
     @Published private(set) var savedGroupFlows: [GroupFlow] = []
     @Published private(set) var isLoading: Bool = false
 
+    /// IDs that occupy visible save slots for free users (max 3 per category).
+    /// Pro users ignore these — all saved items are shown.
+    @Published private(set) var visibleCityIds: Set<String> = []
+    @Published private(set) var visiblePlanIds: Set<String> = []
+    @Published private(set) var visibleGroupFlowIds: Set<String> = []
+
     // MARK: - Private
 
     private let userDefaults = UserDefaults.standard
@@ -41,6 +47,9 @@ class SavedItemsManager: ObservableObject {
         static let savedPlanIds   = "litplan.saved.planIds"
         static let savedGroupFlows  = "litplan.saved.groupFlows"
         static let savedGroupFlowIds = "litplan.saved.groupFlowIds"
+        static let visibleCityIds    = "litplan.saved.visibleCityIds"
+        static let visiblePlanIds    = "litplan.saved.visiblePlanIds"
+        static let visibleGroupFlowIds = "litplan.saved.visibleGroupFlowIds"
     }
 
     // MARK: - Supabase row types
@@ -178,6 +187,11 @@ class SavedItemsManager: ObservableObject {
             persistPlans()
             persistGroupFlows()
 
+            // Reconcile visible sets: remove stale IDs, fill open slots from server order
+            reconcileVisibleIds(against: cities, keyPath: \.visibleCityIds, key: Keys.visibleCityIds)
+            reconcileVisibleIds(against: plans, keyPath: \.visiblePlanIds, key: Keys.visiblePlanIds)
+            reconcileVisibleIds(against: flows, keyPath: \.visibleGroupFlowIds, key: Keys.visibleGroupFlowIds)
+
             print("[SavedItemsManager] Fetched from server — cities:\(cities.count) plans:\(plans.count) flows:\(flows.count)")
         } catch {
             print("[SavedItemsManager] Server fetch failed, using local cache: \(error)")
@@ -192,6 +206,10 @@ class SavedItemsManager: ObservableObject {
     func saveCity(_ city: City) {
         guard !isCitySaved(city) else { return }
         savedCities.append(city)
+        if visibleCityIds.count < SavedItemsManager.freeSaveCap {
+            visibleCityIds.insert(city.id)
+            persistVisibleCityIds()
+        }
         persistCities()
         Task { await serverSaveCity(city) }
         print("[SavedItemsManager] Saved city: \(city.name)")
@@ -199,6 +217,8 @@ class SavedItemsManager: ObservableObject {
 
     func unsaveCity(_ city: City) {
         savedCities.removeAll { $0.id == city.id }
+        visibleCityIds.remove(city.id)
+        persistVisibleCityIds()
         persistCities()
         Task { await serverUnsaveCity(city.id) }
         print("[SavedItemsManager] Unsaved city: \(city.name)")
@@ -206,6 +226,8 @@ class SavedItemsManager: ObservableObject {
 
     func unsaveCity(cityId: String) {
         savedCities.removeAll { $0.id == cityId }
+        visibleCityIds.remove(cityId)
+        persistVisibleCityIds()
         persistCities()
         Task { await serverUnsaveCity(cityId) }
     }
@@ -213,8 +235,6 @@ class SavedItemsManager: ObservableObject {
     @discardableResult
     func toggleCitySave(_ city: City) -> Bool {
         if isCitySaved(city) { unsaveCity(city); return true }
-        let isPro = SubscriptionManager.shared.isProUser
-        guard isPro || savedCities.count < SavedItemsManager.freeSaveCap else { return false }
         saveCity(city)
         return true
     }
@@ -257,6 +277,10 @@ class SavedItemsManager: ObservableObject {
     func savePlan(_ plan: Plan) {
         guard !isPlanSaved(plan) else { return }
         savedPlans.append(plan)
+        if visiblePlanIds.count < SavedItemsManager.freeSaveCap {
+            visiblePlanIds.insert(plan.id)
+            persistVisiblePlanIds()
+        }
         persistPlans()
         Task { await serverSavePlan(plan) }
         print("[SavedItemsManager] Saved plan: \(plan.title)")
@@ -264,6 +288,8 @@ class SavedItemsManager: ObservableObject {
 
     func unsavePlan(_ plan: Plan) {
         savedPlans.removeAll { $0.id == plan.id }
+        visiblePlanIds.remove(plan.id)
+        persistVisiblePlanIds()
         persistPlans()
         Task { await serverUnsavePlan(plan.id) }
         print("[SavedItemsManager] Unsaved plan: \(plan.title)")
@@ -271,6 +297,8 @@ class SavedItemsManager: ObservableObject {
 
     func unsavePlan(planId: String) {
         savedPlans.removeAll { $0.id == planId }
+        visiblePlanIds.remove(planId)
+        persistVisiblePlanIds()
         persistPlans()
         Task { await serverUnsavePlan(planId) }
     }
@@ -278,8 +306,6 @@ class SavedItemsManager: ObservableObject {
     @discardableResult
     func togglePlanSave(_ plan: Plan) -> Bool {
         if isPlanSaved(plan) { unsavePlan(plan); return true }
-        let isPro = SubscriptionManager.shared.isProUser
-        guard isPro || savedPlans.count < SavedItemsManager.freeSaveCap else { return false }
         savePlan(plan)
         return true
     }
@@ -322,6 +348,10 @@ class SavedItemsManager: ObservableObject {
     func saveGroupFlow(_ groupFlow: GroupFlow) {
         guard !isGroupFlowSaved(groupFlow) else { return }
         savedGroupFlows.append(groupFlow)
+        if visibleGroupFlowIds.count < SavedItemsManager.freeSaveCap {
+            visibleGroupFlowIds.insert(groupFlow.id)
+            persistVisibleGroupFlowIds()
+        }
         persistGroupFlows()
         Task { await serverSaveGroupFlow(groupFlow) }
         print("[SavedItemsManager] Saved group flow: \(groupFlow.title)")
@@ -329,6 +359,8 @@ class SavedItemsManager: ObservableObject {
 
     func unsaveGroupFlow(_ groupFlow: GroupFlow) {
         savedGroupFlows.removeAll { $0.id == groupFlow.id }
+        visibleGroupFlowIds.remove(groupFlow.id)
+        persistVisibleGroupFlowIds()
         persistGroupFlows()
         Task { await serverUnsaveGroupFlow(groupFlow.id) }
         print("[SavedItemsManager] Unsaved group flow: \(groupFlow.title)")
@@ -336,6 +368,8 @@ class SavedItemsManager: ObservableObject {
 
     func unsaveGroupFlow(groupFlowId: String) {
         savedGroupFlows.removeAll { $0.id == groupFlowId }
+        visibleGroupFlowIds.remove(groupFlowId)
+        persistVisibleGroupFlowIds()
         persistGroupFlows()
         Task { await serverUnsaveGroupFlow(groupFlowId) }
     }
@@ -343,8 +377,6 @@ class SavedItemsManager: ObservableObject {
     @discardableResult
     func toggleGroupFlowSave(_ groupFlow: GroupFlow) -> Bool {
         if isGroupFlowSaved(groupFlow) { unsaveGroupFlow(groupFlow); return true }
-        let isPro = SubscriptionManager.shared.isProUser
-        guard isPro || savedGroupFlows.count < SavedItemsManager.freeSaveCap else { return false }
         saveGroupFlow(groupFlow)
         return true
     }
@@ -395,6 +427,24 @@ class SavedItemsManager: ObservableObject {
            let flows = try? decoder.decode([GroupFlow].self, from: data) {
             savedGroupFlows = flows
         }
+
+        // Load visible sets; initialize from local cache if no stored state yet
+        if let ids = userDefaults.stringArray(forKey: Keys.visibleCityIds) {
+            visibleCityIds = Set(ids.prefix(SavedItemsManager.freeSaveCap))
+        } else {
+            visibleCityIds = Set(savedCities.prefix(SavedItemsManager.freeSaveCap).map { $0.id })
+        }
+        if let ids = userDefaults.stringArray(forKey: Keys.visiblePlanIds) {
+            visiblePlanIds = Set(ids.prefix(SavedItemsManager.freeSaveCap))
+        } else {
+            visiblePlanIds = Set(savedPlans.prefix(SavedItemsManager.freeSaveCap).map { $0.id })
+        }
+        if let ids = userDefaults.stringArray(forKey: Keys.visibleGroupFlowIds) {
+            visibleGroupFlowIds = Set(ids.prefix(SavedItemsManager.freeSaveCap))
+        } else {
+            visibleGroupFlowIds = Set(savedGroupFlows.prefix(SavedItemsManager.freeSaveCap).map { $0.id })
+        }
+
         isLoading = false
         print("[SavedItemsManager] Local cache — cities:\(savedCities.count) plans:\(savedPlans.count) flows:\(savedGroupFlows.count)")
     }
@@ -409,12 +459,18 @@ class SavedItemsManager: ObservableObject {
         savedCities    = []
         savedPlans     = []
         savedGroupFlows = []
+        visibleCityIds = []
+        visiblePlanIds = []
+        visibleGroupFlowIds = []
         userDefaults.removeObject(forKey: Keys.savedCities)
         userDefaults.removeObject(forKey: Keys.savedPlans)
         userDefaults.removeObject(forKey: Keys.savedGroupFlows)
         userDefaults.removeObject(forKey: Keys.savedCityIds)
         userDefaults.removeObject(forKey: Keys.savedPlanIds)
         userDefaults.removeObject(forKey: Keys.savedGroupFlowIds)
+        userDefaults.removeObject(forKey: Keys.visibleCityIds)
+        userDefaults.removeObject(forKey: Keys.visiblePlanIds)
+        userDefaults.removeObject(forKey: Keys.visibleGroupFlowIds)
         print("[SavedItemsManager] Cleared all saved items")
     }
 
@@ -439,6 +495,40 @@ class SavedItemsManager: ObservableObject {
             userDefaults.set(data, forKey: Keys.savedGroupFlows)
             userDefaults.set(savedGroupFlows.map { $0.id }, forKey: Keys.savedGroupFlowIds)
         }
+    }
+
+    private func persistVisibleCityIds() {
+        userDefaults.set(Array(visibleCityIds), forKey: Keys.visibleCityIds)
+    }
+
+    private func persistVisiblePlanIds() {
+        userDefaults.set(Array(visiblePlanIds), forKey: Keys.visiblePlanIds)
+    }
+
+    private func persistVisibleGroupFlowIds() {
+        userDefaults.set(Array(visibleGroupFlowIds), forKey: Keys.visibleGroupFlowIds)
+    }
+
+    /// Reconcile a visible-ID set against a freshly fetched server list.
+    /// Removes stale IDs, then fills open slots from the server-ordered list.
+    private func reconcileVisibleIds<T: Identifiable>(
+        against items: [T],
+        keyPath: ReferenceWritableKeyPath<SavedItemsManager, Set<String>>,
+        key: String
+    ) where T.ID == String {
+        let serverIds = Set(items.map { $0.id })
+        var visible = self[keyPath: keyPath].intersection(serverIds)
+        // Enforce cap in case of stale data from a prior version
+        if visible.count > SavedItemsManager.freeSaveCap {
+            visible = Set(Array(visible).prefix(SavedItemsManager.freeSaveCap))
+        }
+        // Fill open slots in server order (handles first-load and items removed server-side)
+        for item in items where !visible.contains(item.id) {
+            if visible.count >= SavedItemsManager.freeSaveCap { break }
+            visible.insert(item.id)
+        }
+        self[keyPath: keyPath] = visible
+        userDefaults.set(Array(visible), forKey: key)
     }
 
     // MARK: - Utilities

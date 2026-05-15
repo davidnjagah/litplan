@@ -1,19 +1,19 @@
-# What's New — LitPlanz v1.7
+# What's New — LitPlanz v1.8
 
 ---
 
-**Token counter you can trust**
+**Save freely, no interruptions**
 
-Reinstalling the app no longer resets your weekly Vibez count. Tokens now sync directly from the server on sign-in and stay accurate across reinstalls and devices.
+Free users can now save cities, plans, and Vibez without hitting a wall. Your first 3 saves per category are always accessible — anything beyond that is kept safe in a locked section, ready to unlock when you upgrade.
 
-**Your Vibez history, always ready**
+**Your saves, always yours**
 
-Generated Vibez loads instantly when you open it from your profile — no more stalling on first open.
+Saved items beyond the 3-slot limit are stored and waiting — not lost. Unsave something to open a slot, and your next save fills it automatically.
 
-**Smoother navigation**
+**Smoother Vibez card**
 
-Every row in your profile is now fully tappable, not just the text. Quicker to get where you're going.
+The featured Vibez card now responds to touch — drag it to tilt and explore the 3D effect with your finger, on top of the gyroscope parallax.
 
 **Bug fixes and stability improvements**
 
-Fixed an issue where free users weren't being shown the upgrade screen when tapping Generated Vibez. General performance and reliability improvements throughout.
+General performance and reliability improvements throughout.

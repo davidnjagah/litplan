@@ -319,6 +319,9 @@ class SubscriptionManager: ObservableObject {
                 throw SubscriptionError.networkUnavailable
             }
 
+            // Capture pre-purchase state to detect free → Pro transition
+            let wasProBeforePurchase = isProUser
+
             // Initiate purchase
             let result = try await product.purchase()
 
@@ -336,6 +339,11 @@ class SubscriptionManager: ObservableObject {
 
                 // Update local state and cache first so user gets immediate access
                 await refreshSubscriptionState()
+
+                // If this is a free → Pro upgrade, restore full tokens with a fresh weekly cycle
+                if isProUser && !wasProBeforePurchase {
+                    BoltTokenManager.shared.handleUpgradeToProSubscription()
+                }
 
                 // Validate with backend (non-blocking - don't fail the purchase if backend is unavailable)
                 do {
@@ -411,6 +419,11 @@ class SubscriptionManager: ObservableObject {
 
             // Update subscription status and cache
             await refreshSubscriptionState()
+
+            // Reload tokens to reflect restored Pro status
+            if isProUser {
+                await BoltTokenManager.shared.loadTokensAsync()
+            }
 
             // Validate with backend if we have an active subscription
             if isProUser, let transaction = await getCurrentSubscriptionTransaction() {

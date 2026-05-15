@@ -368,6 +368,24 @@ class BoltTokenManager: ObservableObject {
         print("[BoltTokenManager] Tokens force refreshed to \(tokenCount)")
     }
 
+    /// Called when a free user upgrades to Pro.
+    /// Immediately restores all 7 tokens and starts the weekly cycle from the moment of subscription.
+    func handleUpgradeToProSubscription() {
+        let now = Date()
+        tokenCount = Self.maxTokensPerWeek
+        // Reset cycle to start from the subscription moment
+        subscriptionStartDate = now
+        UserDefaults.standard.set(now, forKey: subscriptionStartKey)
+        UserDefaults.standard.set(now, forKey: lastRefreshKey)
+        saveTokensToLocal()
+        print("[BoltTokenManager] Upgraded to Pro — \(tokenCount) tokens restored, cycle starts now")
+
+        // Sync with server — server response wins if it disagrees, but user sees tokens immediately
+        Task {
+            await loadTokensAsync()
+        }
+    }
+
     /// Clear all token data (for logout)
     func clearData() {
         UserDefaults.standard.removeObject(forKey: tokenCountKey)
