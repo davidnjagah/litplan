@@ -13,6 +13,7 @@ import SwiftUI
 /// Manages device motion data (gyroscope/accelerometer) for 3D parallax effects
 /// Provides pitch and roll values that can be used for card rotation effects
 /// Optimized for comfortable phone holding angle (30-45°) with smooth response
+@MainActor
 final class MotionManager: ObservableObject {
     static let shared = MotionManager()
 
@@ -57,10 +58,14 @@ final class MotionManager: ObservableObject {
 
     /// Spring the touch offset back to zero on drag end
     func resetTouchOffset() {
-        isDragging = false
         withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
             touchRollOffset = 0
             touchPitchOffset = 0
+        }
+        // Delay gyro resumption until the spring has settled to avoid conflicting animations
+        Task {
+            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4s matches spring response
+            isDragging = false
         }
     }
 
@@ -207,14 +212,11 @@ extension View {
     }
 
     /// Apply parallax offset for layered depth effect
-    /// - Parameters:
-    ///   - motionManager: The MotionManager instance to use
-    ///   - multiplier: How much this layer moves (higher = more movement for foreground)
-    /// - Returns: Modified view with parallax offset
+    /// Uses combined xRotation/yRotation so touch drag moves the layers too.
     func parallaxOffset(_ motionManager: MotionManager, multiplier: CGFloat = 1.0) -> some View {
         self.offset(
-            x: CGFloat(motionManager.roll) * 10 * multiplier,
-            y: CGFloat(motionManager.pitch) * 10 * multiplier
+            x: CGFloat(motionManager.xRotation / motionManager.maxRotation) * 10 * multiplier,
+            y: CGFloat(motionManager.yRotation / motionManager.maxRotation) * 10 * multiplier
         )
     }
 }
