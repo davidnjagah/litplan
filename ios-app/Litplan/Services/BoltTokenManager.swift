@@ -293,8 +293,23 @@ class BoltTokenManager: ObservableObject {
         do {
             // Try to load from database
             let tokens = try await fetchTokensFromDatabase(userId: userId)
-            tokenCount = tokens.tokenCount
             totalGenerations = tokens.totalGenerations
+
+            // Guard against stale server data overwriting a fresh upgrade.
+            // If the local subscriptionStartDate is newer than the server's cycleStartDate,
+            // the server hasn't registered the upgrade yet — keep the optimistic local count.
+            let localIsMoreRecent: Bool
+            if let localStart = subscriptionStartDate, let serverCycle = tokens.cycleStartDate {
+                localIsMoreRecent = localStart > serverCycle
+            } else {
+                localIsMoreRecent = false
+            }
+
+            if localIsMoreRecent {
+                print("[BoltTokenManager] Fresh upgrade — server cycle is stale, keeping local \(tokenCount) tokens")
+            } else {
+                tokenCount = tokens.tokenCount
+            }
 
             // Set subscription start date from database if available
             if let cycleStartDate = tokens.cycleStartDate {
