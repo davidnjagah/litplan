@@ -296,17 +296,22 @@ class BoltTokenManager: ObservableObject {
             totalGenerations = tokens.totalGenerations
 
             // Guard against stale server data overwriting a fresh upgrade.
-            // If the local subscriptionStartDate is newer than the server's cycleStartDate,
-            // the server hasn't registered the upgrade yet — keep the optimistic local count.
+            // Two cases where local should win:
+            //  1. Local subscriptionStartDate is newer than server's cycleStartDate (server is behind)
+            //  2. Local subscriptionStartDate exists but server returned no cycleStartDate yet
+            //     (server hasn't processed the upgrade at all)
             let localIsMoreRecent: Bool
             if let localStart = subscriptionStartDate, let serverCycle = tokens.cycleStartDate {
                 localIsMoreRecent = localStart > serverCycle
+            } else if subscriptionStartDate != nil && tokens.cycleStartDate == nil {
+                // Local cycle was just set (fresh upgrade), server hasn't registered it yet
+                localIsMoreRecent = true
             } else {
                 localIsMoreRecent = false
             }
 
             if localIsMoreRecent {
-                print("[BoltTokenManager] Fresh upgrade — server cycle is stale, keeping local \(tokenCount) tokens")
+                print("[BoltTokenManager] Fresh upgrade — server not yet updated, keeping local \(tokenCount) tokens")
             } else {
                 tokenCount = tokens.tokenCount
             }
