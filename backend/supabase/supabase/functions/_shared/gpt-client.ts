@@ -85,9 +85,12 @@ export async function gptRequest(
     allMessages.push({ role: msg.role, content: msg.content });
   }
 
+  // gpt-5.x models use max_completion_tokens instead of max_tokens
+  const tokenParam = model.startsWith('gpt-5') ? 'max_completion_tokens' : 'max_tokens';
+
   const requestBody: any = {
     model,
-    max_tokens: maxTokens,
+    [tokenParam]: maxTokens,
     temperature,
     messages: allMessages,
   };

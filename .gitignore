@@ -103,3 +103,6 @@ backend/functions/prisma/*.db-journal
 
 ## Node
 node_modules/
+
+# CV entries (personal, not for repo)
+cv-entry/

@@ -31,6 +31,7 @@ export interface VerifiedVenue {
   openingHoursPeriods?: OpeningPeriod[]; // Structured for programmatic use
   businessStatus?: 'OPERATIONAL' | 'CLOSED_TEMPORARILY' | 'CLOSED_PERMANENTLY';
   rating?: number;
+  reviewCount?: number;
   priceLevel?: number;
   isVerified: boolean;
   confidence: 'high' | 'medium' | 'low' | 'not_found';
@@ -53,6 +54,7 @@ interface PlaceResult {
   };
   business_status?: 'OPERATIONAL' | 'CLOSED_TEMPORARILY' | 'CLOSED_PERMANENTLY';
   rating?: number;
+  user_ratings_total?: number;
   price_level?: number;
   types?: string[];
 }
@@ -163,6 +165,7 @@ export async function searchVenue(
       openingHoursPeriods: details?.opening_hours?.periods,
       businessStatus: details?.business_status,
       rating: place.rating,
+      reviewCount: place.user_ratings_total,
       priceLevel: place.price_level,
       isVerified: true,
       confidence
@@ -191,7 +194,7 @@ async function getPlaceDetails(
   apiKey: string
 ): Promise<PlaceDetailsResponse['result'] | null> {
   try {
-    const fields = 'name,formatted_address,geometry,opening_hours,business_status,rating,price_level,url';
+    const fields = 'name,formatted_address,geometry,opening_hours,business_status,rating,user_ratings_total,price_level,url';
     const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
 
     const response = await fetch(detailsUrl);
