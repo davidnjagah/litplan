@@ -30,6 +30,7 @@
 		024 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124 /* SubscriptionManager.swift */; };
 		025 /* Products.plist in Resources */ = {isa = PBXBuildFile; fileRef = 125 /* Products.plist */; };
 		026 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126 /* ToastView.swift */; };
+		E3F8150C70D34746A3356EB5 /* SnakePathLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7444A22B2B4612BC226843 /* SnakePathLoadingView.swift */; };
 		027 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127 /* NetworkMonitor.swift */; };
 		028 /* IndividualPlanCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128 /* IndividualPlanCard.swift */; };
 		029 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129 /* Config.swift */; };
@@ -121,6 +122,7 @@
 		124 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
 		125 /* Products.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Products.plist; sourceTree = "<group>"; };
 		126 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		2F7444A22B2B4612BC226843 /* SnakePathLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnakePathLoadingView.swift; sourceTree = "<group>"; };
 		127 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		128 /* IndividualPlanCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndividualPlanCard.swift; sourceTree = "<group>"; };
 		129 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
@@ -285,6 +287,7 @@
 				5309BDE2320E0532A23CED3C /* EmptyStateView.swift */,
 				D6A36E790B224B0C50CD0637 /* ErrorStateView.swift */,
 				126 /* ToastView.swift */,
+				2F7444A22B2B4612BC226843 /* SnakePathLoadingView.swift */,
 				32ABBF512970389B671E2F1F /* PlanListItem.swift */,
 				4F942FE57C3D9148D5F4AE14 /* WeekendPlansSection.swift */,
 				16DC0A7DEAC333438920E42E /* DayGroupedPlansSection.swift */,
@@ -486,6 +489,7 @@
 				DD99AFFD452ED2C3DA626451 /* EmptyStateView.swift in Sources */,
 				BE2B8A3C96A3A3120BE6A1CD /* ErrorStateView.swift in Sources */,
 				026 /* ToastView.swift in Sources */,
+				E3F8150C70D34746A3356EB5 /* SnakePathLoadingView.swift in Sources */,
 				027 /* NetworkMonitor.swift in Sources */,
 				028 /* IndividualPlanCard.swift in Sources */,
 				029 /* Config.swift in Sources */,

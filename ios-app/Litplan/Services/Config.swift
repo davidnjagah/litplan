@@ -129,13 +129,29 @@ enum Config {
             return "\(apiBaseURL)/cities-discover"
         }
 
-        /// Bolt pipeline endpoint - Supabase Edge Function
-        /// Generates custom group plans for any city/theme combination
-        /// Uses Supabase Edge Function with 4-agent pipeline (discovery, relevance, Google Places, narrative)
+        /// Bolt pipeline endpoint — legacy synchronous Supabase function (v2)
+        /// Kept for one-flag rollback. Used when Config.useAsyncBoltPipeline = false.
         static var boltPipeline: String {
-            return "\(apiBaseURL)/bolt-pipeline"
+            return "\(apiBaseURL)/bolt-pipeline-v2"
+        }
+
+        /// Async bolt pipeline trigger (v3) — returns a jobId in <500ms
+        /// Used when Config.useAsyncBoltPipeline = true.
+        static var boltPipelineTrigger: String {
+            return "\(apiBaseURL)/bolt-pipeline-v3"
+        }
+
+        /// Status polling endpoint for the async pipeline
+        static var boltPipelineStatus: String {
+            return "\(apiBaseURL)/bolt-pipeline-status"
         }
     }
+
+    /// Feature flag — toggle between the legacy synchronous bolt pipeline (v2)
+    /// and the new async one (v3 trigger + Railway worker + polling). Set to
+    /// false for instant rollback to the proven path.
+    /// See: scaling/railway-async-architecture.md
+    static let useAsyncBoltPipeline: Bool = true
 
     // MARK: - App Configuration
 
@@ -185,7 +201,9 @@ enum Config {
     // MARK: - Timeouts
 
     /// API request timeout in seconds
-    static let apiTimeout: TimeInterval = 30
+    /// Set to 180s because the bolt pipeline runs multiple GPT calls + Google Places lookups
+    /// and routinely takes 60–120s end-to-end. Shorter timeout would cut off legitimate runs.
+    static let apiTimeout: TimeInterval = 180
 
     /// Session refresh interval in seconds
     static let sessionRefreshInterval: TimeInterval = 3600 // 1 hour

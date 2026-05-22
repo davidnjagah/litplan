@@ -167,21 +167,38 @@ struct RouteMapView: View {
 
     // MARK: - Open Directions in Apple Maps
 
+    /// Opens a multi-stop walking route in Apple Maps.
+    ///
+    /// We can't use `MKMapItem.openMaps(with:launchOptions:)` here because that
+    /// API only uses the first two items when directions mode is set —
+    /// remaining items are dropped. Apple Maps' `maps.apple.com` URL scheme
+    /// chains waypoints via the `+to:` separator on the `daddr` parameter,
+    /// which is the only way to launch a true multi-stop route.
+    ///
+    /// Example for 3 venues:
+    ///   https://maps.apple.com/?daddr=lat1,lng1+to:lat2,lng2+to:lat3,lng3&dirflg=w
     private func openDirectionsInAppleMaps() {
         guard !venues.isEmpty else { return }
-
         let sortedVenues = venues.sorted { $0.order < $1.order }
 
-        let mapItems = sortedVenues.map { venue -> MKMapItem in
-            let item = MKMapItem(placemark: MKPlacemark(coordinate: venue.coordinate))
-            item.name = venue.name
-            return item
+        // Single-venue fallback — no route, just open the pin
+        if sortedVenues.count == 1, let only = sortedVenues.first {
+            let item = MKMapItem(placemark: MKPlacemark(coordinate: only.coordinate))
+            item.name = only.name
+            item.openInMaps(launchOptions: [
+                MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+            ])
+            return
         }
 
-        MKMapItem.openMaps(
-            with: mapItems,
-            launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking]
-        )
+        // Multi-stop URL scheme — daddr chains stops with "+to:" separators
+        let daddr = sortedVenues
+            .map { "\($0.coordinate.latitude),\($0.coordinate.longitude)" }
+            .joined(separator: "+to:")
+        let urlString = "https://maps.apple.com/?daddr=\(daddr)&dirflg=w"
+
+        guard let url = URL(string: urlString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // MARK: - Route Legend

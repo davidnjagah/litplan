@@ -609,37 +609,48 @@ struct BoltView: View {
 
     // MARK: - Loading View
 
+    @ViewBuilder
     private var loadingView: some View {
-        VStack(spacing: Spacing.md) {
-            // Animated loading indicator
-            ZStack {
-                // Outer ring
-                Circle()
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.boltGradientStart, Color.boltGradientEnd],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 3
-                    )
-                    .frame(width: 60, height: 60)
-                    .rotationEffect(.degrees(isLoading || isGenerating ? 360 : 0))
-                    .animation(
-                        .linear(duration: 1.5)
-                        .repeatForever(autoreverses: false),
-                        value: isLoading || isGenerating
-                    )
+        if isGenerating {
+            // Snake-path animation drives the wait during bolt pipeline generation
+            VStack(spacing: Spacing.sm) {
+                SnakePathLoadingView()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 320)
 
-                // Bolt icon
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
+                Text("Generating your plan...")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.textSecondary)
             }
+        } else {
+            // Plain bolt-spinner for generic data loads (initial fetch, etc.)
+            VStack(spacing: Spacing.md) {
+                ZStack {
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.boltGradientStart, Color.boltGradientEnd],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            lineWidth: 3
+                        )
+                        .frame(width: 60, height: 60)
+                        .rotationEffect(.degrees(isLoading ? 360 : 0))
+                        .animation(
+                            .linear(duration: 1.5).repeatForever(autoreverses: false),
+                            value: isLoading
+                        )
 
-            Text(isGenerating ? "Generating your plan..." : "Finding perfect plans...")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.textSecondary)
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                Text("Finding perfect plans...")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.textSecondary)
+            }
         }
     }
 
@@ -753,9 +764,22 @@ struct BoltView: View {
                         }
                     }
                 }
-            } catch {
+            } catch let apiError as APIError {
+                print("[BoltView] ⚡ Caught APIError: \(apiError) — description: \(apiError.errorDescription ?? "nil")")
                 await MainActor.run {
-                    // FAILURE: token not consumed, user keeps it
+                    isGenerating = false
+                    switch apiError {
+                    case .thinCoverage(let message):
+                        print("[BoltView] 🌥 Showing thinCoverage toast: \(message)")
+                        toast = ToastData(type: .thinCoverage, message: message, persistent: true)
+                    default:
+                        print("[BoltView] ⚠️ Showing generic retry toast (apiError did not match .thinCoverage)")
+                        toast = ToastData(type: .retry, message: "Unable to generate plan. Please try again.", persistent: true)
+                    }
+                }
+            } catch {
+                print("[BoltView] ❌ Caught non-APIError: \(error) — type: \(type(of: error))")
+                await MainActor.run {
                     isGenerating = false
                     toast = ToastData(type: .retry, message: "Unable to generate plan. Please try again.", persistent: true)
                 }

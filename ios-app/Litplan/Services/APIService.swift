@@ -17,6 +17,7 @@ enum APIError: LocalizedError {
     case unauthorized
     case notFound
     case rateLimited
+    case thinCoverage(String)
     case unknown(String)
 
     var errorDescription: String? {
@@ -35,6 +36,8 @@ enum APIError: LocalizedError {
             return "Resource not found"
         case .rateLimited:
             return "Too many requests. Please try again later."
+        case .thinCoverage(let message):
+            return message
         case .unknown(let message):
             return message
         }
@@ -369,34 +372,153 @@ class APIService: ObservableObject {
         themeDefinition: String?,
         userId: String
     ) async throws -> GroupFlow {
+        if Config.useAsyncBoltPipeline {
+            return try await generateCustomGroupFlowAsync(
+                city: city, country: country, theme: theme,
+                themeDefinition: themeDefinition, userId: userId
+            )
+        }
+        return try await generateCustomGroupFlowSync(
+            city: city, country: country, theme: theme,
+            themeDefinition: themeDefinition, userId: userId
+        )
+    }
+
+    /// Legacy synchronous flow — POSTs to bolt-pipeline-v2 and waits up to 180s.
+    /// Kept for one-flag rollback via Config.useAsyncBoltPipeline = false.
+    private func generateCustomGroupFlowSync(
+        city: String,
+        country: String,
+        theme: String,
+        themeDefinition: String?,
+        userId: String
+    ) async throws -> GroupFlow {
         let requestBody = BoltPipelineRequest(
-            city: city,
-            country: country,
-            theme: theme,
-            themeDefinition: themeDefinition,
-            userId: userId
+            city: city, country: country, theme: theme,
+            themeDefinition: themeDefinition, userId: userId
         )
 
         if Config.enableDebugLogging {
-            print("[APIService] 🔥 Calling bolt-pipeline for \(city), theme: \(theme)")
+            print("[APIService] 🔥 Calling bolt-pipeline-v2 (sync) for \(city), theme: \(theme)")
         }
 
         let response: BoltPipelineResponse = try await request(
             endpoint: Config.Endpoints.boltPipeline,
             method: .POST,
             body: requestBody,
-            requiresAuth: false  // Use anon key - userId is passed in body for tracking
+            requiresAuth: false
         )
 
         guard response.success, let groupFlow = response.data else {
             let errorMessage = response.error ?? "Failed to generate group flow"
+            print("[APIService] 🔴 bolt-pipeline-v2 failed — errorCode: \(response.errorCode ?? "nil"), error: \(errorMessage)")
+            if response.errorCode == "THIN_COVERAGE" {
+                throw APIError.thinCoverage(errorMessage)
+            }
             throw APIError.serverError(500, errorMessage)
         }
+        return groupFlow
+    }
+
+    /// New async flow — POSTs to bolt-pipeline-v3 trigger (returns jobId in
+    /// <500ms or a cached result), then polls bolt-pipeline-status every 2s
+    /// until the row reaches a terminal state. Max wait 180s.
+    private func generateCustomGroupFlowAsync(
+        city: String,
+        country: String,
+        theme: String,
+        themeDefinition: String?,
+        userId: String
+    ) async throws -> GroupFlow {
+        let requestBody = BoltPipelineRequest(
+            city: city, country: country, theme: theme,
+            themeDefinition: themeDefinition, userId: userId
+        )
 
         if Config.enableDebugLogging {
-            print("[APIService] ✅ Bolt pipeline returned group flow: \(groupFlow.title)")
+            print("[APIService] 🚀 Triggering bolt-pipeline-v3 (async) for \(city), theme: \(theme)")
         }
 
+        let trigger: BoltPipelineTriggerResponse = try await request(
+            endpoint: Config.Endpoints.boltPipelineTrigger,
+            method: .POST,
+            body: requestBody,
+            requiresAuth: false
+        )
+
+        // Cache hit — pipeline result returned inline by the trigger
+        if trigger.cached == true, let cached = trigger.result {
+            print("[APIService] ⚡ Cache hit for \(city)/\(theme)")
+            return try extractGroupFlow(from: cached)
+        }
+
+        guard let jobId = trigger.jobId else {
+            throw APIError.serverError(500, "Trigger returned no jobId and no cached result")
+        }
+
+        print("[APIService] 🆔 Job started: \(jobId) — polling status...")
+        return try await pollBoltPipelineJob(jobId: jobId)
+    }
+
+    /// Poll bolt-pipeline-status every 2s for up to 180s. Throws on timeout,
+    /// thinCoverage, or any terminal failure. Returns the GroupFlow when the
+    /// row reaches status=completed.
+    private func pollBoltPipelineJob(jobId: String) async throws -> GroupFlow {
+        let pollIntervalNanos: UInt64 = 2_000_000_000   // 2s
+        let maxWaitSeconds = 180
+        let maxAttempts = maxWaitSeconds * 1_000_000_000 / Int(pollIntervalNanos)
+
+        for attempt in 0..<maxAttempts {
+            try await Task.sleep(nanoseconds: pollIntervalNanos)
+
+            let statusUrl = "\(Config.Endpoints.boltPipelineStatus)?jobId=\(jobId)"
+            let status: BoltPipelineStatusResponse = try await request(
+                endpoint: statusUrl,
+                method: .GET,
+                body: nil,
+                requiresAuth: false
+            )
+
+            if Config.enableDebugLogging {
+                print("[APIService] 🔄 Poll \(attempt + 1)/\(maxAttempts) — status: \(status.status ?? "?")")
+            }
+
+            switch status.status {
+            case "completed":
+                guard let result = status.result else {
+                    throw APIError.serverError(500, "Job completed without a result payload")
+                }
+                return try extractGroupFlow(from: result)
+
+            case "failed":
+                let errorMessage = status.result?.error ?? status.error ?? "Pipeline failed"
+                if status.result?.errorCode == "THIN_COVERAGE" {
+                    throw APIError.thinCoverage(errorMessage)
+                }
+                throw APIError.serverError(500, errorMessage)
+
+            case "not_found":
+                throw APIError.notFound
+
+            default:
+                // pending, queued, processing — keep polling
+                continue
+            }
+        }
+
+        throw APIError.serverError(408, "Pipeline timed out after \(maxWaitSeconds) seconds")
+    }
+
+    /// Convert a BoltPipelineResponse (success branch) into a GroupFlow,
+    /// throwing thinCoverage / serverError on the failure branch.
+    private func extractGroupFlow(from response: BoltPipelineResponse) throws -> GroupFlow {
+        guard response.success, let groupFlow = response.data else {
+            let errorMessage = response.error ?? "Pipeline returned no GroupFlow"
+            if response.errorCode == "THIN_COVERAGE" {
+                throw APIError.thinCoverage(errorMessage)
+            }
+            throw APIError.serverError(500, errorMessage)
+        }
         return groupFlow
     }
 
@@ -695,8 +817,30 @@ struct BoltPipelineRequest: Codable {
 
 struct BoltPipelineResponse: Codable {
     let success: Bool
-    let data: GroupFlow?  // Backend returns GroupFlow directly in data
+    let data: GroupFlow?
     let error: String?
+    let errorCode: String?
+}
+
+/// Response from POST /bolt-pipeline-v3 (the async trigger).
+/// Either returns a cached pipeline result inline OR a jobId to poll.
+struct BoltPipelineTriggerResponse: Codable {
+    let success: Bool
+    let cached: Bool?
+    let jobId: String?
+    let status: String?              // "pending" when cached=false
+    let result: BoltPipelineResponse? // populated when cached=true
+    let error: String?
+}
+
+/// Response from GET /bolt-pipeline-status?jobId=X
+/// status ∈ "pending" | "queued" | "processing" | "completed" | "failed" | "not_found"
+struct BoltPipelineStatusResponse: Codable {
+    let success: Bool
+    let status: String?
+    let result: BoltPipelineResponse?
+    let error: String?
+    let flowId: String?
 }
 
 struct UserSyncRequest: Codable {

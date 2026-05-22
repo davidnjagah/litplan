@@ -17,6 +17,7 @@ enum ToastType {
     case error
     case info
     case retry
+    case thinCoverage
 
     var icon: String {
         switch self {
@@ -30,6 +31,8 @@ enum ToastType {
             return "bolt.circle.fill"
         case .retry:
             return "bolt.circle.fill"
+        case .thinCoverage:
+            return "map.fill"
         }
     }
 
@@ -45,6 +48,21 @@ enum ToastType {
             return .boltGradientEnd
         case .retry:
             return .boltGradientEnd
+        case .thinCoverage:
+            return Color(red: 0.659, green: 0.831, blue: 0.961) // #A8D4F5 sky blue
+        }
+    }
+
+    // Custom background gradient for non-standard variants (nil = use default dark purple)
+    var backgroundGradientColors: [Color]? {
+        switch self {
+        case .thinCoverage:
+            return [
+                Color(red: 0.165, green: 0.373, blue: 0.541).opacity(0.85), // #2A5F8A steel blue
+                Color(red: 0.102, green: 0.239, blue: 0.361).opacity(0.85)  // #1A3D5C deep blue
+            ]
+        default:
+            return nil
         }
     }
 }
@@ -124,11 +142,11 @@ struct ToastView: View {
                     .fill(.ultraThinMaterial)
                     .opacity(0.6)
 
-                // Dark gradient overlay
+                // Background gradient overlay (dark purple default; custom per type)
                 RoundedRectangle(cornerRadius: 24)
                     .fill(
                         LinearGradient(
-                            colors: [
+                            colors: toast.type.backgroundGradientColors ?? [
                                 Color(red: 0.12, green: 0.05, blue: 0.2).opacity(0.6),
                                 Color(red: 0.06, green: 0.02, blue: 0.1).opacity(0.6)
                             ],
