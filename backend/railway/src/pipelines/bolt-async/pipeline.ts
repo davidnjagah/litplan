@@ -270,106 +270,121 @@ export async function runBoltPipeline(input: BoltPipelineInput): Promise<BoltPip
       const relevantActivities = relevanceResult.approved;
 
       // ─── AGENT 3: GOOGLE PLACES VALIDATOR ────────────────────────────────
-      console.log(`\n[AGENT 3] 🔎 ADDRESS VALIDATOR - Verifying venues with Google Places API...`);
+      console.log(`\n[AGENT 3] 🔎 ADDRESS VALIDATOR - Verifying ${relevantActivities.length} venues with Google Places API (parallel)...`);
 
-      for (const activity of relevantActivities) {
+      // Fire all Google Places lookups in parallel — ~1.5s total instead of
+      // ~5–10s sequential. Failures are caught per-venue so one bad lookup
+      // doesn't take down the whole batch.
+      type LookupOutcome = { activity: Activity; googleResult: VerifiedVenue | null; error: Error | null };
+      const placesStart = Date.now();
+      const lookups = await Promise.all(
+        relevantActivities.map(async (activity): Promise<LookupOutcome> => {
+          try {
+            const googleResult = await searchVenue(activity.venueName, city, country);
+            return { activity, googleResult, error: null };
+          } catch (err) {
+            return { activity, googleResult: null, error: err as Error };
+          }
+        })
+      );
+      console.log(`   Parallel Google Places batch finished in ${Date.now() - placesStart}ms`);
+
+      // Validate results in order — identical logic to the previous sequential
+      // version, just over pre-fetched results.
+      for (const { activity, googleResult, error } of lookups) {
         console.log(`\n   Checking: ${activity.venueName}`);
         console.log(`   AI provided address: ${activity.address}`);
 
-        try {
-          const googleResult = await searchVenue(activity.venueName, city, country);
-
-          if (googleResult && googleResult.isVerified && googleResult.confidence !== 'not_found') {
-            // CHECK 1: Business status
-            if (googleResult.businessStatus === 'CLOSED_PERMANENTLY') {
-              rejectedVenues.push({ name: activity.venueName, reason: 'Permanently closed according to Google Places' });
-              console.log(`   ❌ REJECTED: ${activity.venueName} — PERMANENTLY CLOSED`);
-              continue;
-            }
-            if (googleResult.businessStatus === 'CLOSED_TEMPORARILY') {
-              rejectedVenues.push({ name: activity.venueName, reason: 'Temporarily closed according to Google Places' });
-              console.log(`   ❌ REJECTED: ${activity.venueName} — TEMPORARILY CLOSED`);
-              continue;
-            }
-
-            // CHECK 2: Rating + review count
-            const hasRating = googleResult.rating !== undefined && googleResult.rating !== null;
-            const hasReviews = googleResult.reviewCount !== undefined && googleResult.reviewCount !== null;
-            if (hasReviews && googleResult.reviewCount! < 20) {
-              rejectedVenues.push({ name: activity.venueName, reason: `Too few reviews: only ${googleResult.reviewCount} on Google (minimum 20 required)` });
-              console.log(`   ❌ REJECTED: ${activity.venueName} — only ${googleResult.reviewCount} reviews`);
-              continue;
-            }
-            if (hasRating && googleResult.rating! < 3.5) {
-              rejectedVenues.push({ name: activity.venueName, reason: `Low rating: ${googleResult.rating}★ on Google (minimum 3.5★ required)` });
-              console.log(`   ❌ REJECTED: ${activity.venueName} — ${googleResult.rating}★`);
-              continue;
-            }
-            if (hasRating || hasReviews) {
-              console.log(`   ⭐ Quality check passed: ${hasRating ? `${googleResult.rating}★` : 'no rating'} · ${hasReviews ? `${googleResult.reviewCount} reviews` : 'no review count'}`);
-            } else {
-              console.log(`   ⭐ Quality check skipped: no rating/review data on Google`);
-            }
-
-            // CHECK 3: Distance — catch wrong-city matches
-            const aiCoords = activity.coordinates;
-            const googleCoords = googleResult.coordinates;
-            const hasValidAiCoords = aiCoords &&
-              aiCoords.latitude !== 0 && aiCoords.longitude !== 0 &&
-              Math.abs(aiCoords.latitude) <= 90 && Math.abs(aiCoords.longitude) <= 180;
-
-            if (hasValidAiCoords) {
-              const distanceKm = calculateDistanceKm(
-                aiCoords.latitude, aiCoords.longitude,
-                googleCoords.latitude, googleCoords.longitude
-              );
-              const MAX_DISTANCE_KM = 50;
-              if (distanceKm > MAX_DISTANCE_KM) {
-                rejectedVenues.push({ name: activity.venueName, reason: `Google found venue ${Math.round(distanceKm)}km away from ${city} - likely a different venue with similar name` });
-                console.log(`   ❌ REJECTED: ${activity.venueName} — ${Math.round(distanceKm)}km from expected location`);
-                continue;
-              }
-              console.log(`   📏 Distance from expected: ${Math.round(distanceKm * 10) / 10}km`);
-            } else {
-              console.log(`   ⚠️ AI coordinates invalid/missing - skipping distance check`);
-            }
-
-            const addressMatches = activity.address.toLowerCase().includes(
-              googleResult.address.split(',')[0].toLowerCase()
-            );
-            if (!addressMatches) console.log(`   ⚠️ Street address mismatch (using Google's verified address)`);
-
-            validatedActivities.push({
-              ...activity,
-              venueName: googleResult.venueName,
-              address: googleResult.address,
-              coordinates: { latitude: googleResult.coordinates.latitude, longitude: googleResult.coordinates.longitude },
-              googlePlaceId: googleResult.googlePlaceId,
-              googleMapsUrl: googleResult.googleMapsUrl,
-              openingHoursText: googleResult.openingHours,
-              openingHoursPeriods: googleResult.openingHoursPeriods,
-              businessStatus: googleResult.businessStatus,
-              isAddressVerified: true,
-              addressConfidence: googleResult.confidence,
-              isValidated: true,
-              validationNotes: `Verified on Google Places (${googleResult.confidence} confidence)${googleResult.rating ? `, Rating: ${googleResult.rating}★` : ''}${googleResult.reviewCount ? ` · ${googleResult.reviewCount} reviews` : ''}`
-            });
-
-            console.log(`   ✅ VERIFIED: ${googleResult.venueName} at ${googleResult.address}`);
-            if (googleResult.openingHours?.length) {
-              console.log(`   🕐 Opening hours: ${googleResult.openingHours[0]} (+ ${googleResult.openingHours.length - 1} more days)`);
-            }
-
-          } else {
-            rejectedVenues.push({ name: activity.venueName, reason: 'Not found on Google Places - venue may not exist or name is incorrect' });
-            console.log(`   ❌ REJECTED: ${activity.venueName} — not found on Google Places`);
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 150));
-
-        } catch (error) {
+        if (error) {
           console.error(`   ❌ Error validating ${activity.venueName}:`, error);
           rejectedVenues.push({ name: activity.venueName, reason: 'Google Places API error' });
+          continue;
+        }
+
+        if (googleResult && googleResult.isVerified && googleResult.confidence !== 'not_found') {
+          // CHECK 1: Business status
+          if (googleResult.businessStatus === 'CLOSED_PERMANENTLY') {
+            rejectedVenues.push({ name: activity.venueName, reason: 'Permanently closed according to Google Places' });
+            console.log(`   ❌ REJECTED: ${activity.venueName} — PERMANENTLY CLOSED`);
+            continue;
+          }
+          if (googleResult.businessStatus === 'CLOSED_TEMPORARILY') {
+            rejectedVenues.push({ name: activity.venueName, reason: 'Temporarily closed according to Google Places' });
+            console.log(`   ❌ REJECTED: ${activity.venueName} — TEMPORARILY CLOSED`);
+            continue;
+          }
+
+          // CHECK 2: Rating + review count
+          const hasRating = googleResult.rating !== undefined && googleResult.rating !== null;
+          const hasReviews = googleResult.reviewCount !== undefined && googleResult.reviewCount !== null;
+          if (hasReviews && googleResult.reviewCount! < 20) {
+            rejectedVenues.push({ name: activity.venueName, reason: `Too few reviews: only ${googleResult.reviewCount} on Google (minimum 20 required)` });
+            console.log(`   ❌ REJECTED: ${activity.venueName} — only ${googleResult.reviewCount} reviews`);
+            continue;
+          }
+          if (hasRating && googleResult.rating! < 3.5) {
+            rejectedVenues.push({ name: activity.venueName, reason: `Low rating: ${googleResult.rating}★ on Google (minimum 3.5★ required)` });
+            console.log(`   ❌ REJECTED: ${activity.venueName} — ${googleResult.rating}★`);
+            continue;
+          }
+          if (hasRating || hasReviews) {
+            console.log(`   ⭐ Quality check passed: ${hasRating ? `${googleResult.rating}★` : 'no rating'} · ${hasReviews ? `${googleResult.reviewCount} reviews` : 'no review count'}`);
+          } else {
+            console.log(`   ⭐ Quality check skipped: no rating/review data on Google`);
+          }
+
+          // CHECK 3: Distance — catch wrong-city matches
+          const aiCoords = activity.coordinates;
+          const googleCoords = googleResult.coordinates;
+          const hasValidAiCoords = aiCoords &&
+            aiCoords.latitude !== 0 && aiCoords.longitude !== 0 &&
+            Math.abs(aiCoords.latitude) <= 90 && Math.abs(aiCoords.longitude) <= 180;
+
+          if (hasValidAiCoords) {
+            const distanceKm = calculateDistanceKm(
+              aiCoords.latitude, aiCoords.longitude,
+              googleCoords.latitude, googleCoords.longitude
+            );
+            const MAX_DISTANCE_KM = 50;
+            if (distanceKm > MAX_DISTANCE_KM) {
+              rejectedVenues.push({ name: activity.venueName, reason: `Google found venue ${Math.round(distanceKm)}km away from ${city} - likely a different venue with similar name` });
+              console.log(`   ❌ REJECTED: ${activity.venueName} — ${Math.round(distanceKm)}km from expected location`);
+              continue;
+            }
+            console.log(`   📏 Distance from expected: ${Math.round(distanceKm * 10) / 10}km`);
+          } else {
+            console.log(`   ⚠️ AI coordinates invalid/missing - skipping distance check`);
+          }
+
+          const addressMatches = activity.address.toLowerCase().includes(
+            googleResult.address.split(',')[0].toLowerCase()
+          );
+          if (!addressMatches) console.log(`   ⚠️ Street address mismatch (using Google's verified address)`);
+
+          validatedActivities.push({
+            ...activity,
+            venueName: googleResult.venueName,
+            address: googleResult.address,
+            coordinates: { latitude: googleResult.coordinates.latitude, longitude: googleResult.coordinates.longitude },
+            googlePlaceId: googleResult.googlePlaceId,
+            googleMapsUrl: googleResult.googleMapsUrl,
+            openingHoursText: googleResult.openingHours,
+            openingHoursPeriods: googleResult.openingHoursPeriods,
+            businessStatus: googleResult.businessStatus,
+            isAddressVerified: true,
+            addressConfidence: googleResult.confidence,
+            isValidated: true,
+            validationNotes: `Verified on Google Places (${googleResult.confidence} confidence)${googleResult.rating ? `, Rating: ${googleResult.rating}★` : ''}${googleResult.reviewCount ? ` · ${googleResult.reviewCount} reviews` : ''}`
+          });
+
+          console.log(`   ✅ VERIFIED: ${googleResult.venueName} at ${googleResult.address}`);
+          if (googleResult.openingHours?.length) {
+            console.log(`   🕐 Opening hours: ${googleResult.openingHours[0]} (+ ${googleResult.openingHours.length - 1} more days)`);
+          }
+
+        } else {
+          rejectedVenues.push({ name: activity.venueName, reason: 'Not found on Google Places - venue may not exist or name is incorrect' });
+          console.log(`   ❌ REJECTED: ${activity.venueName} — not found on Google Places`);
         }
       }
 
