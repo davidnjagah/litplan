@@ -94,7 +94,7 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     service: 'litplan-pipeline-service',
-    version: '2.1.1-async-parallel-places',
+    version: '2.1.2-cache-key-normalize',
     pipelines: {
       individual: 'Claude (search-agent)',
       group: 'GPT 7-agent (group-7agent-pipeline)',

@@ -38,12 +38,22 @@ export async function readPipelineJob(jobId: string): Promise<Record<string, unk
   return rows[0] ?? null;
 }
 
+/**
+ * Normalize a (city, theme) pair into a stable cache key.
+ * MUST match the Supabase v3 trigger's buildCacheKey() implementation.
+ */
+export function buildCacheKey(city: string, theme: string): string {
+  const cityNormalized = city.split(',')[0].trim().toLowerCase();
+  const themeNormalized = theme.trim().toLowerCase();
+  return `${cityNormalized}:${themeNormalized}`;
+}
+
 export async function cacheVibezResult(
   city: string,
   theme: string,
   result: unknown
 ): Promise<void> {
-  const cacheKey = `${city.toLowerCase()}:${theme.toLowerCase()}`;
+  const cacheKey = buildCacheKey(city, theme);
   const url = `${SUPABASE_URL}/rest/v1/vibez_cache?on_conflict=cache_key`;
   const res = await fetch(url, {
     method: 'POST',
