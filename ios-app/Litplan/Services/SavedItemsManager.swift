@@ -152,29 +152,32 @@ class SavedItemsManager: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Cities
+            // Cities — newest saved first
             let cityRows: [SavedCityRow] = try await client
                 .from("SavedCity")
                 .select()
                 .eq("userId", value: userId)
+                .order("savedAt", ascending: false)
                 .execute()
                 .value
             let cities = cityRows.compactMap { $0.cityData }
 
-            // Plans
+            // Plans — newest saved first
             let planRows: [SavedPlanRow] = try await client
                 .from("SavedPlan")
                 .select()
                 .eq("userId", value: userId)
+                .order("savedAt", ascending: false)
                 .execute()
                 .value
             let plans = planRows.compactMap { $0.planData }
 
-            // Group flows
+            // Group flows — newest saved first
             let flowRows: [SavedGroupFlowRow] = try await client
                 .from("SavedGroupFlow")
                 .select()
                 .eq("userId", value: userId)
+                .order("savedAt", ascending: false)
                 .execute()
                 .value
             let flows = flowRows.compactMap { $0.flowData }
@@ -205,7 +208,7 @@ class SavedItemsManager: ObservableObject {
 
     func saveCity(_ city: City) {
         guard !isCitySaved(city) else { return }
-        savedCities.append(city)
+        savedCities.insert(city, at: 0)
         if visibleCityIds.count < SavedItemsManager.freeSaveCap {
             visibleCityIds.insert(city.id)
             persistVisibleCityIds()
@@ -276,7 +279,7 @@ class SavedItemsManager: ObservableObject {
 
     func savePlan(_ plan: Plan) {
         guard !isPlanSaved(plan) else { return }
-        savedPlans.append(plan)
+        savedPlans.insert(plan, at: 0)
         if visiblePlanIds.count < SavedItemsManager.freeSaveCap {
             visiblePlanIds.insert(plan.id)
             persistVisiblePlanIds()
@@ -347,7 +350,7 @@ class SavedItemsManager: ObservableObject {
 
     func saveGroupFlow(_ groupFlow: GroupFlow) {
         guard !isGroupFlowSaved(groupFlow) else { return }
-        savedGroupFlows.append(groupFlow)
+        savedGroupFlows.insert(groupFlow, at: 0)
         if visibleGroupFlowIds.count < SavedItemsManager.freeSaveCap {
             visibleGroupFlowIds.insert(groupFlow.id)
             persistVisibleGroupFlowIds()
