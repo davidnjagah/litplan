@@ -110,20 +110,6 @@ struct RouteMapView: View {
                     .stroke(Color.surfaceSecondary, lineWidth: 1)
             )
 
-            // Tappable open-in-Maps hint
-            Button(action: openDirectionsInAppleMaps) {
-                HStack(spacing: 4) {
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 11))
-                    Text("Open full directions in Maps")
-                        .font(.system(size: 12))
-                }
-                .foregroundColor(.accentPrimary)
-                .frame(maxWidth: .infinity)
-                .padding(.top, Spacing.xs)
-            }
-            .buttonStyle(PlainButtonStyle())
-
             // Route legend
             if venues.count > 1 {
                 routeLegend
@@ -167,16 +153,26 @@ struct RouteMapView: View {
 
     // MARK: - Open Directions in Apple Maps
 
-    /// Opens a multi-stop walking route in Apple Maps.
+    /// Opens a walking route between the venues in Apple Maps, starting from
+    /// the FIRST venue (not the user's current location).
     ///
-    /// We can't use `MKMapItem.openMaps(with:launchOptions:)` here because that
-    /// API only uses the first two items when directions mode is set —
-    /// remaining items are dropped. Apple Maps' `maps.apple.com` URL scheme
-    /// chains waypoints via the `+to:` separator on the `daddr` parameter,
-    /// which is the only way to launch a true multi-stop route.
+    /// Apple Maps' URL scheme support for multi-stop is inconsistent: `+to:`
+    /// waypoints work reliably with address strings but are often dropped
+    /// when the destination is `lat,lng`. We do two things to make this as
+    /// robust as possible:
     ///
-    /// Example for 3 venues:
-    ///   https://maps.apple.com/?daddr=lat1,lng1+to:lat2,lng2+to:lat3,lng3&dirflg=w
+    ///   1. Set `saddr` to the first venue so Apple Maps doesn't try to use
+    ///      the user's current location as the start (which would route them
+    ///      from where they are to venue 1 — wrong behaviour for a saved plan).
+    ///
+    ///   2. Chain remaining venues in `daddr` with `+to:` separators. Apple
+    ///      Maps will honour the first leg at minimum. If their parser later
+    ///      improves to accept coordinate waypoints, all stops light up
+    ///      automatically.
+    ///
+    /// For the user's visual reference, the embedded RouteMapView in the
+    /// plan card already draws the full connected route — Apple Maps is for
+    /// turn-by-turn navigation between adjacent stops.
     private func openDirectionsInAppleMaps() {
         guard !venues.isEmpty else { return }
         let sortedVenues = venues.sorted { $0.order < $1.order }
@@ -191,11 +187,16 @@ struct RouteMapView: View {
             return
         }
 
-        // Multi-stop URL scheme — daddr chains stops with "+to:" separators
+        // Two or more venues — build the URL with saddr=first, daddr=rest chained
+        let coordString: (CLLocationCoordinate2D) -> String = { c in
+            "\(c.latitude),\(c.longitude)"
+        }
+        let saddr = coordString(sortedVenues[0].coordinate)
         let daddr = sortedVenues
-            .map { "\($0.coordinate.latitude),\($0.coordinate.longitude)" }
+            .dropFirst()
+            .map { coordString($0.coordinate) }
             .joined(separator: "+to:")
-        let urlString = "https://maps.apple.com/?daddr=\(daddr)&dirflg=w"
+        let urlString = "https://maps.apple.com/?saddr=\(saddr)&daddr=\(daddr)&dirflg=w"
 
         guard let url = URL(string: urlString) else { return }
         UIApplication.shared.open(url)
