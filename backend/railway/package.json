@@ -1,6 +1,6 @@
 {
   "name": "litplan-pipeline-service",
-  "version": "1.0.0",
+  "version": "1.1.0-async",
   "description": "Railway-hosted pipeline orchestrator for LitplanAI",
   "main": "dist/index.js",
   "scripts": {

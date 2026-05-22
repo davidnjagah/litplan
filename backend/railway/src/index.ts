@@ -94,7 +94,7 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     service: 'litplan-pipeline-service',
-    version: '2.0.0',
+    version: '2.1.0-async',
     pipelines: {
       individual: 'Claude (search-agent)',
       group: 'GPT 7-agent (group-7agent-pipeline)',
@@ -577,6 +577,86 @@ app.post('/api/pipeline/bolt', async (req: Request, res: Response) => {
       durationMs,
     });
   }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// Async Bolt Pipeline — accepts a jobId from Supabase, responds immediately,
+// processes the pipeline in the background, updates the PipelineJob row when
+// done. Semaphore caps concurrent runs at 60 (safe under gpt-5.1's 2M TPM).
+// See scaling/railway-async-architecture.md.
+// ════════════════════════════════════════════════════════════════════════════
+import { runBoltPipeline } from './pipelines/bolt-async/pipeline';
+import { updatePipelineJob, cacheVibezResult } from './pipelines/bolt-async/db';
+
+const MAX_CONCURRENT_BOLT = 60;
+let activeBoltJobs = 0;
+
+app.post('/api/pipeline/bolt-async', async (req: Request, res: Response) => {
+  const { jobId, city, country, theme, themeDefinition, userId } = req.body || {};
+
+  if (!jobId || !city || !theme) {
+    return res.status(400).json({
+      success: false,
+      error: 'jobId, city, and theme are required',
+    });
+  }
+
+  // Acknowledge immediately so the Supabase trigger can return to iOS
+  res.json({ accepted: true, jobId });
+
+  // Continue in the background — Express handler is done.
+  setImmediate(async () => {
+    // Concurrency check
+    if (activeBoltJobs >= MAX_CONCURRENT_BOLT) {
+      console.log(`[bolt-async] ${jobId} queued (active=${activeBoltJobs}/${MAX_CONCURRENT_BOLT})`);
+      await updatePipelineJob(jobId, { status: 'queued' });
+      // Retry loop — re-check every 5s until a slot opens
+      while (activeBoltJobs >= MAX_CONCURRENT_BOLT) {
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    }
+
+    activeBoltJobs++;
+    const startedAt = new Date().toISOString();
+    console.log(`[bolt-async] ${jobId} starting (active=${activeBoltJobs}/${MAX_CONCURRENT_BOLT}) — ${city}/${theme}`);
+    await updatePipelineJob(jobId, { status: 'processing', startedAt });
+
+    try {
+      const result = await runBoltPipeline({ city, country, theme, themeDefinition, userId });
+      const completedAt = new Date().toISOString();
+
+      if (result.success) {
+        const flowId = (result.data as { groupFlowId?: string })?.groupFlowId ?? null;
+        await updatePipelineJob(jobId, {
+          status: 'completed',
+          result,
+          completedAt,
+          flowId,
+        });
+        await cacheVibezResult(city, theme, result);
+        console.log(`[bolt-async] ${jobId} completed in ${Math.round((Date.now() - new Date(startedAt).getTime()) / 1000)}s`);
+      } else {
+        await updatePipelineJob(jobId, {
+          status: 'failed',
+          result,
+          error: result.error,
+          completedAt,
+        });
+        console.log(`[bolt-async] ${jobId} failed: ${result.errorCode} — ${result.error}`);
+      }
+    } catch (error) {
+      const completedAt = new Date().toISOString();
+      const message = (error as Error).message;
+      console.error(`[bolt-async] ${jobId} crashed:`, message);
+      await updatePipelineJob(jobId, {
+        status: 'failed',
+        error: message,
+        completedAt,
+      });
+    } finally {
+      activeBoltJobs--;
+    }
+  });
 });
 
 // Internal pipeline runners
