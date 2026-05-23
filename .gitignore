@@ -110,3 +110,6 @@ cv-entry/
 # App Store preview videos (large, uploaded directly to App Store Connect)
 LitPlanzAdFinal.mp4
 *.mp4
+
+# App Store submission artifacts (regenerated from markdown sources)
+app-store/pdf/
