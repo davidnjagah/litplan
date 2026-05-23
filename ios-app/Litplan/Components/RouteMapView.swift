@@ -71,8 +71,9 @@ struct RouteMapView: View {
                     }
 
                     // Venue markers — tapping a single pin opens that venue
-                    // in Apple Maps. Map's own onTapGesture is removed so it
-                    // doesn't swallow taps before they reach the annotation.
+                    // in Apple Maps. Use highPriorityGesture so Map's parent
+                    // recogniser doesn't swallow the tap (a known issue with
+                    // SwiftUI Map's Annotation in iOS 17+).
                     ForEach(venues.sorted(by: { $0.order < $1.order })) { venue in
                         Annotation(
                             venue.name,
@@ -81,9 +82,12 @@ struct RouteMapView: View {
                         ) {
                             VenueMarker(order: venue.order, name: venue.name)
                                 .contentShape(Rectangle())
-                                .onTapGesture {
-                                    openSingleVenueInAppleMaps(venue)
-                                }
+                                .highPriorityGesture(
+                                    TapGesture().onEnded {
+                                        print("[RouteMapView] 📍 pin tapped: \(venue.name) → Apple Maps")
+                                        openSingleVenueInAppleMaps(venue)
+                                    }
+                                )
                                 .accessibilityLabel("Open \(venue.name) in Apple Maps")
                                 .accessibilityAddTraits(.isButton)
                         }
@@ -194,20 +198,32 @@ struct RouteMapView: View {
 
         let origin = coord(sortedVenues.first!.coordinate)
         let destination = coord(sortedVenues.last!.coordinate)
+        let middle = Array(sortedVenues.dropFirst().dropLast())
 
-        // Middle venues (everything between first and last) become waypoints
-        let middle = sortedVenues.dropFirst().dropLast()
-        let waypointsParam: String = middle.isEmpty
-            ? ""
-            : "&waypoints=" + middle.map { coord($0.coordinate) }.joined(separator: "|")
+        // Build with URLComponents so `|` and `,` are properly percent-encoded.
+        // (Plain string concatenation would produce a URL that URL(string:)
+        // silently rejects, leaving the button apparently dead.)
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "www.google.com"
+        components.path = "/maps/dir/"
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "api", value: "1"),
+            URLQueryItem(name: "origin", value: origin),
+            URLQueryItem(name: "destination", value: destination),
+            URLQueryItem(name: "travelmode", value: "walking"),
+        ]
+        if !middle.isEmpty {
+            let waypoints = middle.map { coord($0.coordinate) }.joined(separator: "|")
+            items.append(URLQueryItem(name: "waypoints", value: waypoints))
+        }
+        components.queryItems = items
 
-        let urlString = "https://www.google.com/maps/dir/?api=1"
-            + "&origin=\(origin)"
-            + "&destination=\(destination)"
-            + waypointsParam
-            + "&travelmode=walking"
-
-        guard let url = URL(string: urlString) else { return }
+        guard let url = components.url else {
+            print("[RouteMapView] ❌ failed to build Google Maps URL")
+            return
+        }
+        print("[RouteMapView] 🗺 opening Google Maps URL: \(url.absoluteString)")
         UIApplication.shared.open(url)
     }
 
