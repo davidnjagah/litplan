@@ -70,14 +70,19 @@ struct RouteMapView: View {
                             .stroke(routeColor, lineWidth: 4)
                     }
 
-                    // Venue markers
+                    // Venue markers — tapping a single pin opens that venue
+                    // in Apple Maps (single-pin view, no multi-stop needed)
                     ForEach(venues.sorted(by: { $0.order < $1.order })) { venue in
                         Annotation(
                             venue.name,
                             coordinate: venue.coordinate,
                             anchor: .bottom
                         ) {
-                            VenueMarker(order: venue.order, name: venue.name)
+                            Button(action: { openSingleVenueInAppleMaps(venue) }) {
+                                VenueMarker(order: venue.order, name: venue.name)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Open \(venue.name) in Apple Maps")
                         }
                     }
                 }
@@ -88,11 +93,12 @@ struct RouteMapView: View {
                     MapUserLocationButton()
                 }
                 .onTapGesture {
-                    openDirectionsInAppleMaps()
+                    openRouteInGoogleMaps()
                 }
 
-                // Directions button — top right corner
-                Button(action: openDirectionsInAppleMaps) {
+                // Top-right map button — opens the multi-stop walking route
+                // in Google Maps (Universal URL handles app/web fallback).
+                Button(action: openRouteInGoogleMaps) {
                     Image(systemName: "map.fill")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.textPrimary)
@@ -101,7 +107,7 @@ struct RouteMapView: View {
                         .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
                 }
                 .padding(12)
-                .accessibilityLabel("Get directions in Apple Maps")
+                .accessibilityLabel("Open in Maps")
             }
             .frame(height: 300)
             .cornerRadius(12)
@@ -153,53 +159,64 @@ struct RouteMapView: View {
 
     // MARK: - Open Directions in Apple Maps
 
-    /// Opens a walking route between the venues in Apple Maps, starting from
-    /// the FIRST venue (not the user's current location).
+    /// Opens a multi-stop walking route in Google Maps via its documented
+    /// Universal URL format. iOS resolves the link:
+    ///   • Google Maps app installed → opens in the app with route preloaded
+    ///   • Not installed              → opens in Safari (Google Maps web), same route
     ///
-    /// Apple Maps' URL scheme support for multi-stop is inconsistent: `+to:`
-    /// waypoints work reliably with address strings but are often dropped
-    /// when the destination is `lat,lng`. We do two things to make this as
-    /// robust as possible:
+    /// Apple's URL scheme can't carry 3+ coordinate stops reliably (the
+    /// daddr=lat,long form is deprecated as of iOS 18.4 and Apple Maps drops
+    /// silent waypoints anyway). Google's universal Maps URL supports up to
+    /// 3 intermediate waypoints + origin + destination on mobile.
     ///
-    ///   1. Set `saddr` to the first venue so Apple Maps doesn't try to use
-    ///      the user's current location as the start (which would route them
-    ///      from where they are to venue 1 — wrong behaviour for a saved plan).
-    ///
-    ///   2. Chain remaining venues in `daddr` with `+to:` separators. Apple
-    ///      Maps will honour the first leg at minimum. If their parser later
-    ///      improves to accept coordinate waypoints, all stops light up
-    ///      automatically.
-    ///
-    /// For the user's visual reference, the embedded RouteMapView in the
-    /// plan card already draws the full connected route — Apple Maps is for
-    /// turn-by-turn navigation between adjacent stops.
-    private func openDirectionsInAppleMaps() {
+    /// URL format:
+    ///   https://www.google.com/maps/dir/?api=1
+    ///     &origin=lat,lng
+    ///     &destination=lat,lng
+    ///     &waypoints=lat1,lng1|lat2,lng2
+    ///     &travelmode=walking
+    private func openRouteInGoogleMaps() {
         guard !venues.isEmpty else { return }
         let sortedVenues = venues.sorted { $0.order < $1.order }
 
-        // Single-venue fallback — no route, just open the pin
+        // Single-venue fallback — no route to build, open the pin in Apple Maps
         if sortedVenues.count == 1, let only = sortedVenues.first {
-            let item = MKMapItem(placemark: MKPlacemark(coordinate: only.coordinate))
-            item.name = only.name
-            item.openInMaps(launchOptions: [
-                MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
-            ])
+            openSingleVenueInAppleMaps(only)
             return
         }
 
-        // Two or more venues — build the URL with saddr=first, daddr=rest chained
-        let coordString: (CLLocationCoordinate2D) -> String = { c in
+        let coord: (CLLocationCoordinate2D) -> String = { c in
             "\(c.latitude),\(c.longitude)"
         }
-        let saddr = coordString(sortedVenues[0].coordinate)
-        let daddr = sortedVenues
-            .dropFirst()
-            .map { coordString($0.coordinate) }
-            .joined(separator: "+to:")
-        let urlString = "https://maps.apple.com/?saddr=\(saddr)&daddr=\(daddr)&dirflg=w"
+
+        let origin = coord(sortedVenues.first!.coordinate)
+        let destination = coord(sortedVenues.last!.coordinate)
+
+        // Middle venues (everything between first and last) become waypoints
+        let middle = sortedVenues.dropFirst().dropLast()
+        let waypointsParam: String = middle.isEmpty
+            ? ""
+            : "&waypoints=" + middle.map { coord($0.coordinate) }.joined(separator: "|")
+
+        let urlString = "https://www.google.com/maps/dir/?api=1"
+            + "&origin=\(origin)"
+            + "&destination=\(destination)"
+            + waypointsParam
+            + "&travelmode=walking"
 
         guard let url = URL(string: urlString) else { return }
         UIApplication.shared.open(url)
+    }
+
+    /// Opens a single venue pin in Apple Maps with walking directions enabled
+    /// (Apple Maps handles single-destination routing cleanly — it's the
+    /// multi-stop case that's broken).
+    private func openSingleVenueInAppleMaps(_ venue: VenueLocation) {
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: venue.coordinate))
+        item.name = venue.name
+        item.openInMaps(launchOptions: [
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+        ])
     }
 
     // MARK: - Route Legend
