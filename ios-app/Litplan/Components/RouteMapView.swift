@@ -24,7 +24,7 @@ struct RouteMapView: View {
     var planTitle: String = "Route Plan"
 
     @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var routePolylines: [MKRoute] = []
+    @State private var routePolylines: [MKPolyline] = []
     @State private var isLoadingRoutes: Bool = true
     @State private var routeLoadError: String? = nil
     @State private var showingShareSheet: Bool = false
@@ -64,10 +64,19 @@ struct RouteMapView: View {
             // Map
             ZStack(alignment: .topTrailing) {
                 Map(position: $cameraPosition) {
-                    // Draw route polylines
-                    ForEach(routePolylines, id: \.self) { route in
-                        MapPolyline(route.polyline)
-                            .stroke(routeColor, lineWidth: 4)
+                    // Draw route polylines connecting venues. A darker outline
+                    // is drawn first, then the bright route line on top, so the
+                    // route stays readable over both light streets and dark
+                    // satellite imagery.
+                    ForEach(routePolylines, id: \.self) { polyline in
+                        MapPolyline(polyline)
+                            .stroke(Color.black.opacity(0.35),
+                                    style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+                    }
+                    ForEach(routePolylines, id: \.self) { polyline in
+                        MapPolyline(polyline)
+                            .stroke(routeColor,
+                                    style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
                     }
 
                     // Venue markers — tapping a single pin opens that venue
@@ -286,44 +295,43 @@ struct RouteMapView: View {
         }
 
         let sortedVenues = venues.sorted { $0.order < $1.order }
-        var loadedRoutes: [MKRoute] = []
-        var failedRoutes = 0
         let routePairs = sortedVenues.count - 1
 
+        // Preserve order — each pair writes its result to a fixed slot. That
+        // way the rendered polylines stay in the same visual order as the
+        // venue list even though MKDirections returns asynchronously.
+        var orderedPolylines: [MKPolyline?] = Array(repeating: nil, count: routePairs)
+        var completedCount = 0
+
         for i in 0..<routePairs {
-            let source = sortedVenues[i]
-            let destination = sortedVenues[i + 1]
+            let source = sortedVenues[i].coordinate
+            let destination = sortedVenues[i + 1].coordinate
+            let index = i
 
-            calculateRoute(from: source.coordinate, to: destination.coordinate) { route in
+            calculateRoute(from: source, to: destination) { polyline in
                 DispatchQueue.main.async {
-                    if let route = route {
-                        loadedRoutes.append(route)
-                    } else {
-                        failedRoutes += 1
-                    }
-
-                    // Check if all routes are processed
-                    if loadedRoutes.count + failedRoutes == routePairs {
-                        self.routePolylines = loadedRoutes
+                    orderedPolylines[index] = polyline
+                    completedCount += 1
+                    if completedCount == routePairs {
+                        self.routePolylines = orderedPolylines.compactMap { $0 }
                         self.isLoadingRoutes = false
-
-                        // Silently omit routes that couldn't be computed —
-                        // venue pins are still shown so the map stays useful.
-
-                        // Fit map to show all venues and routes
                         self.fitMapToVenues()
+                        print("[RouteMapView] route polylines ready: \(self.routePolylines.count)/\(routePairs)")
                     }
                 }
             }
         }
     }
 
+    /// Resolves a polyline between two venues. Tries walking first (matches
+    /// the app's primary mode), falls back to automobile, and finally to a
+    /// straight-line geodesic so the route is ALWAYS visible — even when
+    /// Apple's routing service can't compute a path for that pair.
     private func calculateRoute(
         from source: CLLocationCoordinate2D,
         to destination: CLLocationCoordinate2D,
-        completion: @escaping (MKRoute?) -> Void
+        completion: @escaping (MKPolyline?) -> Void
     ) {
-        // Skip invalid coordinates
         guard CLLocationCoordinate2DIsValid(source), CLLocationCoordinate2DIsValid(destination),
               source.latitude != 0 || source.longitude != 0,
               destination.latitude != 0 || destination.longitude != 0 else {
@@ -331,14 +339,22 @@ struct RouteMapView: View {
             return
         }
 
-        attemptRoute(from: source, to: destination, transportType: .automobile) { route in
-            if let route = route {
-                completion(route)
-            } else {
-                // Automobile routing unavailable — try walking (better global coverage)
-                self.attemptRoute(from: source, to: destination, transportType: .walking) { route in
-                    completion(route) // nil is fine; pins are still shown on map
+        attemptRoute(from: source, to: destination, transportType: .walking) { walkingRoute in
+            if let walking = walkingRoute {
+                completion(walking.polyline)
+                return
+            }
+            self.attemptRoute(from: source, to: destination, transportType: .automobile) { driveRoute in
+                if let drive = driveRoute {
+                    completion(drive.polyline)
+                    return
                 }
+                // Last resort — straight-line connector so the map never
+                // shows two isolated pins with nothing between them.
+                let coords = [source, destination]
+                let straightLine = MKPolyline(coordinates: coords, count: coords.count)
+                print("[RouteMapView] ⚠️ no route for pair — using straight-line fallback")
+                completion(straightLine)
             }
         }
     }
