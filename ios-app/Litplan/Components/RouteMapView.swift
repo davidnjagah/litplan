@@ -112,7 +112,7 @@ struct RouteMapView: View {
                     // context (the route is for the venues, not the user).
                 }
 
-                // Top-right map button — opens the multi-stop walking route
+                // Top-right map button — opens the multi-stop driving route
                 // in Google Maps (Universal URL handles app/web fallback).
                 Button(action: openRouteInGoogleMaps) {
                     Image(systemName: "map.fill")
@@ -175,7 +175,7 @@ struct RouteMapView: View {
 
     // MARK: - Open Directions in Apple Maps
 
-    /// Opens a multi-stop walking route in Google Maps via its documented
+    /// Opens a multi-stop driving route in Google Maps via its documented
     /// Universal URL format. iOS resolves the link:
     ///   • Google Maps app installed → opens in the app with route preloaded
     ///   • Not installed              → opens in Safari (Google Maps web), same route
@@ -190,7 +190,7 @@ struct RouteMapView: View {
     ///     &origin=lat,lng
     ///     &destination=lat,lng
     ///     &waypoints=lat1,lng1|lat2,lng2
-    ///     &travelmode=walking
+    ///     &travelmode=driving
     private func openRouteInGoogleMaps() {
         guard !venues.isEmpty else { return }
         let sortedVenues = venues.sorted { $0.order < $1.order }
@@ -220,7 +220,7 @@ struct RouteMapView: View {
             URLQueryItem(name: "api", value: "1"),
             URLQueryItem(name: "origin", value: origin),
             URLQueryItem(name: "destination", value: destination),
-            URLQueryItem(name: "travelmode", value: "walking"),
+            URLQueryItem(name: "travelmode", value: "driving"),
         ]
         if !middle.isEmpty {
             let waypoints = middle.map { coord($0.coordinate) }.joined(separator: "|")
@@ -236,14 +236,14 @@ struct RouteMapView: View {
         UIApplication.shared.open(url)
     }
 
-    /// Opens a single venue pin in Apple Maps with walking directions enabled
+    /// Opens a single venue pin in Apple Maps with driving directions
     /// (Apple Maps handles single-destination routing cleanly — it's the
     /// multi-stop case that's broken).
     private func openSingleVenueInAppleMaps(_ venue: VenueLocation) {
         let item = MKMapItem(placemark: MKPlacemark(coordinate: venue.coordinate))
         item.name = venue.name
         item.openInMaps(launchOptions: [
-            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+            MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
         ])
     }
 
