@@ -71,18 +71,21 @@ struct RouteMapView: View {
                     }
 
                     // Venue markers — tapping a single pin opens that venue
-                    // in Apple Maps (single-pin view, no multi-stop needed)
+                    // in Apple Maps. Map's own onTapGesture is removed so it
+                    // doesn't swallow taps before they reach the annotation.
                     ForEach(venues.sorted(by: { $0.order < $1.order })) { venue in
                         Annotation(
                             venue.name,
                             coordinate: venue.coordinate,
                             anchor: .bottom
                         ) {
-                            Button(action: { openSingleVenueInAppleMaps(venue) }) {
-                                VenueMarker(order: venue.order, name: venue.name)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Open \(venue.name) in Apple Maps")
+                            VenueMarker(order: venue.order, name: venue.name)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    openSingleVenueInAppleMaps(venue)
+                                }
+                                .accessibilityLabel("Open \(venue.name) in Apple Maps")
+                                .accessibilityAddTraits(.isButton)
                         }
                     }
                 }
@@ -91,9 +94,6 @@ struct RouteMapView: View {
                     MapCompass()
                     MapScaleView()
                     MapUserLocationButton()
-                }
-                .onTapGesture {
-                    openRouteInGoogleMaps()
                 }
 
                 // Top-right map button — opens the multi-stop walking route
