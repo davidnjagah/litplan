@@ -323,10 +323,12 @@ struct RouteMapView: View {
         }
     }
 
-    /// Resolves a polyline between two venues. Tries walking first (matches
-    /// the app's primary mode), falls back to automobile, and finally to a
-    /// straight-line geodesic so the route is ALWAYS visible — even when
-    /// Apple's routing service can't compute a path for that pair.
+    /// Resolves a polyline between two venues. Tries automobile first
+    /// (Apple's road graph has much broader global coverage than its
+    /// pedestrian network — walking routing fails in many cities outside
+    /// Western Europe / US / Japan), falls back to walking, and only then
+    /// to a straight-line geodesic as a true last resort so the map never
+    /// shows two isolated pins with nothing between them.
     private func calculateRoute(
         from source: CLLocationCoordinate2D,
         to destination: CLLocationCoordinate2D,
@@ -339,21 +341,20 @@ struct RouteMapView: View {
             return
         }
 
-        attemptRoute(from: source, to: destination, transportType: .walking) { walkingRoute in
-            if let walking = walkingRoute {
-                completion(walking.polyline)
+        attemptRoute(from: source, to: destination, transportType: .automobile) { driveRoute in
+            if let drive = driveRoute {
+                completion(drive.polyline)
                 return
             }
-            self.attemptRoute(from: source, to: destination, transportType: .automobile) { driveRoute in
-                if let drive = driveRoute {
-                    completion(drive.polyline)
+            self.attemptRoute(from: source, to: destination, transportType: .walking) { walkRoute in
+                if let walk = walkRoute {
+                    completion(walk.polyline)
                     return
                 }
-                // Last resort — straight-line connector so the map never
-                // shows two isolated pins with nothing between them.
+                // True last resort
                 let coords = [source, destination]
                 let straightLine = MKPolyline(coordinates: coords, count: coords.count)
-                print("[RouteMapView] ⚠️ no route for pair — using straight-line fallback")
+                print("[RouteMapView] ⚠️ no automobile or walking route — using straight-line fallback")
                 completion(straightLine)
             }
         }
