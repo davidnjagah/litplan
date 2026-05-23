@@ -93,7 +93,10 @@ struct RouteMapView: View {
                 .mapControls {
                     MapCompass()
                     MapScaleView()
-                    MapUserLocationButton()
+                    // MapUserLocationButton removed — visually cluttered the
+                    // top-right corner under our own map button, and a
+                    // "centre on user" affordance doesn't make sense in this
+                    // context (the route is for the venues, not the user).
                 }
 
                 // Top-right map button — opens the multi-stop walking route
