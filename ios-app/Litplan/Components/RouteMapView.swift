@@ -323,12 +323,17 @@ struct RouteMapView: View {
         }
     }
 
-    /// Resolves a polyline between two venues. Tries automobile first
-    /// (Apple's road graph has much broader global coverage than its
-    /// pedestrian network — walking routing fails in many cities outside
-    /// Western Europe / US / Japan), falls back to walking, and only then
-    /// to a straight-line geodesic as a true last resort so the map never
-    /// shows two isolated pins with nothing between them.
+    /// Resolves a polyline between two venues with a four-tier fallback:
+    ///   1. OSRM (OpenStreetMap routing) — primary, global coverage
+    ///   2. MKDirections .automobile     — fallback if OSRM is unreachable
+    ///   3. MKDirections .walking        — second fallback
+    ///   4. Straight-line geodesic       — true last resort
+    ///
+    /// OSRM is used first because Apple's MKDirections has uneven global
+    /// coverage. Many cities outside Western Europe / US / Japan return no
+    /// route at all (which previously rendered as a straight line cutting
+    /// across the map). OSRM's OpenStreetMap data has solid road coverage
+    /// worldwide, including Nairobi, Lagos, Bangkok, etc.
     private func calculateRoute(
         from source: CLLocationCoordinate2D,
         to destination: CLLocationCoordinate2D,
@@ -341,23 +346,87 @@ struct RouteMapView: View {
             return
         }
 
-        attemptRoute(from: source, to: destination, transportType: .automobile) { driveRoute in
-            if let drive = driveRoute {
-                completion(drive.polyline)
+        fetchOSRMRoute(from: source, to: destination) { osrmPolyline in
+            if let osrm = osrmPolyline {
+                completion(osrm)
                 return
             }
-            self.attemptRoute(from: source, to: destination, transportType: .walking) { walkRoute in
-                if let walk = walkRoute {
-                    completion(walk.polyline)
+            self.attemptRoute(from: source, to: destination, transportType: .automobile) { driveRoute in
+                if let drive = driveRoute {
+                    completion(drive.polyline)
                     return
                 }
-                // True last resort
-                let coords = [source, destination]
-                let straightLine = MKPolyline(coordinates: coords, count: coords.count)
-                print("[RouteMapView] ⚠️ no automobile or walking route — using straight-line fallback")
-                completion(straightLine)
+                self.attemptRoute(from: source, to: destination, transportType: .walking) { walkRoute in
+                    if let walk = walkRoute {
+                        completion(walk.polyline)
+                        return
+                    }
+                    // True last resort — none of the routing services returned
+                    // anything. Almost never reached now that OSRM is primary.
+                    let coords = [source, destination]
+                    let straightLine = MKPolyline(coordinates: coords, count: coords.count)
+                    print("[RouteMapView] ⚠️ OSRM + MKDirections both failed — straight-line fallback")
+                    completion(straightLine)
+                }
             }
         }
+    }
+
+    /// Fetches a road-following driving route from OSRM (the public OSM
+    /// routing demo server). Returns a fully-shaped MKPolyline that hugs
+    /// real streets, including in cities Apple's MKDirections can't serve.
+    ///
+    /// Note for scaling: the public demo is rate-limited and not intended
+    /// for high-volume production traffic. Migration path when usage grows:
+    ///   • Self-host OSRM (Docker image, ~10GB RAM for a city region)
+    ///   • Switch to Mapbox Directions (free 100k req/mo, requires API key)
+    ///   • Switch to Google Directions ($5/1000 req)
+    private func fetchOSRMRoute(
+        from source: CLLocationCoordinate2D,
+        to destination: CLLocationCoordinate2D,
+        completion: @escaping (MKPolyline?) -> Void
+    ) {
+        // OSRM uses lng,lat order (not lat,lng — easy to flip by accident)
+        let urlString = "https://router.project-osrm.org/route/v1/driving/"
+            + "\(source.longitude),\(source.latitude);"
+            + "\(destination.longitude),\(destination.latitude)"
+            + "?overview=full&geometries=geojson"
+
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+
+        URLSession.shared.dataTask(with: url) { data, _, error in
+            if let error = error {
+                print("[RouteMapView] OSRM network error: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            guard let data = data else {
+                completion(nil)
+                return
+            }
+            do {
+                let response = try JSONDecoder().decode(OSRMResponse.self, from: data)
+                guard let route = response.routes.first,
+                      !route.geometry.coordinates.isEmpty else {
+                    print("[RouteMapView] OSRM returned no routes")
+                    completion(nil)
+                    return
+                }
+                // GeoJSON coordinates are [lng, lat] — flip back to lat,lng for MapKit
+                let coords = route.geometry.coordinates.map {
+                    CLLocationCoordinate2D(latitude: $0[1], longitude: $0[0])
+                }
+                let polyline = MKPolyline(coordinates: coords, count: coords.count)
+                print("[RouteMapView] ✓ OSRM route: \(coords.count) points")
+                completion(polyline)
+            } catch {
+                print("[RouteMapView] OSRM parse error: \(error)")
+                completion(nil)
+            }
+        }.resume()
     }
 
     private func attemptRoute(
@@ -417,6 +486,25 @@ struct RouteMapView: View {
 }
 
 // MARK: - Venue Marker View
+
+// MARK: - OSRM response types
+
+/// Subset of the OSRM /route response we need to extract the polyline geometry.
+/// Full schema: http://project-osrm.org/docs/v5.24.0/api/#route-service
+private struct OSRMResponse: Decodable {
+    let routes: [OSRMRoute]
+}
+
+private struct OSRMRoute: Decodable {
+    let geometry: OSRMGeometry
+}
+
+private struct OSRMGeometry: Decodable {
+    /// GeoJSON LineString coordinates — each inner array is [longitude, latitude]
+    let coordinates: [[Double]]
+}
+
+// MARK: - Venue marker
 
 struct VenueMarker: View {
     let order: Int
