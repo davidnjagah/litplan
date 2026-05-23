@@ -106,3 +106,7 @@ node_modules/
 
 # CV entries (personal, not for repo)
 cv-entry/
+
+# App Store preview videos (large, uploaded directly to App Store Connect)
+LitPlanzAdFinal.mp4
+*.mp4
