@@ -18,16 +18,6 @@ The remaining changes are backend (AI pipeline migration to async processing —
 
 ---
 
-## Demo account credentials
-
-**Email:** `demo@litplanz.com`
-**Password:** *[to be filled in by submitter before sending to Apple]*
-
-This account is **Pro tier with 7 generation tokens reset** ahead of your review session. Plenty of credits for testing every feature multiple times.
-
-> **Sandbox note:** the subscription is granted manually via internal demo-account override. StoreKit sandbox is not required for testing. If you want to verify the paywall flow, sign out and sign in to a fresh account (see "Free-tier testing" below).
-
----
 
 ## Recommended testing flow (5–7 minutes)
 
@@ -91,22 +81,7 @@ No analytics, advertising, or tracking SDKs are present in the app.
 
 ---
 
-## Permissions used (unchanged since v2.0)
-
-- **Location (When In Use)** — only requested if the user taps "Use Current Location" in the city selector. The app never tracks location in the background.
-- **Notifications** — for plan-generation status updates. User can decline; app works fully without.
-
 No new permissions are introduced in v2.1.
-
----
-
-## Subscriptions
-
-LitPlanz Pro is a subscription product. The demo account has Pro granted manually so you don't need to test purchasing. If you want to verify the StoreKit flow:
-
-- Free → Pro upgrade triggers from the paywall (try generating 8 plans in a week with a fresh free account)
-- Subscription products are registered in App Store Connect under the LitPlanz Pro subscription group
-- Subscription validates against our server before unlocking features
 
 ---
 
@@ -115,13 +90,6 @@ LitPlanz Pro is a subscription product. The demo account has Pro granted manuall
 - **First generation in a fresh city can take 25–35 seconds.** This is expected — the app pings multiple AI models and verifies every suggested venue against Google Places. The new snake-path animation is designed to make the wait feel intentional rather than frozen.
 - **Repeat generations of the same city+theme combination return instantly (<1s)** thanks to a 7-day cache layer. This may look unusual after a slow first generation — it's the intended behaviour.
 - **Map embed routes follow real streets globally** — even in cities where Apple Maps' own routing has limited coverage. We use OSRM (OpenStreetMap routing) on the embedded preview map so the route line always traces real roads.
-
----
-
-## Contact for review questions
-
-**Developer contact:** [your name + email here, e.g. dnjagah@gmail.com]
-**Response time:** within 12 hours during your review window
 
 ---
 
