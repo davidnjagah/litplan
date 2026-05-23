@@ -40,7 +40,6 @@ struct ThemeTag: Identifiable, Equatable {
         ThemeTag(name: "Beach"),
         ThemeTag(name: "Party"),
         ThemeTag(name: "Speakeasy"),
-        ThemeTag(name: "Equestrian"),
         ThemeTag(name: "Excitement"),
         ThemeTag(name: "Activities"),
         ThemeTag(name: "Low Budget")
