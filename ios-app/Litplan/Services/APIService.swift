@@ -871,11 +871,17 @@ struct UserProfileResponse: Codable {
 }
 
 struct AppConfig: Codable {
-    let minimumAppVersion: String
-    let latestAppVersion: String
-    let maintenanceMode: Bool
+    // All fields optional so the app is resilient to backend changes / cold-start
+    // config misses. AppUpdateManager treats nil latestAppVersion as "no prompt".
+    let minimumAppVersion: String?
+    let latestAppVersion: String?
+    let maintenanceMode: Bool?
     let maintenanceMessage: String?
     let featureFlags: [String: Bool]?
+    /// When true, the update prompt is non-dismissible (use for security/critical releases).
+    let criticalUpdate: Bool?
+    /// Short "What's new" copy shown in the update dialog body.
+    let releaseNotes: String?
 }
 
 struct AppConfigResponse: Codable {

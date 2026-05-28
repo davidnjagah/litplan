@@ -20,6 +20,10 @@ struct BoltCitySelector: View {
 
     @State private var isExpanded = false
     @ObservedObject private var searchManager = CitySearchManager.shared
+    @ObservedObject private var historyManager = SearchHistoryManager.shared
+
+    /// Top N cities from the search history shown when the search bar is empty.
+    private let historyDisplayCount = 10
 
     // MARK: - Layout Constants
 
@@ -198,14 +202,21 @@ struct BoltCitySelector: View {
             // Results
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 0) {
-                    if searchManager.searchResults.isEmpty && !searchManager.searchQuery.isEmpty && !searchManager.isSearching {
-                        emptyResultsView
-                    } else if searchManager.searchResults.isEmpty && searchManager.searchQuery.isEmpty {
-                        searchPromptView
-                    } else {
-                        ForEach(searchManager.searchResults) { city in
-                            cityRow(city)
+                    if !searchManager.searchQuery.isEmpty {
+                        // Active query → show search results or empty state
+                        if searchManager.searchResults.isEmpty && !searchManager.isSearching {
+                            emptyResultsView
+                        } else {
+                            ForEach(searchManager.searchResults) { city in
+                                cityRow(city)
+                            }
                         }
+                    } else if !historyManager.searchHistory.isEmpty {
+                        // Empty query → show the user's recent searches (latest first, top N)
+                        recentSearchesSection
+                    } else {
+                        // No history yet → fall back to the generic prompt
+                        searchPromptView
                     }
                 }
                 .padding(.horizontal, 16)
@@ -289,6 +300,60 @@ struct BoltCitySelector: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(selectedCity?.displayName == city.displayName ? Color.white.opacity(0.1) : Color.clear)
             )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // MARK: - Recent Searches
+
+    /// "Recent searches" list shown when the search bar opens with an empty query.
+    /// Caps at `historyDisplayCount` entries, latest first (SearchHistoryManager
+    /// inserts at the front whenever a city is selected).
+    private var recentSearchesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Recent searches")
+                .font(.system(size: 12, weight: .semibold))
+                .tracking(0.6)
+                .foregroundColor(.white.opacity(0.55))
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            ForEach(Array(historyManager.searchHistory.prefix(historyDisplayCount))) { item in
+                historyRow(item)
+            }
+        }
+    }
+
+    private func historyRow(_ historyCity: SearchHistoryCity) -> some View {
+        Button(action: {
+            HapticManager.shared.medium()
+            // Reselect through CitySearchManager → also refreshes the entry's position
+            // in SearchHistoryManager (most-recent first), so re-tapped cities float up.
+            searchManager.selectCity(SearchedCity(name: historyCity.name, country: historyCity.country))
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white.opacity(0.55))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(historyCity.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                    if !historyCity.country.isEmpty {
+                        Text(historyCity.country)
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
     }

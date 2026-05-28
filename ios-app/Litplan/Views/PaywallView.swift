@@ -23,6 +23,10 @@ struct PaywallView: View {
     @State private var showGuestLoginPrompt = false
     @State private var showEmailLogin = false
     @State private var pendingPurchaseAfterLogin = false
+    /// Per-product free-trial eligibility (productID → eligible), computed from StoreKit.
+    /// Intro-offer eligibility is per subscription group, so once a trial is used on any
+    /// plan in the group StoreKit reports false for every plan in it.
+    @State private var trialEligibility: [String: Bool] = [:]
 
     // Optional trigger for context-specific messaging
     let trigger: PaywallTrigger?
@@ -71,6 +75,7 @@ struct PaywallView: View {
 
                 Task {
                     await subscriptionManager.loadProducts(force: shouldForceLoad)
+                    await refreshTrialEligibility()
                 }
             }
 
@@ -267,6 +272,7 @@ struct PaywallView: View {
             PricingCard(
                 plan: .yearly,
                 product: subscriptionManager.yearlyProduct,
+                trialBadge: trialBadge(for: .yearly),
                 isSelected: selectedPlan == .yearly,
                 isLoading: isLoadingProducts,
                 onSelect: {
@@ -281,6 +287,7 @@ struct PaywallView: View {
             PricingCard(
                 plan: .monthly,
                 product: subscriptionManager.monthlyProduct,
+                trialBadge: trialBadge(for: .monthly),
                 isSelected: selectedPlan == .monthly,
                 isLoading: isLoadingProducts,
                 onSelect: {
@@ -375,20 +382,87 @@ struct PaywallView: View {
         if authManager.isGuest {
             return "Sign in to Subscribe"
         }
-        // If products loaded, show appropriate CTA
+        // If products loaded, show appropriate CTA — only promise a trial when the
+        // current user is actually eligible for one on the selected plan.
         if hasProductsLoaded {
-            return selectedPlan == .yearly ? "Start Free Trial" : "Subscribe Now"
+            return isTrialEligible(selectedPlan) ? "Start Free Trial" : "Subscribe Now"
         }
         // If still loading or not loaded yet
         return "Loading Prices..."
+    }
+
+    // MARK: - Free Trial Eligibility
+
+    /// The StoreKit product backing a plan.
+    private func product(for plan: SubscriptionPlan) -> Product? {
+        plan == .yearly ? subscriptionManager.yearlyProduct : subscriptionManager.monthlyProduct
+    }
+
+    /// Whether the current user can still redeem a free trial for this plan.
+    /// Requires the product to actually carry a free-trial intro offer AND the user
+    /// to be eligible (per subscription group, as reported by StoreKit).
+    private func isTrialEligible(_ plan: SubscriptionPlan) -> Bool {
+        guard let product = product(for: plan),
+              let offer = product.subscription?.introductoryOffer,
+              offer.paymentMode == .freeTrial else { return false }
+        return trialEligibility[product.id] ?? false
+    }
+
+    /// Short trial badge for a plan card, e.g. "7-day free trial".
+    private func trialBadge(for plan: SubscriptionPlan) -> String? {
+        guard isTrialEligible(plan),
+              let offer = product(for: plan)?.subscription?.introductoryOffer else { return nil }
+        return "\(Self.periodPhrase(offer.period)) free trial"
+    }
+
+    /// Full trial line for the legal section, e.g. "7-day free trial, then $39.99/year".
+    private func trialText(for plan: SubscriptionPlan) -> String? {
+        guard isTrialEligible(plan),
+              let product = product(for: plan),
+              let offer = product.subscription?.introductoryOffer,
+              let billing = product.subscription?.subscriptionPeriod else { return nil }
+        return "\(Self.periodPhrase(offer.period)) free trial, then \(product.displayPrice)/\(Self.unitWord(billing.unit))"
+    }
+
+    /// Recompute trial eligibility from StoreKit (async; per subscription group).
+    private func refreshTrialEligibility() async {
+        for product in [subscriptionManager.monthlyProduct, subscriptionManager.yearlyProduct].compactMap({ $0 }) {
+            guard let sub = product.subscription, sub.introductoryOffer != nil else {
+                trialEligibility[product.id] = false
+                continue
+            }
+            trialEligibility[product.id] = await sub.isEligibleForIntroOffer
+        }
+    }
+
+    /// "7-day", "1-month", etc. Weeks are normalised to days to match marketing copy.
+    private static func periodPhrase(_ period: Product.SubscriptionPeriod) -> String {
+        switch period.unit {
+        case .day: return "\(period.value)-day"
+        case .week: return "\(period.value * 7)-day"
+        case .month: return "\(period.value)-month"
+        case .year: return "\(period.value)-year"
+        @unknown default: return "limited-time"
+        }
+    }
+
+    /// Billing-period word for the recurring price suffix.
+    private static func unitWord(_ unit: Product.SubscriptionPeriod.Unit) -> String {
+        switch unit {
+        case .day: return "day"
+        case .week: return "week"
+        case .month: return "month"
+        case .year: return "year"
+        @unknown default: return "period"
+        }
     }
 
     // MARK: - Legal Section
 
     private var legalSection: some View {
         VStack(spacing: Spacing.xs) {
-            if selectedPlan == .yearly {
-                Text("7-day free trial, then $39.99/year")
+            if let trialLine = trialText(for: selectedPlan) {
+                Text(trialLine)
                     .font(.caption)
                     .foregroundColor(.textTertiary)
                     .multilineTextAlignment(.center)
@@ -615,10 +689,13 @@ struct PricingCard: View {
     let isSelected: Bool
     let onSelect: () -> Void
     let isLoading: Bool
+    /// Short trial badge (e.g. "7-day free trial"); nil when the user isn't trial-eligible.
+    let trialBadge: String?
 
-    init(plan: SubscriptionPlan, product: Product?, isSelected: Bool, isLoading: Bool = false, onSelect: @escaping () -> Void) {
+    init(plan: SubscriptionPlan, product: Product?, trialBadge: String? = nil, isSelected: Bool, isLoading: Bool = false, onSelect: @escaping () -> Void) {
         self.plan = plan
         self.product = product
+        self.trialBadge = trialBadge
         self.isSelected = isSelected
         self.isLoading = isLoading
         self.onSelect = onSelect
@@ -650,6 +727,13 @@ struct PricingCard: View {
                     Text(plan.subtitle)
                         .font(.callout)
                         .foregroundColor(.textSecondary)
+
+                    if let trialBadge = trialBadge {
+                        Text(trialBadge)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.success)
+                    }
                 }
 
                 Spacer()

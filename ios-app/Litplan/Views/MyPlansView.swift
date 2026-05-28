@@ -357,8 +357,11 @@ struct MyPlansView: View {
         if savedCities.isEmpty {
             emptyStateView(for: .savedCities)
         } else {
-            ForEach(visibleCities) { city in
-                SavedCityCard(city: city) { handleCityTap(city) }
+            ForEach(DateSectionGrouper.group(visibleCities, dateFor: { savedItemsManager.savedAt(for: $0.id) }), id: \.title) { section in
+                savedSectionHeader(section.title)
+                ForEach(section.items) { city in
+                    SavedCityCard(city: city) { handleCityTap(city) }
+                }
             }
             if !isProUser && !overflowCities.isEmpty {
                 ForEach(overflowCities) { city in
@@ -377,13 +380,16 @@ struct MyPlansView: View {
         if savedPlans.isEmpty {
             emptyStateView(for: .individualPlans)
         } else {
-            ForEach(visiblePlans) { plan in
-                SavedPlanCard(
-                    plan: plan,
-                    cityName: getCityName(for: plan),
-                    isProUser: true
-                ) {
-                    handlePlanTap(plan)
+            ForEach(DateSectionGrouper.group(visiblePlans, dateFor: { savedItemsManager.savedAt(for: $0.id) }), id: \.title) { section in
+                savedSectionHeader(section.title)
+                ForEach(section.items) { plan in
+                    SavedPlanCard(
+                        plan: plan,
+                        cityName: getCityName(for: plan),
+                        isProUser: true
+                    ) {
+                        handlePlanTap(plan)
+                    }
                 }
             }
             if !isProUser && !overflowPlans.isEmpty {
@@ -407,12 +413,15 @@ struct MyPlansView: View {
         if savedGroupFlows.isEmpty {
             emptyStateView(for: .groupPlans)
         } else {
-            ForEach(visibleGroupFlows) { groupFlow in
-                SavedGroupFlowCard(
-                    groupFlow: groupFlow,
-                    cityName: getCityName(for: groupFlow)
-                ) {
-                    handleGroupFlowTap(groupFlow)
+            ForEach(DateSectionGrouper.group(visibleGroupFlows, dateFor: { savedItemsManager.savedAt(for: $0.id) }), id: \.title) { section in
+                savedSectionHeader(section.title)
+                ForEach(section.items) { groupFlow in
+                    SavedGroupFlowCard(
+                        groupFlow: groupFlow,
+                        cityName: getCityName(for: groupFlow)
+                    ) {
+                        handleGroupFlowTap(groupFlow)
+                    }
                 }
             }
             if !isProUser && !overflowGroupFlows.isEmpty {
@@ -427,6 +436,15 @@ struct MyPlansView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Date Section Header
+    private func savedSectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, Spacing.xs)
     }
 
     // MARK: - Empty State View

@@ -188,6 +188,14 @@ class SubscriptionManager: ObservableObject {
         // Check entitlements and update state
         await checkSubscriptionStatus()
 
+        // Durable Pro fallback: if StoreKit shows no active entitlement (cache lapsed,
+        // sandbox expiry, entitlement not yet loaded on a fresh launch), trust the
+        // server's Subscription record until it actually expires. StoreKit remains the
+        // primary path; we only ever UPGRADE to Pro here, never revoke.
+        if !isProUser && !isTestMode {
+            await reconcileWithBackendStatus()
+        }
+
         // Update cache based on subscription state
         let newCacheState: SubscriptionCacheState
         if isTestMode {
@@ -204,9 +212,39 @@ class SubscriptionManager: ObservableObject {
         self.isProUser = newCacheState.isProUser
     }
 
+    /// Consult the backend Subscription record as a durable fallback when StoreKit
+    /// reports no active entitlement. Only grants Pro (never revokes) so a stale or
+    /// unreachable backend can't strip access a paying user actually has.
+    private func reconcileWithBackendStatus() async {
+        guard await getAuthTokenAsync() != nil else { return }
+        do {
+            let status = try await APIService.shared.getSubscriptionStatus()
+            // Server says active and (if dated) not expired.
+            let notExpired = status.expiresAt.map { $0 > Date() } ?? true
+            guard status.hasActiveSubscription, notExpired else { return }
+
+            self.isProUser = true
+            self.subscriptionState = .active
+            if self.currentSubscriptionType == nil {
+                self.currentSubscriptionType = .monthly
+            }
+            if let expires = status.expiresAt {
+                self.subscriptionExpirationDate = expires
+            }
+            // Reflect restored Pro in the token balance.
+            await BoltTokenManager.shared.loadTokensAsync()
+            print("[SubscriptionManager] Pro granted from backend Subscription record (StoreKit had no active entitlement)")
+        } catch {
+            print("[SubscriptionManager] Backend status reconcile failed (non-fatal): \(error)")
+        }
+    }
+
     /// Refresh subscription state only if cache is invalid or state is unknown
     /// This is called on app foreground to avoid unnecessary refreshes
     private func refreshSubscriptionStateIfNeeded() async {
+        // Every foreground is a chance to retry a subscription sync that failed earlier.
+        await flushPendingVerify()
+
         // Always refresh if state is unknown
         if cacheState == .unknown {
             await refreshSubscriptionState()
@@ -322,8 +360,17 @@ class SubscriptionManager: ObservableObject {
             // Capture pre-purchase state to detect free → Pro transition
             let wasProBeforePurchase = isProUser
 
+            // Attach the Supabase user id as appAccountToken. Apple echoes it back in
+            // the transaction AND in App Store Server Notifications, letting the webhook
+            // map server-side subscription events directly to this user.
+            var purchaseOptions: Set<Product.PurchaseOption> = []
+            if let uidString = SupabaseManager.shared.currentUser?.id,
+               let userUUID = UUID(uuidString: uidString) {
+                purchaseOptions.insert(.appAccountToken(userUUID))
+            }
+
             // Initiate purchase
-            let result = try await product.purchase()
+            let result = try await product.purchase(options: purchaseOptions)
 
             switch result {
             case .success(let verification):
@@ -607,6 +654,9 @@ class SubscriptionManager: ObservableObject {
         // First check local StoreKit entitlements
         await checkSubscriptionStatus()
 
+        // Retry any subscription sync that failed previously (e.g. backend down at purchase time).
+        await flushPendingVerify()
+
         // If we have an active subscription, optionally sync with backend
         if isProUser, let transaction = await getCurrentSubscriptionTransaction() {
             do {
@@ -664,14 +714,17 @@ class SubscriptionManager: ObservableObject {
     /// Sync transaction with backend server using POST /api/v2/subscription/verify
     /// - Parameter transaction: The transaction to sync
     private func syncTransactionWithBackend(transaction: Transaction) async throws {
-        // Check if user is authenticated
-        guard await getAuthTokenAsync() != nil else {
-            print("[SubscriptionManager] Warning: No auth token available, skipping backend sync")
-            return
-        }
-
         // Determine environment
         let environment = transaction.environment == .sandbox ? "sandbox" : "production"
+
+        // Detect introductory (free-trial) offer so the backend records TRIAL vs PRO.
+        let isTrial: Bool = {
+            if #available(iOS 17.2, *) {
+                return transaction.offer?.type == .introductory
+            } else {
+                return transaction.offerType == .introductory
+            }
+        }()
 
         // Prepare request body with transaction details
         // Auto-renewable subscriptions always auto-renew by default
@@ -682,29 +735,80 @@ class SubscriptionManager: ObservableObject {
             expiresDate: transaction.expirationDate,
             originalTransactionId: String(transaction.originalID),
             environment: environment,
-            autoRenewStatus: true
+            autoRenewStatus: true,
+            isTrial: isTrial
         )
 
-        // Use APIService for the request
-        let response = try await APIService.shared.verifySubscription(requestBody)
+        // We need an authenticated Supabase session to attribute the subscription
+        // to a user. If we can't sync now, persist the request and retry on next
+        // launch/foreground — never silently drop it (this was the original bug).
+        guard await getAuthTokenAsync() != nil else {
+            print("[SubscriptionManager] No auth token yet — queueing subscription sync for retry")
+            enqueuePendingVerify(requestBody)
+            return
+        }
 
-        if response.success, let data = response.data {
-            // Update local state from backend response
+        do {
+            let response = try await APIService.shared.verifySubscription(requestBody)
+            guard response.success, let data = response.data else {
+                let message = response.error?.message ?? "Verification failed"
+                throw SubscriptionError.backendError(message)
+            }
+
+            // Success — clear any queued retry and reconcile local state.
+            clearPendingVerify()
             if let subscription = data.subscription {
                 if let backendState = SubscriptionState(rawValue: subscription.status.lowercased()) {
                     self.subscriptionState = backendState
                     self.isProUser = backendState.grantsAccess
                 }
-
                 if let expiresDate = subscription.expiresDate {
                     self.subscriptionExpirationDate = expiresDate
                 }
             }
+            print("[SubscriptionManager] ✅ Backend sync successful for transaction \(transaction.id) (trial: \(isTrial))")
+        } catch {
+            // Persist for retry so a transient/backend failure can't lose the record.
+            print("[SubscriptionManager] ❌ Backend sync FAILED for transaction \(transaction.id): \(error) — queued for retry")
+            enqueuePendingVerify(requestBody)
+            throw error
+        }
+    }
 
-            print("[SubscriptionManager] Backend sync successful for transaction \(transaction.id)")
-        } else {
-            let message = response.error?.message ?? "Verification failed"
-            throw SubscriptionError.backendError(message)
+    // MARK: - Pending Subscription Sync (retry queue)
+
+    private let pendingVerifyKey = "pendingSubscriptionVerify"
+
+    /// Persist a verify request that failed to sync, so it can be retried later.
+    private func enqueuePendingVerify(_ req: SubscriptionVerifyRequest) {
+        if let data = try? JSONEncoder().encode(req) {
+            UserDefaults.standard.set(data, forKey: pendingVerifyKey)
+        }
+    }
+
+    private func clearPendingVerify() {
+        UserDefaults.standard.removeObject(forKey: pendingVerifyKey)
+    }
+
+    /// Retry a previously-failed subscription sync. Called on launch and foreground.
+    /// No-op when there's nothing queued or no auth session yet.
+    func flushPendingVerify() async {
+        guard let data = UserDefaults.standard.data(forKey: pendingVerifyKey),
+              let req = try? JSONDecoder().decode(SubscriptionVerifyRequest.self, from: data) else {
+            return
+        }
+        guard await getAuthTokenAsync() != nil else { return }
+
+        do {
+            let response = try await APIService.shared.verifySubscription(req)
+            if response.success {
+                clearPendingVerify()
+                print("[SubscriptionManager] ✅ Flushed pending subscription sync for \(req.transactionId)")
+            } else {
+                print("[SubscriptionManager] Pending subscription sync still failing: \(response.error?.message ?? "unknown")")
+            }
+        } catch {
+            print("[SubscriptionManager] Pending subscription sync retry failed: \(error)")
         }
     }
 
@@ -1166,6 +1270,8 @@ struct SubscriptionVerifyRequest: Codable {
     let originalTransactionId: String?
     let environment: String
     let autoRenewStatus: Bool
+    /// True when this transaction is in an introductory (free-trial) offer period.
+    let isTrial: Bool
 
     enum CodingKeys: String, CodingKey {
         case transactionId = "transaction_id"
@@ -1175,6 +1281,7 @@ struct SubscriptionVerifyRequest: Codable {
         case originalTransactionId = "original_transaction_id"
         case environment
         case autoRenewStatus = "autoRenewStatus"
+        case isTrial = "is_trial"
     }
 }
 

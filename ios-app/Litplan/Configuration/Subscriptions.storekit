@@ -80,7 +80,11 @@
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "monthly_sub_001",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "internalID" : "free_trial_monthly_001",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
           "localizations" : [
             {
               "description" : "Unlimited access to all cities and plans",
@@ -108,7 +112,7 @@
           "introductoryOffer" : {
             "internalID" : "free_trial_001",
             "paymentMode" : "free",
-            "subscriptionPeriod" : "P3D"
+            "subscriptionPeriod" : "P1W"
           },
           "localizations" : [
             {

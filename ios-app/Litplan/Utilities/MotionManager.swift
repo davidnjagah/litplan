@@ -37,6 +37,11 @@ final class MotionManager: ObservableObject {
     /// Whether to invert the rotation (phone tilts one way, card tilts opposite)
     var invertRotation: Bool = true
 
+    /// Whether gyroscope/device-tilt drives the card. Disabled by design — the card
+    /// now responds ONLY to touch drag. When false, CoreMotion is never started and
+    /// the gyro term is dropped from xRotation/yRotation (drag offsets still apply).
+    var tiltEnabled: Bool = false
+
     /// Sensitivity of touch drag in degrees per point
     var dragSensitivity: Double = 0.15
 
@@ -92,6 +97,8 @@ final class MotionManager: ObservableObject {
 
     /// Start receiving device motion updates
     func startMotionUpdates() {
+        // Gyro tilt is disabled — the card reacts to touch drag only. Skip CoreMotion entirely (saves battery).
+        guard tiltEnabled else { return }
         guard motionManager.isDeviceMotionAvailable else {
             print("MotionManager: Device motion not available")
             return
@@ -153,14 +160,16 @@ final class MotionManager: ObservableObject {
         }
     }
 
-    /// Get X rotation angle for 3D effect (gyroscope roll + touch drag)
+    /// Get X rotation angle for 3D effect (touch drag only; gyro term gated by tiltEnabled)
     var xRotation: Double {
-        return max(-maxRotation, min(maxRotation, clampedRotation(roll) + touchRollOffset))
+        let gyro = tiltEnabled ? clampedRotation(roll) : 0
+        return max(-maxRotation, min(maxRotation, gyro + touchRollOffset))
     }
 
-    /// Get Y rotation angle for 3D effect (gyroscope pitch + touch drag)
+    /// Get Y rotation angle for 3D effect (touch drag only; gyro term gated by tiltEnabled)
     var yRotation: Double {
-        return max(-maxRotation, min(maxRotation, clampedRotation(pitch) + touchPitchOffset))
+        let gyro = tiltEnabled ? clampedRotation(pitch) : 0
+        return max(-maxRotation, min(maxRotation, gyro + touchPitchOffset))
     }
 
     // MARK: - Private Helpers

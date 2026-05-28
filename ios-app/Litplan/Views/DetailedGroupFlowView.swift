@@ -225,6 +225,17 @@ struct DetailedGroupFlowView: View {
                     // Scrollable tags row
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Spacing.xxs) {
+                            // Vibez theme tag (highlighted), shown first when present
+                            if let theme = groupFlow.theme, !theme.isEmpty {
+                                Text(theme)
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, Spacing.sm)
+                                    .padding(.vertical, 6)
+                                    .background(Color.boltGradient)
+                                    .cornerRadius(8)
+                            }
+
                             ForEach(groupFlow.bestFor, id: \.self) { tag in
                                 Text(tag.capitalized)
                                     .font(.system(size: 13, weight: .medium))

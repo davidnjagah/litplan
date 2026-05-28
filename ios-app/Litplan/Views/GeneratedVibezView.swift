@@ -87,14 +87,22 @@ struct GeneratedVibezView: View {
                 .padding(.top, 60)
                 .padding(.bottom, Spacing.lg)
 
-                LazyVStack(spacing: Spacing.md) {
-                    ForEach(historyManager.history) { item in
-                        VibezHistoryCard(
-                            item: item,
-                            cityName: savedItemsManager.getCityName(for: item.groupFlow)
-                        ) {
-                            HapticManager.shared.medium()
-                            selectedGroupFlow = item.groupFlow
+                LazyVStack(alignment: .leading, spacing: Spacing.md) {
+                    ForEach(DateSectionGrouper.group(historyManager.history, dateFor: { $0.generatedAt }), id: \.title) { section in
+                        Text(section.title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, Spacing.xs)
+
+                        ForEach(section.items) { item in
+                            VibezHistoryCard(
+                                item: item,
+                                cityName: savedItemsManager.getCityName(for: item.groupFlow)
+                            ) {
+                                HapticManager.shared.medium()
+                                selectedGroupFlow = item.groupFlow
+                            }
                         }
                     }
                 }
@@ -226,6 +234,16 @@ struct VibezHistoryCard: View {
                 }
 
                 HStack(spacing: Spacing.md) {
+                    if let theme = item.groupFlow.theme, !theme.isEmpty {
+                        Text(theme)
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.accentPrimary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.accentPrimary.opacity(0.15)))
+                    }
+
                     HStack(spacing: 4) {
                         Image(systemName: "clock")
                             .font(.system(size: 11))
@@ -275,4 +293,35 @@ struct VibezHistoryCard: View {
 
 #Preview("Generated Vibez") {
     GeneratedVibezView()
+}
+
+// MARK: - Date Section Grouping
+
+/// Buckets items into ordered, human-friendly date sections for list views
+/// (Generated Vibez history, Saved items). Newest bucket first; input order is
+/// preserved within each bucket (callers already sort newest-first).
+enum DateSectionGrouper {
+    static func sectionTitle(for date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        if calendar.isDateInToday(date) { return "Today" }
+        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        if let weekAgo = calendar.date(byAdding: .day, value: -7, to: calendar.startOfDay(for: now)),
+           date >= weekAgo { return "This Week" }
+        if calendar.isDate(date, equalTo: now, toGranularity: .month) { return "This Month" }
+        return "Earlier"
+    }
+
+    private static let order = ["Today", "Yesterday", "This Week", "This Month", "Earlier"]
+
+    /// Returns ordered (title, items) sections. Items with a nil date fall into "Earlier".
+    static func group<T>(_ items: [T], dateFor: (T) -> Date?) -> [(title: String, items: [T])] {
+        var buckets: [String: [T]] = [:]
+        for item in items {
+            let title = dateFor(item).map { sectionTitle(for: $0) } ?? "Earlier"
+            buckets[title, default: []].append(item)
+        }
+        return order.compactMap { title in
+            guard let arr = buckets[title], !arr.isEmpty else { return nil }
+            return (title, arr)
+        }
+    }
 }

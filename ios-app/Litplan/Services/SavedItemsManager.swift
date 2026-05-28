@@ -34,6 +34,13 @@ class SavedItemsManager: ObservableObject {
     @Published private(set) var visiblePlanIds: Set<String> = []
     @Published private(set) var visibleGroupFlowIds: Set<String> = []
 
+    /// When each saved item was saved (item id → date). Powers date-grouped Saved views.
+    /// Populated from the server's `savedAt` on fetch and set to now() on local saves.
+    @Published private(set) var savedAtById: [String: Date] = [:]
+
+    /// The save date for a given item id (nil if unknown — bucket such items as "Earlier").
+    func savedAt(for id: String) -> Date? { savedAtById[id] }
+
     // MARK: - Private
 
     private let userDefaults = UserDefaults.standard
@@ -50,6 +57,15 @@ class SavedItemsManager: ObservableObject {
         static let visibleCityIds    = "litplan.saved.visibleCityIds"
         static let visiblePlanIds    = "litplan.saved.visiblePlanIds"
         static let visibleGroupFlowIds = "litplan.saved.visibleGroupFlowIds"
+        static let savedAtById = "litplan.saved.savedAtById"
+    }
+
+    /// Parse a server ISO8601 `savedAt` string (with or without fractional seconds).
+    private static func parseDate(_ s: String?) -> Date? {
+        guard let s = s else { return nil }
+        let withFrac = ISO8601DateFormatter()
+        withFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return withFrac.date(from: s) ?? ISO8601DateFormatter().date(from: s)
     }
 
     // MARK: - Supabase row types
@@ -182,13 +198,21 @@ class SavedItemsManager: ObservableObject {
                 .value
             let flows = flowRows.compactMap { $0.flowData }
 
+            // Build the saved-at map (item id → date) from server rows.
+            var savedDates: [String: Date] = [:]
+            for r in cityRows { if let c = r.cityData, let d = Self.parseDate(r.savedAt) { savedDates[c.id] = d } }
+            for r in planRows { if let p = r.planData, let d = Self.parseDate(r.savedAt) { savedDates[p.id] = d } }
+            for r in flowRows { if let f = r.flowData, let d = Self.parseDate(r.savedAt) { savedDates[f.id] = d } }
+
             // Server wins — replace local cache
             savedCities    = cities
             savedPlans     = plans
             savedGroupFlows = flows
+            savedAtById    = savedDates
             persistCities()
             persistPlans()
             persistGroupFlows()
+            persistSavedAt()
 
             // Reconcile visible sets: remove stale IDs, fill open slots from server order
             reconcileVisibleIds(against: cities, keyPath: \.visibleCityIds, key: Keys.visibleCityIds)
@@ -213,7 +237,9 @@ class SavedItemsManager: ObservableObject {
             visibleCityIds.insert(city.id)
             persistVisibleCityIds()
         }
+        savedAtById[city.id] = Date()
         persistCities()
+        persistSavedAt()
         Task { await serverSaveCity(city) }
         print("[SavedItemsManager] Saved city: \(city.name)")
     }
@@ -284,7 +310,9 @@ class SavedItemsManager: ObservableObject {
             visiblePlanIds.insert(plan.id)
             persistVisiblePlanIds()
         }
+        savedAtById[plan.id] = Date()
         persistPlans()
+        persistSavedAt()
         Task { await serverSavePlan(plan) }
         print("[SavedItemsManager] Saved plan: \(plan.title)")
     }
@@ -355,7 +383,9 @@ class SavedItemsManager: ObservableObject {
             visibleGroupFlowIds.insert(groupFlow.id)
             persistVisibleGroupFlowIds()
         }
+        savedAtById[groupFlow.id] = Date()
         persistGroupFlows()
+        persistSavedAt()
         Task { await serverSaveGroupFlow(groupFlow) }
         print("[SavedItemsManager] Saved group flow: \(groupFlow.title)")
     }
@@ -430,6 +460,9 @@ class SavedItemsManager: ObservableObject {
            let flows = try? decoder.decode([GroupFlow].self, from: data) {
             savedGroupFlows = flows
         }
+        if let raw = userDefaults.dictionary(forKey: Keys.savedAtById) as? [String: Double] {
+            savedAtById = raw.mapValues { Date(timeIntervalSince1970: $0) }
+        }
 
         // Load visible sets; initialize from local cache if no stored state yet
         if let ids = userDefaults.stringArray(forKey: Keys.visibleCityIds) {
@@ -462,6 +495,7 @@ class SavedItemsManager: ObservableObject {
         savedCities    = []
         savedPlans     = []
         savedGroupFlows = []
+        savedAtById = [:]
         visibleCityIds = []
         visiblePlanIds = []
         visibleGroupFlowIds = []
@@ -474,6 +508,7 @@ class SavedItemsManager: ObservableObject {
         userDefaults.removeObject(forKey: Keys.visibleCityIds)
         userDefaults.removeObject(forKey: Keys.visiblePlanIds)
         userDefaults.removeObject(forKey: Keys.visibleGroupFlowIds)
+        userDefaults.removeObject(forKey: Keys.savedAtById)
         print("[SavedItemsManager] Cleared all saved items")
     }
 
@@ -498,6 +533,10 @@ class SavedItemsManager: ObservableObject {
             userDefaults.set(data, forKey: Keys.savedGroupFlows)
             userDefaults.set(savedGroupFlows.map { $0.id }, forKey: Keys.savedGroupFlowIds)
         }
+    }
+
+    private func persistSavedAt() {
+        userDefaults.set(savedAtById.mapValues { $0.timeIntervalSince1970 }, forKey: Keys.savedAtById)
     }
 
     private func persistVisibleCityIds() {
