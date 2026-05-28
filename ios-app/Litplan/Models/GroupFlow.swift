@@ -27,6 +27,10 @@ struct GroupFlow: Identifiable, Codable {
     var weekday: String? = nil // "Friday", "Saturday", etc.
     var planType: String? = nil // "couples", "friend_groups", etc.
 
+    // Vibez theme this plan was generated for, e.g. "Rooftop", "Nightlife", "Date Night".
+    // Set at generation time; surfaced as a tag on the card and detail views.
+    var theme: String? = nil
+
     // Computed property for convenience
     var groupFlowId: String { id }
 
@@ -140,17 +144,20 @@ struct GroupFlow: Identifiable, Codable {
         case isWeekend
         case weekday
         case planType
+        case theme
     }
 
     // Computed properties for UI convenience
+    /// Human-friendly duration, e.g. "5 hrs", "30 mins", "1 hr 30 mins".
+    /// Singular/plural pulled per unit so "1 hr" reads naturally next to "2 hrs".
     var formattedDuration: String {
         let hours = totalDuration / 60
         let minutes = totalDuration % 60
-        if minutes == 0 {
-            return "\(hours)h"
-        } else {
-            return "\(hours)h \(minutes)m"
-        }
+        let hourPart = hours > 0 ? "\(hours) \(hours == 1 ? "hr" : "hrs")" : ""
+        let minutePart = minutes > 0 ? "\(minutes) \(minutes == 1 ? "min" : "mins")" : ""
+        if hourPart.isEmpty { return minutePart.isEmpty ? "0 mins" : minutePart }
+        if minutePart.isEmpty { return hourPart }
+        return "\(hourPart) \(minutePart)"
     }
 
     var formattedCost: String {
@@ -215,6 +222,23 @@ struct GroupFlow: Identifiable, Codable {
 
     var sortedActivities: [Activity] {
         activities.sorted { $0.order < $1.order }
+    }
+
+    /// End time of the plan in 12-hour format (e.g. "2 AM", "11:30 PM").
+    /// Derived from the last activity's `startTime` + `duration`. Returns nil
+    /// when the data isn't parseable (caller hides the pill in that case).
+    var endTime12h: String? {
+        guard let last = sortedActivities.last else { return nil }
+        let parts = last.startTime.split(separator: ":").map { Int($0) ?? -1 }
+        guard parts.count >= 2, parts[0] >= 0, parts[1] >= 0 else { return nil }
+        let totalMinutes = parts[0] * 60 + parts[1] + last.duration
+        let endHours = ((totalMinutes / 60) % 24 + 24) % 24
+        let endMinutes = totalMinutes % 60
+        let period = endHours < 12 ? "AM" : "PM"
+        let display12: Int = (endHours == 0) ? 12 : (endHours <= 12 ? endHours : endHours - 12)
+        return endMinutes == 0
+            ? "\(display12) \(period)"
+            : "\(display12):\(String(format: "%02d", endMinutes)) \(period)"
     }
 }
 

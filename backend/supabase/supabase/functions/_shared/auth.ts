@@ -107,7 +107,7 @@ export async function getUserId(req: Request): Promise<string | null> {
 export async function isPremiumUser(userId: string, supabase: any): Promise<boolean> {
   const { data, error } = await supabase
     .from('Subscription')
-    .select('tier, status, expiresAt')
+    .select('tier, status, expiresDate, expiryDate')
     .eq('userId', userId)
     .single();
 
@@ -115,10 +115,11 @@ export async function isPremiumUser(userId: string, supabase: any): Promise<bool
     return false;
   }
 
-  // Check if subscription is active and not expired
-  const isActive = data.status === 'active' || data.status === 'trialing';
-  const notExpired = !data.expiresAt || new Date(data.expiresAt) > new Date();
-  const isPro = data.tier === 'pro' || data.tier === 'premium';
+  // Statuses/tiers are UPPERCASE enum values; expiry may live in either column.
+  const expiry = data.expiresDate ?? data.expiryDate ?? null;
+  const isActive = ['PRO', 'TRIAL', 'GRACE_PERIOD'].includes(data.status);
+  const notExpired = !expiry || new Date(expiry) > new Date();
+  const isPro = data.tier === 'PRO';
 
   return isActive && notExpired && isPro;
 }

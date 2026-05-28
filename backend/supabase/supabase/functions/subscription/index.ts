@@ -75,33 +75,37 @@ async function getSubscriptionStatus(supabase: any, userId: string) {
     return errorResponse('Failed to fetch subscription', 500, 'DATABASE_ERROR');
   }
 
+  // Expiry can live in either column depending on when the row was written.
+  const expiry = subscription?.expiresDate ?? subscription?.expiryDate ?? null;
+
   // Calculate days until expiry
   let daysUntilExpiry: number | null = null;
-  if (subscription?.expiresAt) {
-    const expiresAt = new Date(subscription.expiresAt);
+  if (expiry) {
+    const expiresAt = new Date(expiry);
     const now = new Date();
     daysUntilExpiry = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  // Determine if subscription is active
+  // Determine if subscription is active. Statuses are UPPERCASE enum values.
+  const ACTIVE_STATUSES = ['PRO', 'TRIAL', 'GRACE_PERIOD'];
   const isActive = subscription
-    ? (subscription.status === 'active' || subscription.status === 'trialing') &&
-      (!subscription.expiresAt || new Date(subscription.expiresAt) > new Date())
+    ? ACTIVE_STATUSES.includes(subscription.status) &&
+      (!expiry || new Date(expiry) > new Date())
     : false;
 
   const data = {
     hasSubscription: !!subscription,
     isActive,
-    tier: subscription?.tier || 'free',
+    tier: subscription?.tier || 'FREE',
     status: subscription?.status || 'none',
     productId: subscription?.productId || null,
     purchaseDate: subscription?.purchaseDate || null,
-    expiresDate: subscription?.expiresAt || null,
+    expiresDate: expiry,
     environment: subscription?.environment || null,
     autoRenew: subscription?.autoRenew ?? false,
     daysUntilExpiry,
     entitlements: {
-      isPro: isActive && (subscription?.tier === 'pro' || subscription?.tier === 'premium'),
+      isPro: isActive && subscription?.tier === 'PRO',
       maxCitiesPerWeek: isActive ? 999 : 3,
       canAccessPremiumContent: isActive,
       canSaveUnlimited: isActive,
@@ -115,41 +119,53 @@ async function getSubscriptionStatus(supabase: any, userId: string) {
  * Verify and sync StoreKit 2 transaction
  */
 async function verifySubscription(supabase: any, userId: string, body: any) {
-  const {
-    transactionId,
-    originalTransactionId,
-    productId,
-    purchaseDate,
-    expirationDate,
-    environment,
-    autoRenewStatus,
-    jwsRepresentation,
-  } = body;
+  // iOS sends snake_case keys (transaction_id, product_id, expires_date, ...).
+  // Tolerate camelCase too so any other caller / future payload still works.
+  const transactionId = body.transaction_id ?? body.transactionId;
+  const productId = body.product_id ?? body.productId;
+  const originalTransactionId =
+    body.original_transaction_id ?? body.originalTransactionId ?? transactionId;
+  const purchaseDate = body.purchase_date ?? body.purchaseDate;
+  const expiration =
+    body.expires_date ?? body.expirationDate ?? body.expiresDate ?? null;
+  const environment = body.environment ?? 'production';
+  const autoRenew = body.autoRenewStatus ?? body.auto_renew_status ?? true;
+  const isTrial = body.is_trial ?? body.isTrial ?? false;
 
   // Validate required fields
   if (!transactionId || !productId) {
     return errorResponse('Missing required fields', 400, 'BAD_REQUEST');
   }
 
-  // Determine tier from product ID
-  const tier = productId.includes('yearly') ? 'pro' : 'pro';
-  const status = 'active';
+  // Both monthly and yearly map to the PRO tier. Status reflects trial vs paid.
+  // These MUST be valid SubscriptionStatus/SubscriptionTier enum values (UPPERCASE).
+  const tier = 'PRO';
+  const status = isTrial ? 'TRIAL' : 'PRO';
+  const now = new Date().toISOString();
 
-  // Upsert subscription
+  // Upsert by userId. `id` has a DB default (gen_random_uuid()::text) and is
+  // omitted here so the PK stays stable across updates. Expiry is written to
+  // BOTH expiresDate and expiryDate to satisfy every read path. supabaseUserId
+  // is NOT NULL, so it is always populated with the auth user id.
   const { data: subscription, error } = await supabase
     .from('Subscription')
     .upsert({
       userId,
+      supabaseUserId: userId,
       tier,
       status,
       productId,
-      transactionId,
-      originalTransactionId,
-      purchaseDate: purchaseDate || new Date().toISOString(),
-      expiresAt: expirationDate,
-      environment: environment || 'production',
-      autoRenew: autoRenewStatus ?? true,
-      updatedAt: new Date().toISOString(),
+      transactionId: String(transactionId),
+      originalTransactionId: originalTransactionId ? String(originalTransactionId) : null,
+      startDate: purchaseDate || now,
+      purchaseDate: purchaseDate || now,
+      expiresDate: expiration,
+      expiryDate: expiration,
+      environment,
+      autoRenew,
+      groupPlansAccess: true,
+      savedCitiesAccess: true,
+      updatedAt: now,
     }, {
       onConflict: 'userId',
     })
@@ -161,7 +177,7 @@ async function verifySubscription(supabase: any, userId: string, body: any) {
     return errorResponse('Failed to verify subscription', 500, 'DATABASE_ERROR');
   }
 
-  console.log(`[subscription] Verified subscription for user: ${userId}, product: ${productId}`);
+  console.log(`[subscription] Verified subscription for user: ${userId}, product: ${productId}, status: ${status}`);
 
   return jsonResponse({
     success: true,
@@ -169,10 +185,11 @@ async function verifySubscription(supabase: any, userId: string, body: any) {
       subscription: {
         id: subscription.id,
         tier: subscription.tier,
-        status: subscription.status,
+        // iOS maps SubscriptionState(rawValue: status.lowercased()); 'active' grants access.
+        status: 'active',
         productId: subscription.productId,
         purchaseDate: subscription.purchaseDate,
-        expiresDate: subscription.expiresAt,
+        expiresDate: subscription.expiresDate ?? subscription.expiryDate,
         environment: subscription.environment,
         autoRenew: subscription.autoRenew,
       },
@@ -208,15 +225,16 @@ async function restorePurchases(supabase: any, userId: string, body: any) {
 
   // Process each transaction and find the most recent valid subscription
   for (const transaction of transactions) {
-    const {
-      transactionId,
-      originalTransactionId,
-      productId,
-      purchaseDate,
-      expirationDate,
-      environment,
-      autoRenewStatus,
-    } = transaction;
+    // Tolerate snake_case and camelCase from any client.
+    const transactionId = transaction.transaction_id ?? transaction.transactionId;
+    const originalTransactionId =
+      transaction.original_transaction_id ?? transaction.originalTransactionId ?? transactionId;
+    const productId = transaction.product_id ?? transaction.productId;
+    const purchaseDate = transaction.purchase_date ?? transaction.purchaseDate;
+    const expirationDate =
+      transaction.expires_date ?? transaction.expirationDate ?? transaction.expiresDate ?? null;
+    const environment = transaction.environment;
+    const autoRenewStatus = transaction.autoRenewStatus ?? transaction.auto_renew_status;
 
     if (!transactionId || !productId) {
       console.log('[subscription] Skipping invalid transaction:', transaction);
@@ -263,10 +281,10 @@ async function restorePurchases(supabase: any, userId: string, body: any) {
           subscription: {
             id: existingSubscription.id,
             tier: existingSubscription.tier,
-            status: existingSubscription.status,
+            status: 'active',
             productId: existingSubscription.productId,
             purchaseDate: existingSubscription.purchaseDate,
-            expiresDate: existingSubscription.expiresAt,
+            expiresDate: existingSubscription.expiresDate ?? existingSubscription.expiryDate,
             environment: existingSubscription.environment,
             autoRenew: existingSubscription.autoRenew,
           },
@@ -285,24 +303,33 @@ async function restorePurchases(supabase: any, userId: string, body: any) {
     });
   }
 
-  // Upsert the most recent valid subscription for this user
-  const tier = mostRecentTransaction.productId.includes('yearly') ? 'pro' : 'pro';
-  const status = 'active';
+  // Upsert the most recent valid subscription for this user.
+  // Same column/enum contract as verifySubscription.
+  const tier = 'PRO';
+  const status = 'PRO';
+  const now = new Date().toISOString();
 
   const { data: subscription, error } = await supabase
     .from('Subscription')
     .upsert({
       userId,
+      supabaseUserId: userId,
       tier,
       status,
       productId: mostRecentTransaction.productId,
-      transactionId: mostRecentTransaction.transactionId,
-      originalTransactionId: mostRecentTransaction.originalTransactionId,
+      transactionId: String(mostRecentTransaction.transactionId),
+      originalTransactionId: mostRecentTransaction.originalTransactionId
+        ? String(mostRecentTransaction.originalTransactionId)
+        : null,
+      startDate: mostRecentTransaction.purchaseDate,
       purchaseDate: mostRecentTransaction.purchaseDate,
-      expiresAt: mostRecentTransaction.expirationDate,
-      environment: mostRecentTransaction.environment,
+      expiresDate: mostRecentTransaction.expirationDate,
+      expiryDate: mostRecentTransaction.expirationDate,
+      environment: mostRecentTransaction.environment || 'production',
       autoRenew: mostRecentTransaction.autoRenewStatus,
-      updatedAt: new Date().toISOString(),
+      groupPlansAccess: true,
+      savedCitiesAccess: true,
+      updatedAt: now,
     }, {
       onConflict: 'userId',
     })
@@ -323,10 +350,10 @@ async function restorePurchases(supabase: any, userId: string, body: any) {
       subscription: {
         id: subscription.id,
         tier: subscription.tier,
-        status: subscription.status,
+        status: 'active',
         productId: subscription.productId,
         purchaseDate: subscription.purchaseDate,
-        expiresDate: subscription.expiresAt,
+        expiresDate: subscription.expiresDate ?? subscription.expiryDate,
         environment: subscription.environment,
         autoRenew: subscription.autoRenew,
       },

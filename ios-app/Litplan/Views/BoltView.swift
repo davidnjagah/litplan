@@ -145,6 +145,12 @@ struct BoltView: View {
     /// Controls card entrance animation
     /// Initialize to true since we have data immediately
     @State private var cardAppeared = true
+    /// Drives the "new plan ready" attention effect on the card; auto-clears a few seconds
+    /// after a generation (or when the user taps the card).
+    @State private var showNewPlanHighlight = false
+    /// Animated "tap the card" hint. Constant — always on, every user, every generation,
+    /// loops until the card view goes away.
+    @State private var showTapHint: Bool = true
 
     /// Opacity for background glow animation (0.5 to 0.8)
     @State private var backgroundGlowOpacity: Double = 0.5
@@ -219,6 +225,7 @@ struct BoltView: View {
                 VStack(spacing: 6) {
                     tokenIndicator
                     tokenSubtitle
+                    refreshTokensButton
                 }
                 .padding(.bottom, 8)
 
@@ -412,8 +419,11 @@ struct BoltView: View {
                     motionManager: motionManager,
                     onTap: {
                         handleCardTap()
-                    }
+                    },
+                    highlightNew: showNewPlanHighlight,
+                    showTapHint: showTapHint
                 )
+                .id(groupFlow.id) // fresh card per plan so the new-plan attention effect replays
 
                 // Save button overlay
                 saveButton
@@ -475,6 +485,40 @@ struct BoltView: View {
                             .stroke(Color.white.opacity(0.07), lineWidth: 1)
                     )
             )
+        }
+    }
+
+    /// Manually re-sync Vibez token data with the database (signed-in / Pro users).
+    @ViewBuilder
+    private var refreshTokensButton: some View {
+        if subscriptionManager.isProUser || isSignedIn {
+            Button {
+                guard !tokenManager.isSyncing else { return }
+                HapticManager.shared.light()
+                Task {
+                    await tokenManager.loadTokensAsync()
+                    tokenManager.loadFreeTokenState()
+                    toast = ToastData(type: .info, message: "Vibez tokens refreshed")
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11, weight: .semibold))
+                        .rotationEffect(.degrees(tokenManager.isSyncing ? 360 : 0))
+                        .animation(
+                            tokenManager.isSyncing
+                                ? .linear(duration: 0.8).repeatForever(autoreverses: false)
+                                : .default,
+                            value: tokenManager.isSyncing
+                        )
+                    Text(tokenManager.isSyncing ? "Refreshing…" : "Refresh tokens")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundColor(.white.opacity(0.55))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(tokenManager.isSyncing)
+            .accessibilityLabel("Refresh Vibez token data")
         }
     }
 
@@ -686,6 +730,9 @@ struct BoltView: View {
 
     private func handleCardTap() {
         HapticManager.shared.medium()
+        // Keep showNewPlanHighlight true → the NEW badge persists after tap. The card
+        // itself stops its pulse internally (Parallax3DCard.stopAttentionPulse).
+        showTapHint = false
         showDetailedFlow = true
     }
 
@@ -744,7 +791,11 @@ struct BoltView: View {
 
         Task {
             do {
-                let groupFlow = try await callBoltPipeline(city: city, theme: theme)
+                var groupFlow = try await callBoltPipeline(city: city, theme: theme)
+                // Tag the plan with the Vibez theme it was generated for (if not already set upstream).
+                if groupFlow.theme?.isEmpty ?? true {
+                    groupFlow.theme = theme.name
+                }
 
                 await MainActor.run {
                     // SUCCESS: consume token only after successful generation
@@ -758,6 +809,12 @@ struct BoltView: View {
                     VibezHistoryManager.shared.addGeneration(groupFlow)
                     isGenerating = false
 
+                    // Fire the "new plan ready" attention effect. It persists until the user
+                    // taps the card to open the plan (cleared in handleCardTap).
+                    showNewPlanHighlight = true
+                    // Re-arm the hand-tap hint for every new generation (no gating — every
+                    // user, every generation). Dismissed when the card is tapped.
+                    showTapHint = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         withAnimation {
                             cardAppeared = true

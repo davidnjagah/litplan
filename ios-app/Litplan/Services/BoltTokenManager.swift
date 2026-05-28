@@ -295,25 +295,32 @@ class BoltTokenManager: ObservableObject {
             let tokens = try await fetchTokensFromDatabase(userId: userId)
             totalGenerations = tokens.totalGenerations
 
-            // Guard against stale server data overwriting a fresh upgrade.
-            // Two cases where local should win:
-            //  1. Local subscriptionStartDate is newer than server's cycleStartDate (server is behind)
-            //  2. Local subscriptionStartDate exists but server returned no cycleStartDate yet
-            //     (server hasn't processed the upgrade at all)
-            let localIsMoreRecent: Bool
+            // Protect a just-completed Pro upgrade from being overwritten before the
+            // server registers it — but ONLY when local actually has MORE tokens than
+            // the server. The server count is otherwise authoritative.
+            //
+            // Previously this kept the local count whenever the local cycle was newer
+            // than the server's cycleStartDate. For a pre-existing user that condition
+            // is permanently true after upgrading (their server cycle predates the
+            // upgrade), so the app would ignore the server's real balance forever and
+            // could get stuck showing 0. Gating on `tokenCount > serverCount` fixes that
+            // while still protecting the brief window where local has freshly-granted
+            // upgrade tokens the server hasn't applied yet.
+            let serverCount = tokens.tokenCount
+            let freshUpgradeNotYetOnServer: Bool
             if let localStart = subscriptionStartDate, let serverCycle = tokens.cycleStartDate {
-                localIsMoreRecent = localStart > serverCycle
+                freshUpgradeNotYetOnServer = localStart > serverCycle
             } else if subscriptionStartDate != nil && tokens.cycleStartDate == nil {
                 // Local cycle was just set (fresh upgrade), server hasn't registered it yet
-                localIsMoreRecent = true
+                freshUpgradeNotYetOnServer = true
             } else {
-                localIsMoreRecent = false
+                freshUpgradeNotYetOnServer = false
             }
 
-            if localIsMoreRecent {
-                print("[BoltTokenManager] Fresh upgrade — server not yet updated, keeping local \(tokenCount) tokens")
+            if freshUpgradeNotYetOnServer && tokenCount > serverCount {
+                print("[BoltTokenManager] Fresh upgrade — keeping local \(tokenCount) tokens (server has \(serverCount))")
             } else {
-                tokenCount = tokens.tokenCount
+                tokenCount = serverCount
             }
 
             // Set subscription start date from database if available

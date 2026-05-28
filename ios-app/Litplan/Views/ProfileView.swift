@@ -26,6 +26,9 @@ struct ProfileView: View {
     @State private var showSubscriptionManagement = false
     @State private var showGeneratedVibezHistory = false
     @State private var showVibezPaywall = false
+    @State private var isRestoring = false
+    @State private var showRestoreResult = false
+    @State private var restoreResultMessage = ""
 
     // Computed properties for user data
     private var userName: String {
@@ -102,6 +105,11 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showGeneratedVibezHistory) {
                 GeneratedVibezView()
+            }
+            .alert("Restore Purchases", isPresented: $showRestoreResult) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(restoreResultMessage)
             }
             .alert("Sign Out", isPresented: $showSignOutConfirmation) {
                 Button("Cancel", role: .cancel) { }
@@ -247,6 +255,28 @@ struct ProfileView: View {
         .accessibilityHint("Opens subscription options to upgrade your account")
     }
 
+    // MARK: - Restore Purchases
+
+    /// Restore the user's App Store subscription (re-syncs entitlement + records it server-side).
+    private func handleRestorePurchases() {
+        guard !isRestoring else { return }
+        HapticManager.shared.light()
+        isRestoring = true
+        Task {
+            defer { isRestoring = false }
+            do {
+                try await subscriptionManager.restorePurchases()
+                restoreResultMessage = subscriptionManager.isProUser
+                    ? "Your subscription has been restored."
+                    : "No active subscription found for this Apple ID."
+            } catch {
+                restoreResultMessage = subscriptionManager.errorMessage
+                    ?? "We couldn't restore your purchases. Please try again."
+            }
+            showRestoreResult = true
+        }
+    }
+
     // MARK: - Settings Section
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
@@ -279,11 +309,11 @@ struct ProfileView: View {
                 }
 
                 settingsRow(
-                    icon: "creditcard",
-                    title: "Subscription Management",
+                    icon: "arrow.clockwise",
+                    title: isRestoring ? "Restoring…" : "Restore Purchases",
                     iconColor: .accentSecondary
                 ) {
-                    showSubscriptionManagement = true
+                    handleRestorePurchases()
                 }
 
                 settingsRow(
