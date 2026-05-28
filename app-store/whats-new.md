@@ -1,26 +1,42 @@
-# What's New — LitPlanz v2.1
+# What's New — LitPlanz v2.2
 
 ---
 
-**A new look while we find your spots**
+**A clearer Vibez card**
 
-While we search for the best venues for you, a brand-new animation traces your route from top to bottom, lighting up each location as it lands. A small touch that makes the wait feel a little more magical.
+The plan card you generate now has a clearer tap target, a glow when a fresh plan lands, and a small pill that tells you exactly when the night wraps — so you know at a glance if it fits your evening.
 
-**Instant Vibez for popular cities**
+**Themes show on every plan**
 
-When you or others have generated a similar Vibez recently, your plan now appears in under a second instead of running the full search. You'll see the difference most for cities like Berlin, NYC, Nairobi, and other places where lots of plans are being made.
+Every Vibez plan now carries the theme you generated it for as a tag (Rooftop, Nightlife, Date Night and friends), so you instantly remember the vibe you were going for.
 
-**Better maps, smarter directions**
+**Find old plans faster**
 
-Tap the map button on any plan to open the full multi-stop route in Google Maps, with every stop connected and ready to navigate. Tap an individual pin to open just that one venue in Apple Maps — perfect when you only need directions to one spot.
+Your Generated Vibez history and your Saved tab are now grouped by date — Today, Yesterday, This Week, This Month, Earlier — so the night you're looking for is one section away.
 
-**Routes that follow real streets**
+**Quick token refresh**
 
-The embedded route preview on every plan now traces actual streets and roads — no matter the city, no matter the country. Smoother, more accurate, and way more useful to look at.
+A new "Refresh tokens" button under the Vibez counter, in case your weekly count ever looks out of sync.
 
-**Newest saves at the top**
+**Recent cities at your fingertips**
 
-Cities, plans, and Vibez you've saved most recently now appear at the top of your Saved tab, so what you're thinking about most stays within easy reach.
+The city search on Vibez now remembers your last ten cities, newest first — tap one to skip the typing.
+
+**Restore your subscription from Settings**
+
+Restoring purchases now lives in your Profile, so you no longer need to open the paywall to recover an active subscription.
+
+**Subscriptions sync more reliably**
+
+Big behind-the-scenes work so your trial and Pro purchases are properly recorded and survive across launches.
+
+**A friendlier paywall**
+
+We only advertise the free trial when you're actually eligible for it — no more "Start Free Trial" buttons that would have charged you in full.
+
+**Heads-up for new updates**
+
+A gentle notice on launch when a fresh version of LitPlanz is available on the App Store.
 
 **Bug fixes and stability improvements**
 
