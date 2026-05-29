@@ -61,6 +61,27 @@ class APIService: ObservableObject {
 
     static let shared = APIService()
 
+    // Date parsers used by the lenient JSON decoder below.
+    fileprivate static let isoWithFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    fileprivate static let isoBasic: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+    /// Parses "yyyy-MM-dd'T'HH:mm:ss" (no timezone — Postgres `timestamp without time
+    /// zone` over JSON). Forced to UTC so the value matches what the column holds.
+    fileprivate static let naiveUTC: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
     // MARK: - Published Properties
 
     @Published var isLoading: Bool = false
@@ -81,7 +102,25 @@ class APIService: ObservableObject {
         self.session = URLSession(configuration: configuration)
 
         self.decoder = JSONDecoder()
-        self.decoder.dateDecodingStrategy = .iso8601
+        // Lenient ISO8601 date decoder — accepts dates with fractional seconds, plain
+        // ISO with Z, and "naive" timestamps with no timezone (interpreted as UTC).
+        // The last is what Postgres `timestamp without time zone` produces when an
+        // edge fn returns the raw column value (e.g. "2026-05-26T10:39:32"). Without
+        // this fallback, those responses silently fail to decode and downstream logic
+        // (Pro reconcile, etc.) treats the call as having errored.
+        self.decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let raw = try container.decode(String.self)
+            if let d = APIService.isoWithFractional.date(from: raw) { return d }
+            if let d = APIService.isoBasic.date(from: raw) { return d }
+            if let d = APIService.naiveUTC.date(from: raw) { return d }
+            // Last-ditch: try appending Z if the string just lacks the designator
+            if let d = APIService.isoBasic.date(from: raw + "Z") { return d }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Could not parse date '\(raw)' as ISO8601 or naive UTC"
+            )
+        }
         // Note: Backend sends camelCase keys (venueName, cityName, etc.)
         // so we don't use .convertFromSnakeCase - keys match Swift properties directly
 

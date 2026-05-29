@@ -61,6 +61,20 @@ serve(async (req: Request) => {
 });
 
 /**
+ * Coerce a Postgres `timestamp without time zone` value (which Supabase returns as
+ * "YYYY-MM-DDTHH:mm:ss", no Z) into a proper ISO8601 UTC string. Without this, iOS's
+ * strict `JSONDecoder` would reject the date and downstream Pro reconcile logic would
+ * treat the response as having failed.
+ */
+function toIsoUtc(s: string | null | undefined): string | null {
+  if (!s) return null;
+  if (typeof s !== 'string') return s as any;
+  if (s.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(s)) return s;
+  // Append Z so it parses as UTC consistently on both sides
+  return s + 'Z';
+}
+
+/**
  * Get current subscription status
  */
 async function getSubscriptionStatus(supabase: any, userId: string) {
@@ -99,8 +113,8 @@ async function getSubscriptionStatus(supabase: any, userId: string) {
     tier: subscription?.tier || 'FREE',
     status: subscription?.status || 'none',
     productId: subscription?.productId || null,
-    purchaseDate: subscription?.purchaseDate || null,
-    expiresDate: expiry,
+    purchaseDate: toIsoUtc(subscription?.purchaseDate),
+    expiresDate: toIsoUtc(expiry),
     environment: subscription?.environment || null,
     autoRenew: subscription?.autoRenew ?? false,
     daysUntilExpiry,
@@ -188,8 +202,8 @@ async function verifySubscription(supabase: any, userId: string, body: any) {
         // iOS maps SubscriptionState(rawValue: status.lowercased()); 'active' grants access.
         status: 'active',
         productId: subscription.productId,
-        purchaseDate: subscription.purchaseDate,
-        expiresDate: subscription.expiresDate ?? subscription.expiryDate,
+        purchaseDate: toIsoUtc(subscription.purchaseDate),
+        expiresDate: toIsoUtc(subscription.expiresDate ?? subscription.expiryDate),
         environment: subscription.environment,
         autoRenew: subscription.autoRenew,
       },
@@ -283,8 +297,8 @@ async function restorePurchases(supabase: any, userId: string, body: any) {
             tier: existingSubscription.tier,
             status: 'active',
             productId: existingSubscription.productId,
-            purchaseDate: existingSubscription.purchaseDate,
-            expiresDate: existingSubscription.expiresDate ?? existingSubscription.expiryDate,
+            purchaseDate: toIsoUtc(existingSubscription.purchaseDate),
+            expiresDate: toIsoUtc(existingSubscription.expiresDate ?? existingSubscription.expiryDate),
             environment: existingSubscription.environment,
             autoRenew: existingSubscription.autoRenew,
           },
@@ -352,8 +366,8 @@ async function restorePurchases(supabase: any, userId: string, body: any) {
         tier: subscription.tier,
         status: 'active',
         productId: subscription.productId,
-        purchaseDate: subscription.purchaseDate,
-        expiresDate: subscription.expiresDate ?? subscription.expiryDate,
+        purchaseDate: toIsoUtc(subscription.purchaseDate),
+        expiresDate: toIsoUtc(subscription.expiresDate ?? subscription.expiryDate),
         environment: subscription.environment,
         autoRenew: subscription.autoRenew,
       },
