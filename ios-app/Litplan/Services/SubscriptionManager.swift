@@ -521,12 +521,16 @@ class SubscriptionManager: ObservableObject {
     /// Returns **false when nobody is signed in to the app** — this is what prevents
     /// the Pro state from leaking between sign-out and the next sign-in.
     private func transactionBelongsToCurrentAppUser(_ transaction: Transaction) -> Bool {
-        guard let currentUserId = SupabaseManager.shared.currentUser?.id,
-              let currentUserUUID = UUID(uuidString: currentUserId) else {
+        // Read directly from the Supabase client (not SupabaseManager.shared.currentUser)
+        // to avoid a race: both this manager and SupabaseManager subscribe to the same
+        // auth stream, and SupabaseManager's mapped `currentUser` may not be updated yet
+        // when this fn runs. `client.auth.currentUser` is the underlying source and is
+        // synchronously up-to-date upon `.signedIn`.
+        guard let user = SupabaseManager.shared.client?.auth.currentUser else {
             return false // no app user → never grant Pro from StoreKit
         }
         if let txnToken = transaction.appAccountToken {
-            return txnToken == currentUserUUID
+            return txnToken == user.id
         }
         return true // legacy v2.1 purchase — honour
     }
@@ -567,16 +571,45 @@ class SubscriptionManager: ObservableObject {
     /// Re-evaluate Pro for the user who just signed in. Starts from "no Pro" so a
     /// previous user's state can't leak forward, then layers on test/manual grants
     /// + StoreKit (filtered) + backend status.
+    ///
+    /// Reads `client.auth.currentUser` directly rather than `SupabaseManager.shared.currentUser`
+    /// — both managers subscribe to the same auth stream and the wrapper might not be
+    /// updated yet when this fn runs. The underlying client property is synchronously
+    /// up-to-date upon `.signedIn`.
     private func reEvaluateForCurrentUser() async {
         resetForSignedOutUser()
-        checkTestProAccess()
-        checkManualProAccess()
-        if !isProUser {
-            await checkSubscriptionStatus()
+
+        guard let user = SupabaseManager.shared.client?.auth.currentUser else {
+            saveCacheState(.free)
+            return
         }
-        if !isProUser {
-            await reconcileWithBackendStatus()
+
+        // Manual Pro grant via app_metadata (demo / comp accounts set by an admin)
+        if user.appMetadata["is_pro"]?.boolValue == true {
+            grantManualProAccess()
+            saveCacheState(.active)
+            return
         }
+
+        // Test Pro grant by email allowlist (debug builds only)
+        if Config.enableStoreKitTesting,
+           let email = user.email?.lowercased(),
+           Config.testProUserEmails.map({ $0.lowercased() }).contains(email) {
+            grantTestProAccess()
+            saveCacheState(.active)
+            return
+        }
+
+        // StoreKit entitlements (the appAccountToken filter inside also reads
+        // client.auth.currentUser directly, so it's race-free with this fn).
+        await checkSubscriptionStatus()
+        if isProUser {
+            saveCacheState(.active)
+            return
+        }
+
+        // Backend Subscription record fallback
+        await reconcileWithBackendStatus()
         saveCacheState(isProUser ? .active : .free)
     }
 
