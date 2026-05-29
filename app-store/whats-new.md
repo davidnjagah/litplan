@@ -1,4 +1,4 @@
-# What's New — LitPlanz v2.2
+# What's New — LitPlanz v2.3
 
 ---
 
@@ -28,7 +28,7 @@ Restoring purchases now lives in your Profile, so you no longer need to open the
 
 **Subscriptions sync more reliably**
 
-Big behind-the-scenes work so your trial and Pro purchases are properly recorded and survive across launches.
+Big behind-the-scenes work so your trial and Pro purchases are properly recorded, stay correctly linked to your account, and stick across launches — including the case where multiple accounts share a phone.
 
 **A friendlier paywall**
 
@@ -37,6 +37,10 @@ We only advertise the free trial when you're actually eligible for it — no mor
 **Heads-up for new updates**
 
 A gentle notice on launch when a fresh version of LitPlanz is available on the App Store.
+
+**Polished login layout**
+
+The Sign in with Apple, Sign in with Google, and Continue with Email buttons on the login screen now sit perfectly aligned across every iPhone size.
 
 **Bug fixes and stability improvements**
 
