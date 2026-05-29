@@ -62,19 +62,27 @@ class APIService: ObservableObject {
     static let shared = APIService()
 
     // Date parsers used by the lenient JSON decoder below.
-    fileprivate static let isoWithFractional: ISO8601DateFormatter = {
+    //
+    // Marked `nonisolated(unsafe)` so the `@Sendable` custom-decoder closure can
+    // capture them under Swift 6 strict concurrency. Both formatter types are
+    // documented as thread-safe for reads since iOS 7+ (`ISO8601DateFormatter`
+    // is explicitly thread-safe; `DateFormatter` is thread-safe once configured),
+    // so reading these immutable instances from any actor is safe.
+    nonisolated(unsafe) fileprivate static let isoWithFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
-    fileprivate static let isoBasic: ISO8601DateFormatter = {
+    nonisolated(unsafe) fileprivate static let isoBasic: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f
     }()
     /// Parses "yyyy-MM-dd'T'HH:mm:ss" (no timezone — Postgres `timestamp without time
     /// zone` over JSON). Forced to UTC so the value matches what the column holds.
-    fileprivate static let naiveUTC: DateFormatter = {
+    /// `DateFormatter` is Sendable on iOS 26.2+, but the property still needs
+    /// `nonisolated` so the `@Sendable` decoder closure can capture it.
+    nonisolated fileprivate static let naiveUTC: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         f.timeZone = TimeZone(identifier: "UTC")
