@@ -106,6 +106,11 @@ class SubscriptionManager: ObservableObject {
         // Set up app lifecycle observers for automatic refresh
         setupLifecycleObservers()
 
+        // Re-evaluate Pro on every Supabase auth state change (works for all login
+        // methods — Apple, Google, email). Closes the per-device Pro leak between
+        // app accounts on the same Apple ID.
+        observeAuthChanges()
+
         // Load products and check subscription status on init (fire-and-forget)
         // Use Task with @MainActor to ensure proper actor context
         Task { @MainActor [weak self] in
@@ -497,6 +502,84 @@ class SubscriptionManager: ObservableObject {
         }
     }
 
+    // MARK: - Auth-bound Pro evaluation
+    //
+    // The leak we're closing: StoreKit entitlements are tied to the device's Apple ID,
+    // not the app's auth user. Without the filter below, signing out of app account A
+    // and into account B on the same device would inherit A's Pro because StoreKit
+    // still reports the Apple-ID-bound entitlement. The filter binds entitlements to
+    // the current app user via `appAccountToken` (set at purchase since v2.2 = the
+    // Supabase user UUID). The auth observer makes this re-evaluate on every sign-in
+    // / sign-out for ALL login methods (Apple, Google, Email) — Supabase normalises
+    // them into a single `.signedIn` / `.signedOut` event.
+
+    /// True if this StoreKit transaction belongs to the user currently signed in to
+    /// our app. v2.2+ purchases carry `appAccountToken` = the Supabase user UUID;
+    /// legacy v2.1 purchases (no token) are accepted to avoid revoking Pro from
+    /// existing buyers — that's a one-time pre-v2.2 exposure that auto-heals once
+    /// the user next renews or taps Restore Purchases on v2.2.
+    /// Returns **false when nobody is signed in to the app** — this is what prevents
+    /// the Pro state from leaking between sign-out and the next sign-in.
+    private func transactionBelongsToCurrentAppUser(_ transaction: Transaction) -> Bool {
+        guard let currentUserId = SupabaseManager.shared.currentUser?.id,
+              let currentUserUUID = UUID(uuidString: currentUserId) else {
+            return false // no app user → never grant Pro from StoreKit
+        }
+        if let txnToken = transaction.appAccountToken {
+            return txnToken == currentUserUUID
+        }
+        return true // legacy v2.1 purchase — honour
+    }
+
+    /// Re-evaluate Pro every time the Supabase auth state changes. Catches every
+    /// login method (Apple ID token, Google ID token, email/password, email signup)
+    /// because Supabase emits the same `.signedIn` event for all of them.
+    private func observeAuthChanges() {
+        Task { @MainActor [weak self] in
+            guard let self = self, let client = SupabaseManager.shared.client else { return }
+            for await (event, _) in client.auth.authStateChanges {
+                switch event {
+                case .signedOut:
+                    self.resetForSignedOutUser()
+                case .signedIn, .userUpdated:
+                    await self.reEvaluateForCurrentUser()
+                default:
+                    break
+                }
+            }
+        }
+    }
+
+    /// Reset all Pro state in-memory. Does NOT re-read StoreKit — that's the whole point
+    /// (`transactionBelongsToCurrentAppUser` would also return false without a current
+    /// user, but resetting first keeps state coherent immediately).
+    private func resetForSignedOutUser() {
+        isProUser = false
+        isTestMode = false
+        purchasedProductIDs.removeAll()
+        subscriptionState = .none
+        subscriptionExpirationDate = nil
+        currentSubscriptionType = nil
+        cacheState = .free
+        saveCacheState(.free)
+    }
+
+    /// Re-evaluate Pro for the user who just signed in. Starts from "no Pro" so a
+    /// previous user's state can't leak forward, then layers on test/manual grants
+    /// + StoreKit (filtered) + backend status.
+    private func reEvaluateForCurrentUser() async {
+        resetForSignedOutUser()
+        checkTestProAccess()
+        checkManualProAccess()
+        if !isProUser {
+            await checkSubscriptionStatus()
+        }
+        if !isProUser {
+            await reconcileWithBackendStatus()
+        }
+        saveCacheState(isProUser ? .active : .free)
+    }
+
     // MARK: - Subscription Status
 
     /// Refresh Pro status by checking StoreKit 2 entitlements
@@ -523,14 +606,15 @@ class SubscriptionManager: ObservableObject {
         var latestExpirationDate: Date?
         var detectedType: SubscriptionType?
 
-        // Check all current entitlements from StoreKit 2
-        // This works regardless of authentication state since entitlements are tied to Apple ID
+        // Check all current entitlements from StoreKit 2. Filter to only those that
+        // belong to the currently signed-in app user — this prevents Apple-ID-bound
+        // entitlements from leaking Pro between app accounts on a shared device.
         for await result in Transaction.currentEntitlements {
             do {
                 let transaction = try checkVerified(result)
 
-                // Check if transaction is for one of our products
-                if productIDs.contains(transaction.productID) {
+                // Check if transaction is for one of our products AND belongs to this app user
+                if productIDs.contains(transaction.productID) && transactionBelongsToCurrentAppUser(transaction) {
                     if Config.enableDebugLogging {
                         print("[SubscriptionManager] Found entitlement for product: \(transaction.productID)")
                     }
@@ -595,13 +679,15 @@ class SubscriptionManager: ObservableObject {
         var latestExpirationDate: Date?
         var detectedState: SubscriptionState = .none
 
-        // Check all current entitlements
+        // Check all current entitlements. Same app-user filter as refreshProStatus — only
+        // count entitlements whose appAccountToken matches the current Supabase user (or
+        // legacy v2.1 transactions without a token). Prevents Apple-ID leakage across accounts.
         for await result in Transaction.currentEntitlements {
             do {
                 let transaction = try checkVerified(result)
 
-                // Check if transaction is for one of our products
-                if productIDs.contains(transaction.productID) {
+                // Check if transaction is for one of our products AND belongs to this app user
+                if productIDs.contains(transaction.productID) && transactionBelongsToCurrentAppUser(transaction) {
                     activeProductIDs.insert(transaction.productID)
 
                     // Track the latest transaction
@@ -1092,11 +1178,11 @@ class SubscriptionManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: cacheTimestampKey)
 
         print("[SubscriptionManager] Pro cache cleared on logout")
-
-        // Re-check subscription state after clearing (user might have subscription tied to Apple ID)
-        Task { @MainActor in
-            await refreshSubscriptionState()
-        }
+        // NOTE: deliberately do NOT re-read StoreKit here. The device's Apple-ID-bound
+        // entitlement would re-grant Pro and leak to whoever signs in next on this
+        // device. The `observeAuthChanges()` flow owns post-logout / post-login Pro
+        // state now (`.signedOut` → resetForSignedOutUser; `.signedIn` →
+        // reEvaluateForCurrentUser, which applies the appAccountToken filter).
     }
 }
 
