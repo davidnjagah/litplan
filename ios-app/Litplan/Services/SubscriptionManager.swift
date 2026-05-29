@@ -221,12 +221,26 @@ class SubscriptionManager: ObservableObject {
     /// reports no active entitlement. Only grants Pro (never revokes) so a stale or
     /// unreachable backend can't strip access a paying user actually has.
     private func reconcileWithBackendStatus() async {
-        guard await getAuthTokenAsync() != nil else { return }
+        // The auth token may not be ready immediately after `.signedIn` — wait briefly
+        // and retry once. Without this, reEvaluateForCurrentUser could skip the server
+        // check entirely and incorrectly deny Pro to a user the server says is active.
+        var token = await getAuthTokenAsync()
+        if token == nil {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            token = await getAuthTokenAsync()
+        }
+        guard token != nil else {
+            print("[SubscriptionManager] reconcile: no auth token after retry — skipping backend check")
+            return
+        }
+
         do {
             let status = try await APIService.shared.getSubscriptionStatus()
-            // Server says active and (if dated) not expired.
             let notExpired = status.expiresAt.map { $0 > Date() } ?? true
-            guard status.hasActiveSubscription, notExpired else { return }
+            if !status.hasActiveSubscription || !notExpired {
+                print("[SubscriptionManager] reconcile: backend says NOT active (isActive=\(status.hasActiveSubscription), expires=\(status.expiresAt?.description ?? "nil"))")
+                return
+            }
 
             self.isProUser = true
             self.subscriptionState = .active
@@ -238,9 +252,9 @@ class SubscriptionManager: ObservableObject {
             }
             // Reflect restored Pro in the token balance.
             await BoltTokenManager.shared.loadTokensAsync()
-            print("[SubscriptionManager] Pro granted from backend Subscription record (StoreKit had no active entitlement)")
+            print("[SubscriptionManager] reconcile: Pro granted from backend (expires=\(status.expiresAt?.description ?? "n/a"))")
         } catch {
-            print("[SubscriptionManager] Backend status reconcile failed (non-fatal): \(error)")
+            print("[SubscriptionManager] reconcile: backend call failed (non-fatal): \(error)")
         }
     }
 
@@ -554,9 +568,14 @@ class SubscriptionManager: ObservableObject {
         }
     }
 
-    /// Reset all Pro state in-memory. Does NOT re-read StoreKit — that's the whole point
-    /// (`transactionBelongsToCurrentAppUser` would also return false without a current
-    /// user, but resetting first keeps state coherent immediately).
+    /// Comprehensive reset of Pro state — both in-memory AND persisted UserDefaults.
+    /// Does NOT re-read StoreKit (the appAccountToken filter would also reject without
+    /// a current user, but resetting first keeps state coherent immediately).
+    ///
+    /// Persisted clears matter because `.signedOut` can fire without going through
+    /// `AuthenticationManager.signOut()` — e.g. when a refresh token fails or a session
+    /// is revoked server-side. In those cases the explicit `clearProCache()` in signOut
+    /// wouldn't run, so this listener path is the safety net.
     private func resetForSignedOutUser() {
         isProUser = false
         isTestMode = false
@@ -565,51 +584,78 @@ class SubscriptionManager: ObservableObject {
         subscriptionExpirationDate = nil
         currentSubscriptionType = nil
         cacheState = .free
+
+        // Persisted Pro keys — wipe so a leak can't survive a session-expiry sign-out.
+        UserDefaults.standard.removeObject(forKey: "testProAccess")
+        UserDefaults.standard.removeObject(forKey: "manualProAccess")
+        UserDefaults.standard.removeObject(forKey: "subscriptionStatus")
+        UserDefaults.standard.removeObject(forKey: "cachedProAccess")
+        UserDefaults.standard.removeObject(forKey: cacheStateKey)
+        UserDefaults.standard.removeObject(forKey: cacheTimestampKey)
+
         saveCacheState(.free)
     }
 
     /// Re-evaluate Pro for the user who just signed in. Starts from "no Pro" so a
-    /// previous user's state can't leak forward, then layers on test/manual grants
-    /// + StoreKit (filtered) + backend status.
+    /// previous user's state can't leak forward.
     ///
-    /// Reads `client.auth.currentUser` directly rather than `SupabaseManager.shared.currentUser`
-    /// — both managers subscribe to the same auth stream and the wrapper might not be
-    /// updated yet when this fn runs. The underlying client property is synchronously
-    /// up-to-date upon `.signedIn`.
+    /// Order of grants — SERVER-FIRST, StoreKit as fallback:
+    /// 1. `app_metadata.is_pro` (admin-granted comp accounts)
+    /// 2. Test allowlist (debug builds only)
+    /// 3. Server `Subscription` table (the source of truth for paid Pro)
+    /// 4. StoreKit entitlements (fallback; appAccountToken-filtered)
+    ///
+    /// Why server first: StoreKit entitlements are Apple-ID-bound and can be missing
+    /// at the wrong moment (sandbox sub expired, simulator session lost the receipt,
+    /// purchase happened on a different appAccountToken). The server `Subscription`
+    /// row is per app account and authoritative for paying users.
+    ///
+    /// Reads `client.auth.currentUser` directly (not the SupabaseManager wrapper) to
+    /// avoid races with the parallel auth listener.
     private func reEvaluateForCurrentUser() async {
         resetForSignedOutUser()
 
         guard let user = SupabaseManager.shared.client?.auth.currentUser else {
+            print("[SubscriptionManager] reEvaluate: no signed-in user → not Pro")
             saveCacheState(.free)
             return
         }
+        let userIdShort = user.id.uuidString.lowercased().prefix(8)
+        print("[SubscriptionManager] reEvaluate for user \(userIdShort)…")
 
-        // Manual Pro grant via app_metadata (demo / comp accounts set by an admin)
+        // 1. Manual Pro via app_metadata.is_pro (admin-granted comp accounts)
         if user.appMetadata["is_pro"]?.boolValue == true {
+            print("[SubscriptionManager] → manual Pro from app_metadata.is_pro=true")
             grantManualProAccess()
             saveCacheState(.active)
             return
         }
 
-        // Test Pro grant by email allowlist (debug builds only)
+        // 2. Test Pro grant by email allowlist (debug builds only)
         if Config.enableStoreKitTesting,
            let email = user.email?.lowercased(),
            Config.testProUserEmails.map({ $0.lowercased() }).contains(email) {
+            print("[SubscriptionManager] → test Pro for allowlisted email")
             grantTestProAccess()
             saveCacheState(.active)
             return
         }
 
-        // StoreKit entitlements (the appAccountToken filter inside also reads
-        // client.auth.currentUser directly, so it's race-free with this fn).
-        await checkSubscriptionStatus()
+        // 3. Server Subscription record — source of truth for paid Pro.
+        await reconcileWithBackendStatus()
         if isProUser {
+            print("[SubscriptionManager] → Pro granted from backend Subscription record")
             saveCacheState(.active)
             return
         }
 
-        // Backend Subscription record fallback
-        await reconcileWithBackendStatus()
+        // 4. StoreKit fallback (filtered by appAccountToken)
+        await checkSubscriptionStatus()
+        if isProUser {
+            print("[SubscriptionManager] → Pro granted from StoreKit entitlement (appAccountToken match or legacy)")
+        } else {
+            print("[SubscriptionManager] → NOT Pro (no app_metadata, no server row, no StoreKit match)")
+        }
         saveCacheState(isProUser ? .active : .free)
     }
 
