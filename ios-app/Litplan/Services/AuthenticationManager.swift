@@ -760,9 +760,15 @@ class AuthenticationManager: NSObject, ObservableObject {
         UserDefaults.standard.set(false, forKey: Config.UserDefaultsKeys.guestMode)
         UserDefaults.standard.removeObject(forKey: Config.UserDefaultsKeys.cachedUserId)
 
-        // Clear Pro features cache to revert to free account settings
+        // Clear ALL per-user caches so the next user (any login method) can't inherit
+        // the prior account's state. Each manager also has its own .signedOut listener
+        // (which races with this code), but the explicit calls guarantee everything is
+        // wiped before the next auth event fires.
         SubscriptionManager.shared.clearProCache()
         BoltTokenManager.shared.clearData()
+        SavedItemsManager.shared.clearAllSavedItems()
+        VibezHistoryManager.shared.clearHistory()
+        SearchHistoryManager.shared.clearHistory()
 
         if Config.enableDebugLogging {
             print("[AuthenticationManager] User signed out")
