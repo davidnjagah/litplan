@@ -379,6 +379,15 @@ class SubscriptionManager: ObservableObject {
             // Capture pre-purchase state to detect free → Pro transition
             let wasProBeforePurchase = isProUser
 
+            // Determine up front whether this purchase begins a free trial, so the
+            // TikTok conversion fired below distinguishes StartTrial from Subscribe.
+            // Eligibility must be checked before the purchase, as it flips after.
+            var willStartTrial = false
+            if let sub = product.subscription,
+               sub.introductoryOffer?.paymentMode == .freeTrial {
+                willStartTrial = await sub.isEligibleForIntroOffer
+            }
+
             // Attach the Supabase user id as appAccountToken. Apple echoes it back in
             // the transaction AND in App Store Server Notifications, letting the webhook
             // map server-side subscription events directly to this user.
@@ -410,6 +419,14 @@ class SubscriptionManager: ObservableObject {
                 if isProUser && !wasProBeforePurchase {
                     BoltTokenManager.shared.handleUpgradeToProSubscription()
                 }
+
+                // Report the conversion to TikTok for ad attribution/optimization.
+                TikTokTrackingManager.trackSubscription(
+                    productId: product.id,
+                    price: product.price,
+                    currency: product.priceFormatStyle.currencyCode,
+                    isTrial: willStartTrial
+                )
 
                 // Validate with backend (non-blocking - don't fail the purchase if backend is unavailable)
                 do {
