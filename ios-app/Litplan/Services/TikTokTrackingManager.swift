@@ -36,11 +36,13 @@ enum TikTokTrackingManager {
         guard !didInitialize else { return }
         didInitialize = true
 
-        // NOTE: The non-deprecated initializer also takes an Events API access
-        // token (configWithAccessToken:appId:tiktokAppId:) for advanced matching.
-        // We don't have one yet, so we use the client-only initializer. Switch to
-        // the access-token variant once a token is generated in Events Manager.
-        guard let config = TikTokConfig(appId: appId, tiktokAppId: tiktokAppId) else {
+        // Uses the non-deprecated factory with an empty access token. Per the SDK
+        // source, configWithAccessToken: with "" is identical to the old
+        // initWithAppId:tiktokAppId: (it sets accessToken = ""), and avoids the
+        // deprecation warning. The access token is only for the server-side Events
+        // API / advanced matching, which we don't use client-side — set a real
+        // token here only if that ever changes.
+        guard let config = TikTokConfig(accessToken: "", appId: appId, tiktokAppId: tiktokAppId) else {
             if Config.enableDebugLogging {
                 print("[TikTokTracking] Failed to create TikTokConfig")
             }
