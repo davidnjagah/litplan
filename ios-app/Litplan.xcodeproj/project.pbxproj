@@ -36,6 +36,7 @@
 		029 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129 /* Config.swift */; };
 		030 /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130 /* SupabaseManager.swift */; };
 		031 /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 131 /* AuthenticationManager.swift */; };
+		7647BABE000000000000FA02 /* TikTokTrackingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7647BABE000000000000FA01 /* TikTokTrackingManager.swift */; };
 		032 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 132 /* APIService.swift */; };
 		033 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133 /* LoginView.swift */; };
 		034 /* LaunchScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134 /* LaunchScreenView.swift */; };
@@ -44,6 +45,7 @@
 		1DECED6E5624F94D601F7903 /* WeekendPlansSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F942FE57C3D9148D5F4AE14 /* WeekendPlansSection.swift */; };
 		2196C974860A78E497048B58 /* SearchHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384C562426CBDB498F28A1D2 /* SearchHistoryManager.swift */; };
 		21A83C7A2F047AE00093A0B3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 211DED512F02E98C00532BB1 /* Supabase */; };
+		7647BABE000000000000AA03 /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 7647BABE000000000000AA02 /* TikTokBusinessSDK */; };
 		21FFB3B52F3290DF00B056E5 /* DeepLinkType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3B42F3290DF00B056E5 /* DeepLinkType.swift */; };
 		21FFB3B72F32910A00B056E5 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3B62F32910A00B056E5 /* DeepLinkHandler.swift */; };
 		21FFB3BE2F32913700B056E5 /* AuthFlowContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FFB3B82F32913700B056E5 /* AuthFlowContainerView.swift */; };
@@ -128,6 +130,7 @@
 		129 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		130 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		131 /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
+		7647BABE000000000000FA01 /* TikTokTrackingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TikTokTrackingManager.swift; sourceTree = "<group>"; };
 		132 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		133 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		134 /* LaunchScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchScreenView.swift; sourceTree = "<group>"; };
@@ -191,6 +194,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				21A83C7A2F047AE00093A0B3 /* Supabase in Frameworks */,
+				7647BABE000000000000AA03 /* TikTokBusinessSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -329,6 +333,7 @@
 				21FFB3B62F32910A00B056E5 /* DeepLinkHandler.swift */,
 				130 /* SupabaseManager.swift */,
 				131 /* AuthenticationManager.swift */,
+				7647BABE000000000000FA01 /* TikTokTrackingManager.swift */,
 				132 /* APIService.swift */,
 				A733683C2D58C3CC6C09546E /* SavedItemsManager.swift */,
 				VH001 /* VibezHistoryManager.swift */,
@@ -397,6 +402,7 @@
 			name = Litplan;
 			packageProductDependencies = (
 				211DED512F02E98C00532BB1 /* Supabase */,
+				7647BABE000000000000AA02 /* TikTokBusinessSDK */,
 			);
 			productName = Litplan;
 			productReference = 100 /* Litplan.app */;
@@ -428,6 +434,7 @@
 			mainGroup = 300;
 			packageReferences = (
 				211DED502F02E98C00532BB0 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				7647BABE000000000000AA01 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */,
 			);
 			productRefGroup = 302 /* Products */;
 			projectDirPath = "";
@@ -495,6 +502,7 @@
 				029 /* Config.swift in Sources */,
 				030 /* SupabaseManager.swift in Sources */,
 				031 /* AuthenticationManager.swift in Sources */,
+				7647BABE000000000000FA02 /* TikTokTrackingManager.swift in Sources */,
 				032 /* APIService.swift in Sources */,
 				033 /* LoginView.swift in Sources */,
 				034 /* LaunchScreenView.swift in Sources */,
@@ -683,6 +691,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "LitPlanz needs camera access to scan QR codes for group activities.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "LitPlanz uses your location to find nearby nightlife venues and events.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LitPlanz needs photo library access to let you share or save images.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "LitPlanz uses your activity to measure ad performance and show you more relevant content.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -692,7 +701,11 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
+				OTHER_LDFLAGS = (
+						"-ObjC",
+						"-lc++",
+					);
+					PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -715,6 +728,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "LitPlanz needs camera access to scan QR codes for group activities.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "LitPlanz uses your location to find nearby nightlife venues and events.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LitPlanz needs photo library access to let you share or save images.";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "LitPlanz uses your activity to measure ad performance and show you more relevant content.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -724,7 +738,11 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
+				OTHER_LDFLAGS = (
+						"-ObjC",
+						"-lc++",
+					);
+					PRODUCT_BUNDLE_IDENTIFIER = com.litplanz.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -764,6 +782,14 @@
 				minimumVersion = 2.5.1;
 			};
 		};
+		7647BABE000000000000AA01 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tiktok/tiktok-business-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.6.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -771,6 +797,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 211DED502F02E98C00532BB0 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		7647BABE000000000000AA02 /* TikTokBusinessSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7647BABE000000000000AA01 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */;
+			productName = TikTokBusinessSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

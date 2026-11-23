@@ -798,6 +798,15 @@ class AuthenticationManager: NSObject, ObservableObject {
         // Store user ID locally for quick access
         UserDefaults.standard.set(user.id, forKey: Config.UserDefaultsKeys.cachedUserId)
 
+        // Fire a TikTok Registration event for genuinely new signups. This runs on
+        // every auth success (login or signup) via all providers, but only fires
+        // once per brand-new account — see TikTokTrackingManager.trackRegistration.
+        TikTokTrackingManager.trackRegistration(
+            userId: user.id,
+            createdAt: user.createdAt,
+            method: user.userMetadata?.provider ?? (isEmailLogin ? "email" : "unknown")
+        )
+
         // Check if user should have test Pro access (for testing without payment)
         SubscriptionManager.shared.checkTestProAccess()
 

@@ -14,6 +14,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // Initialize TikTok app-events SDK for install/event attribution.
+        // ATT permission is requested later, in applicationDidBecomeActive.
+        TikTokTrackingManager.initialize()
+
         // Set notification center delegate
         UNUserNotificationCenter.current().delegate = PushNotificationManager.shared
 
@@ -23,6 +27,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         }
 
         return true
+    }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        // Request App Tracking Transparency so TikTok's SDK can use IDFA for
+        // attribution. The system only shows the prompt once; subsequent calls
+        // are no-ops. Done here (not at launch) so it appears over live UI.
+        TikTokTrackingManager.requestTrackingAuthorization()
     }
 
     // MARK: - Push Notification Registration
